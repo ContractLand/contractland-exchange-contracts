@@ -29,7 +29,7 @@ contract('SimpleCrowdsale', function ([owner, wallet, investor]) {
     this.endTime = this.startTime + duration.weeks(1);
     this.afterEndTime = this.endTime + duration.seconds(1);
 
-    this.token = await CrowdsaleToken.new("Token Name", "Token Symbol");
+    this.token = await CrowdsaleToken.new('Token Name', 'Token Symbol');
     this.crowdsale = await SimpleCrowdsale.new(
       this.startTime, this.endTime, RATE, GOAL, CAP, wallet, this.token.address
     );

@@ -2,6 +2,7 @@ pragma solidity ^0.4.18;
 
 import "zeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
 
+
 /**
  * @title CrowdsaleToken
  * @dev Very simple ERC20 Token that can be minted.

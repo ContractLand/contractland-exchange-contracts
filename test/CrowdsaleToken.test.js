@@ -1,8 +1,8 @@
 const CrowdsaleToken = artifacts.require('CrowdsaleToken');
 
 contract('CrowdsaleToken', accounts => {
-  const NAME = "some token name";
-  const SYMBOL = "STN";
+  const NAME = 'some token name';
+  const SYMBOL = 'STN';
 
   const creator = accounts[0];
 
