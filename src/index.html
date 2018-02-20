@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-    <title>TutorialToken - Wallet</title>
+    <title>ContractLand</title>
 
     <!-- Bootstrap -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
@@ -21,25 +21,26 @@
     <div class="container">
       <div class="row">
         <div class="col-xs-12 col-sm-8 col-sm-push-2">
-          <h1 class="text-center">TutorialToken</h1>
+          <h1 class="text-center">ContractLand</h1>
           <hr/>
           <br/>
         </div>
       </div>
 
-      <div id="petsRow" class="row">
+      <div class="row">
         <div class="col-sm-6 col-sm-push-3 col-md-4 col-md-push-4">
           <div class="panel panel-default">
             <div class="panel-heading">
-              <h3 class="panel-title">My Wallet</h3>
+              <h3 class="panel-title">Purchase Token</h3>
             </div>
             <div class="panel-body">
-              <h4>Balance</h4>
-              <strong>Balance</strong>: <span id="TTBalance"></span> TT<br/><br/>
-              <h4>Transfer</h4>
-              <input type="text" class="form-control" id="TTTransferAddress" placeholder="Address" />
-              <input type="text" class="form-control" id="TTTransferAmount" placeholder="Amount" />
-              <button class="btn btn-primary" id="transferButton" type="button">Transfer</button>
+              <strong>Token Name</strong>: <span id="TokenName"></span></span><br/><br/>
+              <strong>Start Time</strong>: <span id="StartTime"></span></span><br/><br/>
+              <strong>End Time</strong>: <span id="EndTime"></span></span><br/><br/>
+              <strong>Already Raised</strong>: <span id="EtherRaised"></span> ETH</span><br/><br/>
+              <strong>My Balance</strong>: <span id="Balance"></span> <span id="TokenSymbol"></span><br/><br/>
+              <input type="text" class="form-control" id="PurchaseAmount" placeholder="Amount in ETH" />
+              <button class="btn btn-primary" id="transferButton" type="button">Purchase</button>
             </div>
           </div>
         </div>
@@ -49,9 +50,9 @@
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
-    <script src="js/bootstrap.min.js"></script>
-    <script src="js/web3.min.js"></script>
-    <script src="js/truffle-contract.js"></script>
+    <script src="lib/bootstrap.min.js"></script>
+    <script src="lib/web3.min.js"></script>
+    <script src="lib/truffle-contract.js"></script>
     <script src="js/app.js"></script>
   </body>
 </html>

@@ -1,5 +1,6 @@
-App = {
+let App = {
   web3Provider: null,
+  account: "",
   contracts: {},
 
   init: function () {
@@ -17,22 +18,27 @@ App = {
       web3 = new Web3(App.web3Provider);
     }
 
+    web3.eth.getAccounts((err, accounts) => {
+      App.account = accounts[0];
+    })
+
     return App.initContract();
   },
 
-  initContract: function () {
-    $.getJSON('TutorialToken.json', function (data) {
-      // Get the necessary contract artifact file and instantiate it with truffle-contract.
-      var TutorialTokenArtifact = data;
-      App.contracts.TutorialToken = TruffleContract(TutorialTokenArtifact);
+  initContract: async function () {
+    const CrowdsaleTokenArtifact = await $.getJSON('CrowdsaleToken.json')
+    // Get the necessary contract artifact file and instantiate it with truffle-contract.
+    const CrowdsaleToken = TruffleContract(CrowdsaleTokenArtifact);
+    // Set the provider for our contract.
+    CrowdsaleToken.setProvider(App.web3Provider);
+    App.contracts.CrowdsaleTokenInstance = await CrowdsaleToken.deployed();
 
-      // Set the provider for our contract.
-      App.contracts.TutorialToken.setProvider(App.web3Provider);
+    const SimpleCrowdsaleArtifact = await $.getJSON('SimpleCrowdsale.json')
+    const SimpleCrowdsale = TruffleContract(SimpleCrowdsaleArtifact);
+    SimpleCrowdsale.setProvider(App.web3Provider);
+    App.contracts.SimpleCrowdsaleInstance = await SimpleCrowdsale.at("0x2c2b9c9a4a25e24b174f26114e8926a9f2128fe4");
 
-      // Use our contract to retieve and mark the adopted pets.
-      return App.getBalances();
-    });
-
+    return App.getContractInfo();
     return App.bindEvents();
   },
 
@@ -70,30 +76,27 @@ App = {
     });
   },
 
-  getBalances: function () {
-    console.log('Getting balances...');
+  getContractInfo: async function () {
+    console.log('Getting contract info...');
 
-    var tutorialTokenInstance;
+    try {
+      const name = await App.contracts.CrowdsaleTokenInstance.name();
+      const symbol = await App.contracts.CrowdsaleTokenInstance.symbol();
+      const startTime = await App.contracts.SimpleCrowdsaleInstance.startTime();
+      const endTime = await App.contracts.SimpleCrowdsaleInstance.endTime();
+      const weiRaised = await App.contracts.SimpleCrowdsaleInstance.weiRaised();
+      const etherRaised = web3.fromWei(weiRaised, 'ether');
+      const balance = await App.contracts.CrowdsaleTokenInstance.balanceOf(App.account);
 
-    web3.eth.getAccounts(function (error, accounts) {
-      if (error) {
-        console.log(error);
-      }
-
-      var account = accounts[0];
-
-      App.contracts.TutorialToken.deployed().then(function (instance) {
-        tutorialTokenInstance = instance;
-
-        return tutorialTokenInstance.balanceOf(account);
-      }).then(function (result) {
-        balance = result.c[0];
-
-        $('#TTBalance').text(balance);
-      }).catch(function (err) {
-        console.log(err.message);
-      });
-    });
+      $('#TokenName').text(name);
+      $('#TokenSymbol').text(symbol);
+      $('#StartTime').text(startTime);
+      $('#EndTime').text(endTime);
+      $('#EtherRaised').text(etherRaised);
+      $('#Balance').text(balance);
+    } catch (e) {
+      console.log(e);
+    }
   },
 
 };

@@ -49,4 +49,8 @@ contract('CrowdsaleFactory', function ([factoryOwner, crowdsaleCreator, wallet, 
     expect(await token.name()).to.equal(TOKEN_NAME); ;
     expect(await token.symbol()).to.equal(TOKEN_SYMBOL); ;
   });
+
+  it.skip('should allow pre-mint of tokens', async function () {
+    
+  });
 });
