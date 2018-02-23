@@ -18,30 +18,70 @@
     <![endif]-->
   </head>
   <body>
-    <div class="container">
-      <div class="row">
-        <div class="col-xs-12 col-sm-8 col-sm-push-2">
-          <h1 class="text-center">ContractLand</h1>
-          <hr/>
-          <br/>
-        </div>
+    <nav class="navbar navbar-expand-lg">
+      <div class="container">
+        <a class="navbar-brand" href="#">
+          <img src="/assets/logo.svg" width="30" height="30" class="d-inline-block align-top" alt="">
+          ContractLand
+        </a>
       </div>
+    </nav>
 
+    <div class="container" style="margin-bottom:1rem;">
       <div class="row">
-        <div class="col-sm-6 col-sm-push-3 col-md-4 col-md-push-4">
-          <div class="panel panel-default">
-            <div class="panel-heading">
-              <h3 class="panel-title">Purchase Token</h3>
+        <div class="col-sm-8">
+          <div class="card" style="margin-top: 1rem;">
+            <div class="card-header">
+              Token Information
             </div>
-            <div class="panel-body">
-              <strong>Token Name</strong>: <span id="TokenName"></span></span><br/><br/>
-              <strong>Start Time</strong>: <span id="StartTime"></span></span><br/><br/>
-              <strong>End Time</strong>: <span id="EndTime"></span></span><br/><br/>
-              <strong>Already Raised</strong>: <span id="EtherRaised"></span> ETH</span><br/><br/>
-              <strong>My Balance</strong>: <span id="Balance"></span> <span id="TokenSymbol"></span><br/><br/>
-              <input type="text" class="form-control" id="PurchaseAmount" placeholder="Amount in ETH" />
-              <button class="btn btn-primary" id="transferButton" type="button">Purchase</button>
+            <div class="card-body">
+              <p class="card-text">This is a token sale for the <strong><span id="TokenName"></span></strong></p>
+              <p class="card-text">Put a text description of the token/company here.</p>
             </div>
+          </div>
+
+          <div class="card" style="margin-top: 1rem;">
+            <div class="card-header">
+              Token Sale Details
+            </div>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item">
+                <p class="font-weight-light">Current Progress</p>
+                <p id="AlreadyRaised"></p>
+                <div class="progress">
+                  <div class="progress-bar" id="TokenSaleProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+              </li>
+              <li class="list-group-item">
+                <p class="font-weight-light">Price Per ETH</p>
+                <p><span id="Rate"></span> <span id="RateTokenSymbol"></span></p>
+              </li>
+              <li class="list-group-item">
+                <p class="font-weight-light">Start Time</p>
+                <p><span id="StartTime"></span></p>
+              </li>
+              <li class="list-group-item">
+                <p class="font-weight-light">End Time</p>
+                <p><span id="EndTime"></span></p>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="card" style="margin-top: 1rem;">
+            <div class="card-header">
+              Purchase Token
+            </div>
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item">
+                <p class="font-weight-light">My Current Balance</p>
+                <p><span id="Balance"></span> <span id="TokenSymbol"></p>
+              </li>
+              <li class="list-group-item">
+                <input type="text" class="form-control" id="PurchaseAmount" type="number" placeholder="Amount in ETH" />
+                <button class="btn btn-success btn-lg btn-block" style="margin-top:1rem;" id="PurchaseButton" type="button">Purchase</button>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
@@ -51,6 +91,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="lib/bootstrap.min.js"></script>
+    <script src="lib/moment.min.js"></script>
     <script src="lib/web3.min.js"></script>
     <script src="lib/truffle-contract.js"></script>
     <script src="js/app.js"></script>

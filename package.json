@@ -35,7 +35,8 @@
     "eslint-plugin-node": "^5.2.1",
     "eslint-plugin-promise": "^3.6.0",
     "eslint-plugin-standard": "^3.0.1",
-    "solium": "^1.1.2"
+    "solium": "^1.1.2",
+    "truffle-contract": "^3.0.3"
   },
   "dependencies": {
     "ethereumjs-util": "^5.1.4",
