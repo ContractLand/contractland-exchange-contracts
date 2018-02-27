@@ -9,6 +9,7 @@
 
     <!-- Bootstrap -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/app.css" rel="stylesheet">
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -27,7 +28,7 @@
       </div>
     </nav>
 
-    <div class="container" style="margin-bottom:1rem;">
+    <div id="app" v-cloak class="container" style="margin-bottom:1rem;">
       <div class="row">
         <div class="col-sm-8">
           <div class="card" style="margin-top: 1rem;">
@@ -35,7 +36,7 @@
               Token Information
             </div>
             <div class="card-body">
-              <p class="card-text">This is a token sale for the <strong><span id="TokenName"></span></strong></p>
+              <p class="card-text">This is a token sale for the <strong>{{ crowdsaleData.name }}</strong></p>
               <p class="card-text">Put a text description of the token/company here.</p>
             </div>
           </div>
@@ -47,22 +48,22 @@
             <ul class="list-group list-group-flush">
               <li class="list-group-item">
                 <p class="font-weight-light">Current Progress</p>
-                <p id="AlreadyRaised"></p>
+                <p>{{ crowdsaleData.etherRaised }} / {{ crowdsaleData.etherCap }} ETH Raised</p>
                 <div class="progress">
-                  <div class="progress-bar" id="TokenSaleProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+                  <div class="progress-bar" role="progressbar" v-bind:aria-valuenow="crowdsaleData.progressPercentage" v-bind:style="{ width: crowdsaleData.progressPercentage + '%' }" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
               </li>
               <li class="list-group-item">
                 <p class="font-weight-light">Price Per ETH</p>
-                <p><span id="Rate"></span> <span id="RateTokenSymbol"></span></p>
+                <p>{{ crowdsaleData.ratePerEther }} {{ crowdsaleData.symbol }}</p>
               </li>
               <li class="list-group-item">
                 <p class="font-weight-light">Start Time</p>
-                <p><span id="StartTime"></span></p>
+                <p>{{ getFormattedDateTime(crowdsaleData.startTime) }}</p>
               </li>
               <li class="list-group-item">
                 <p class="font-weight-light">End Time</p>
-                <p><span id="EndTime"></span></p>
+                <p>{{ getFormattedDateTime(crowdsaleData.endTime) }}</p>
               </li>
             </ul>
           </div>
@@ -75,11 +76,11 @@
             <ul class="list-group list-group-flush">
               <li class="list-group-item">
                 <p class="font-weight-light">My Current Balance</p>
-                <p><span id="Balance"></span> <span id="TokenSymbol"></p>
+                <p>{{ crowdsaleData.balanceInEther }} {{ crowdsaleData.symbol }}</p>
               </li>
               <li class="list-group-item">
-                <input type="text" class="form-control" id="PurchaseAmount" type="number" placeholder="Amount in ETH" />
-                <button class="btn btn-success btn-lg btn-block" style="margin-top:1rem;" id="PurchaseButton" type="button">Purchase</button>
+                <input v-model="crowdsaleData.purchaseInEther" type="text" class="form-control" type="number" placeholder="Amount in ETH" />
+                <button v-on:click="handlePurchase" class="btn btn-success btn-lg btn-block" style="margin-top:1rem;" type="button">Purchase</button>
               </li>
             </ul>
           </div>
@@ -90,6 +91,7 @@
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="lib/vue.js"></script>
     <script src="lib/bootstrap.min.js"></script>
     <script src="lib/moment.min.js"></script>
     <script src="lib/web3.min.js"></script>
