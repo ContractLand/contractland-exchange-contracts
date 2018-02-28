@@ -19,6 +19,13 @@ module.exports = {
       },
       gas: 4600000,
       network_id: 3
+    },
+    rinkeby: {
+      provider: function() {
+        return new HDWalletProvider(mnemonic, "https://rinkeby.infura.io/KetwbGBGwNagOnjgPUkN ")
+      },
+      gas: 4600000,
+      network_id: 3
     }
   },
 };
