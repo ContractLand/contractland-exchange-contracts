@@ -79,7 +79,8 @@
                 <p>{{ crowdsaleData.balanceInEther }} {{ crowdsaleData.symbol }}</p>
               </li>
               <li class="list-group-item">
-                <input v-model="crowdsaleData.purchaseInEther" type="text" class="form-control" type="number" placeholder="Amount in ETH" />
+                <p class="font-weight-light">Amount In Ether</p>
+                <input v-model="crowdsaleData.purchaseInEther" class="form-control" type="number" placeholder="Amount in ETH" />
                 <button v-on:click="handlePurchase" class="btn btn-success btn-lg btn-block" style="margin-top:1rem;" type="button">Purchase</button>
               </li>
             </ul>
@@ -89,7 +90,7 @@
     </div>
 
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="lib/jquery.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="lib/vue.js"></script>
     <script src="lib/bootstrap.min.js"></script>

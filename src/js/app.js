@@ -4,6 +4,10 @@ var app = new Vue({
     web3Provider: null,
     account: '',
     contracts: {},
+    currentCrowdsaleName: '',
+    crowdsaleNameToAddressesMap: {
+        clt: '0xf25186b5081ff5ce73482ad761db0eb0d25abfbf',
+    },
     crowdsaleData: {
       name: '',
       symbol: '',
@@ -15,14 +19,18 @@ var app = new Vue({
       progressPercentage: 0,
       balanceInEther: 0,
       purchaseInEther: 0,
-    }
+    },
   },
-  mounted: function () {
+  created: function () {
     this.init()
   },
   methods: {
-    init: function () {
-      this.initWeb3()
+    init: async function () {
+      this.initCurrentCrowdsaleName()
+      await this.initWeb3()
+      this.initAccount()
+      await this.initContract()
+      await this.getContractInfo()
     },
 
     initWeb3: async function () {
@@ -39,30 +47,30 @@ var app = new Vue({
       web3.eth.getAccounts((err, accounts) => {
         this.account = accounts[0];
       })
-
-      this.initAccount()
     },
 
     initAccount: function () {
       web3.eth.getAccounts((err, accounts) => {
         this.account = accounts[0];
       })
-
-      this.initContract()
     },
 
     initContract: async function () {
+      const SimpleCrowdsaleArtifact = await $.getJSON('SimpleCrowdsale.json')
+      const SimpleCrowdsale = TruffleContract(SimpleCrowdsaleArtifact);
+      SimpleCrowdsale.setProvider(this.web3Provider);
+      const currentCrowdsaleAddress = this.crowdsaleNameToAddressesMap[this.currentCrowdsaleName]
+      this.contracts.SimpleCrowdsaleInstance = await SimpleCrowdsale.at(currentCrowdsaleAddress)
+
       const CrowdsaleTokenArtifact = await $.getJSON('CrowdsaleToken.json')
       const CrowdsaleToken = TruffleContract(CrowdsaleTokenArtifact);
       CrowdsaleToken.setProvider(this.web3Provider);
-      this.contracts.CrowdsaleTokenInstance = await CrowdsaleToken.deployed();
+      const currentTokenAddress = await this.contracts.SimpleCrowdsaleInstance.token()
+      this.contracts.CrowdsaleTokenInstance = await CrowdsaleToken.at(currentTokenAddress);
+    },
 
-      const SimpleCrowdsaleArtifact = await $.getJSON('SimpleCrowdsale.json')
-      this.contracts.SimpleCrowdsale = TruffleContract(SimpleCrowdsaleArtifact);
-      this.contracts.SimpleCrowdsale.setProvider(this.web3Provider);
-      this.contracts.SimpleCrowdsaleInstance = await this.contracts.SimpleCrowdsale.deployed()
-
-      this.getContractInfo()
+    initCurrentCrowdsaleName: function () {
+      this.currentCrowdsaleName = window.location.pathname.replace('/', '')
     },
 
     getContractInfo: async function () {
