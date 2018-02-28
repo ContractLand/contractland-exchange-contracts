@@ -11,16 +11,16 @@ module.exports = function (deployer, network, accounts) {
   .then(() => CrowdsaleToken.deployed())
   .then((tokenInstance) => {
     m_tokenInstance = tokenInstance
-    const startTime = Math.floor(new Date() / 1000);
-    const endTime = parseInt(startTime) + 1*60*60*24*7; // plus 1 week
+    const openingTime = Math.floor(new Date() / 1000);
+    const closingTime = parseInt(openingTime) + 1*60*60*24*7; // plus 1 week
     const rate = new BigNumber(500)
     const goal = new BigNumber(web3.toWei(50, 'ether'));
     const cap = new BigNumber(web3.toWei(100, 'ether'));
     const wallet = accounts[9]
 
     return deployer.deploy(SimpleCrowdsale,
-                          startTime,
-                          endTime,
+                          openingTime,
+                          closingTime,
                           rate,
                           goal,
                           cap,

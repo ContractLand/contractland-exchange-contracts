@@ -11,8 +11,8 @@ var app = new Vue({
     crowdsaleData: {
       name: '',
       symbol: '',
-      startTime: '',
-      endTime: '',
+      openingTime: '',
+      closingTime: '',
       ratePerEther: 0,
       etherRaised: 0,
       etherCap: 0,
@@ -79,8 +79,8 @@ var app = new Vue({
       try {
         this.crowdsaleData.name = await this.contracts.CrowdsaleTokenInstance.name();
         this.crowdsaleData.symbol = await this.contracts.CrowdsaleTokenInstance.symbol();
-        this.crowdsaleData.startTime = await this.contracts.SimpleCrowdsaleInstance.startTime();
-        this.crowdsaleData.endTime = await this.contracts.SimpleCrowdsaleInstance.endTime();
+        this.crowdsaleData.openingTime = await this.contracts.SimpleCrowdsaleInstance.openingTime();
+        this.crowdsaleData.closingTime = await this.contracts.SimpleCrowdsaleInstance.closingTime();
         this.crowdsaleData.ratePerEther = parseInt(await this.contracts.SimpleCrowdsaleInstance.rate());
         const weiRaised = await this.contracts.SimpleCrowdsaleInstance.weiRaised();
         this.crowdsaleData.etherRaised = parseInt(web3.fromWei(weiRaised, 'ether'));

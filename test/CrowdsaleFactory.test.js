@@ -23,12 +23,12 @@ contract('CrowdsaleFactory', function ([factoryOwner, crowdsaleCreator, wallet, 
   });
 
   beforeEach(async function () {
-    this.startTime = latestTime() + duration.weeks(1);
-    this.endTime = this.startTime + duration.weeks(1);
+    this.openingTime = latestTime() + duration.weeks(1);
+    this.closingTime = this.openingTime + duration.weeks(1);
 
     this.crowdsaleFactory = await CrowdsaleFactory.new();
     await this.crowdsaleFactory.createCrowdsale(
-      TOKEN_NAME, TOKEN_SYMBOL, this.startTime, this.endTime, RATE, GOAL, CAP, wallet, { from: crowdsaleCreator }
+      TOKEN_NAME, TOKEN_SYMBOL, this.openingTime, this.closingTime, RATE, GOAL, CAP, wallet, { from: crowdsaleCreator }
     );
   });
 
@@ -37,8 +37,8 @@ contract('CrowdsaleFactory', function ([factoryOwner, crowdsaleCreator, wallet, 
 
     const crowdsale = SimpleCrowdsale.at(await this.crowdsaleFactory.created(crowdsaleCreator, 0));
     expect(crowdsale).to.exist;
-    expect(await crowdsale.startTime()).to.be.bignumber.equal(this.startTime); ;
-    expect(await crowdsale.endTime()).to.be.bignumber.equal(this.endTime); ;
+    expect(await crowdsale.openingTime()).to.be.bignumber.equal(this.openingTime); ;
+    expect(await crowdsale.closingTime()).to.be.bignumber.equal(this.closingTime); ;
     expect(await crowdsale.rate()).to.be.bignumber.equal(RATE); ;
     expect(await crowdsale.wallet()).to.be.equal(wallet); ;
     expect(await crowdsale.goal()).to.be.bignumber.equal(GOAL); ;
@@ -51,6 +51,6 @@ contract('CrowdsaleFactory', function ([factoryOwner, crowdsaleCreator, wallet, 
   });
 
   it.skip('should allow pre-mint of tokens', async function () {
-    
+
   });
 });
