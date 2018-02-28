@@ -8,13 +8,7 @@
   },
   "scripts": {
     "dev": "lite-server",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "lint:sol": "solium -d .",
-    "lint:sol:fix": "solium -d . --fix",
-    "lint:all": "npm run lint && npm run lint:sol",
-    "lint:all:fix": "npm run lint:fix && npm run lint:sol:fix"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "ContractLand Fundation",
   "license": "MIT",
@@ -27,14 +21,7 @@
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
     "chai-bignumber": "^2.0.2",
-    "eslint": "^4.18.1",
-    "eslint-config-standard": "^10.2.1",
-    "eslint-plugin-import": "^2.9.0",
-    "eslint-plugin-node": "^5.2.1",
-    "eslint-plugin-promise": "^3.6.0",
-    "eslint-plugin-standard": "^3.0.1",
     "lite-server": "^2.3.0",
-    "solium": "^1.1.2",
     "truffle": "^4.0.7",
     "truffle-contract": "^3.0.4"
   },
