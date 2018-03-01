@@ -109,10 +109,6 @@ contract('SimpleCrowdsale', function ([owner, wallet, investor]) {
     balanceBeforeInvestment.should.be.bignumber.equal(balanceAfterRefund);
   });
 
-  it.skip('should burn remining tokens if hard cap is not reached', async function () {
-
-  });
-
   it.skip('should dynamic pricing strategy', async function () {
 
   });

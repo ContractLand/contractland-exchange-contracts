@@ -4,10 +4,7 @@ var app = new Vue({
     web3Provider: null,
     account: '',
     contracts: {},
-    currentCrowdsaleName: '',
-    crowdsaleNameToAddressesMap: {
-        clt: '0xf25186b5081ff5ce73482ad761db0eb0d25abfbf',
-    },
+    currentCrowdsaleIndex: '',
     crowdsaleData: {
       name: '',
       symbol: '',
@@ -26,7 +23,7 @@ var app = new Vue({
   },
   methods: {
     init: async function () {
-      this.initCurrentCrowdsaleName()
+      this.initCurrentCrowdsaleIndex()
       await this.initWeb3()
       this.initAccount()
       await this.initContract()
@@ -43,10 +40,6 @@ var app = new Vue({
         this.web3Provider = new Web3.providers.HttpProvider('http://127.0.0.1:9545');
         web3 = new Web3(this.web3Provider);
       }
-
-      web3.eth.getAccounts((err, accounts) => {
-        this.account = accounts[0];
-      })
     },
 
     initAccount: function () {
@@ -56,10 +49,16 @@ var app = new Vue({
     },
 
     initContract: async function () {
+      const CrowdsaleFactoryArtifact = await $.getJSON('CrowdsaleFactory.json')
+      const CrowdsaleFactory = TruffleContract(CrowdsaleFactoryArtifact);
+      CrowdsaleFactory.setProvider(this.web3Provider);
+      this.contracts.CrowdsaleFactoryInstance = await CrowdsaleFactory.deployed()
+
+      const currentCrowdsaleAddress = await this.contracts.CrowdsaleFactoryInstance.getCrowdsaleAtIndex(this.currentCrowdsaleIndex)
+
       const SimpleCrowdsaleArtifact = await $.getJSON('SimpleCrowdsale.json')
       const SimpleCrowdsale = TruffleContract(SimpleCrowdsaleArtifact);
       SimpleCrowdsale.setProvider(this.web3Provider);
-      const currentCrowdsaleAddress = this.crowdsaleNameToAddressesMap[this.currentCrowdsaleName]
       this.contracts.SimpleCrowdsaleInstance = await SimpleCrowdsale.at(currentCrowdsaleAddress)
 
       const CrowdsaleTokenArtifact = await $.getJSON('CrowdsaleToken.json')
@@ -69,8 +68,8 @@ var app = new Vue({
       this.contracts.CrowdsaleTokenInstance = await CrowdsaleToken.at(currentTokenAddress);
     },
 
-    initCurrentCrowdsaleName: function () {
-      this.currentCrowdsaleName = window.location.pathname.replace('/', '')
+    initCurrentCrowdsaleIndex: function () {
+      this.currentCrowdsaleIndex = window.location.pathname.replace('/', '')
     },
 
     getContractInfo: async function () {
