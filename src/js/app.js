@@ -55,6 +55,7 @@ var app = new Vue({
       this.contracts.CrowdsaleFactoryInstance = await CrowdsaleFactory.deployed()
 
       const currentCrowdsaleAddress = await this.contracts.CrowdsaleFactoryInstance.getCrowdsaleAtIndex(this.currentCrowdsaleIndex)
+      console.log(currentCrowdsaleAddress)
 
       const SimpleCrowdsaleArtifact = await $.getJSON('SimpleCrowdsale.json')
       const SimpleCrowdsale = TruffleContract(SimpleCrowdsaleArtifact);
@@ -91,6 +92,11 @@ var app = new Vue({
       } catch (e) {
         console.log(e);
       }
+
+      web3.eth.getBlock('latest', (e, result) => {
+        console.log('current block time is: ', result.timestamp)
+        console.log('opening blockchain time is: ', this.crowdsaleData.openingTime.toNumber())
+      })
     },
 
     handlePurchase: async function (event) {

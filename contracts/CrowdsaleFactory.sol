@@ -19,6 +19,7 @@ contract CrowdsaleFactory is Ownable {
 
         CrowdsaleToken token = (new CrowdsaleToken(_tokenName, _tokenSymbol));
         SimpleCrowdsale crowdsale = (new SimpleCrowdsale(_openingTime, _closingTime, _rate, _goal, _cap, _wallet, token));
+        token.transferOwnership(address(crowdsale));
 
         creatorToCrowdsaleMap[msg.sender].push(address(crowdsale));
         created.push(address(crowdsale));

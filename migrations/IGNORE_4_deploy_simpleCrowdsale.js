@@ -13,23 +13,25 @@ const SimpleCrowdsale = artifacts.require("SimpleCrowdsale");
 const CrowdsaleToken = artifacts.require("CrowdsaleToken");
 
 module.exports = function (deployer, network, accounts) {
-  const startTime = web3.eth.getBlock('latest').timestamp
-  const endTime = startTime + duration.minutes(30)
-  const rate = new BigNumber(500)
-  const goal = new BigNumber(web3.toWei(50, 'ether'));
-  const cap = new BigNumber(web3.toWei(100, 'ether'));
-  const wallet = accounts[9]
+  web3.eth.getBlock('latest', (error, result) => {
+    const startTime = result.timestamp
+    const endTime = startTime + duration.minutes(30)
+    const rate = new BigNumber(500)
+    const goal = new BigNumber(web3.toWei(50, 'ether'));
+    const cap = new BigNumber(web3.toWei(100, 'ether'));
+    const wallet = accounts[9]
 
-  deployer.deploy(SimpleCrowdsale,
-                        startTime,
-                        endTime,
-                        rate,
-                        goal,
-                        cap,
-                        wallet,
-                        CrowdsaleToken.address)
-  .then(() => {
-    const tokenInstance = CrowdsaleToken.at(CrowdsaleToken.address)
-    tokenInstance.transferOwnership(SimpleCrowdsale.address);
+    deployer.deploy(SimpleCrowdsale,
+                          startTime,
+                          endTime,
+                          rate,
+                          goal,
+                          cap,
+                          wallet,
+                          CrowdsaleToken.address)
+    .then(() => {
+      const tokenInstance = CrowdsaleToken.at(CrowdsaleToken.address)
+      tokenInstance.transferOwnership(SimpleCrowdsale.address);
+    })
   })
 };

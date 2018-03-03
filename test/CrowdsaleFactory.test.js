@@ -48,4 +48,10 @@ contract('CrowdsaleFactory', function ([factoryOwner, crowdsaleCreator, wallet, 
     expect(await token.name()).to.equal(TOKEN_NAME);
     expect(await token.symbol()).to.equal(TOKEN_SYMBOL);
   });
+
+  it('should transfer token ownership to crowdsale', async function () {
+    const crowdsale = SimpleCrowdsale.at(await this.crowdsaleFactory.creatorToCrowdsaleMap(crowdsaleCreator, 0))
+    const token = CrowdsaleToken.at(await crowdsale.token())
+    expect(await token.owner()).to.equal(crowdsale.address)
+  })
 });
