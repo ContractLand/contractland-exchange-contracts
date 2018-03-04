@@ -75,12 +75,6 @@ contract('CrowdsaleFactory', function ([factoryOwner, crowdsaleCreator, wallet, 
     await this.crowdsaleFactory.createCrowdsale(
       TOKEN_NAME, TOKEN_SYMBOL, this.openingTime, this.closingTime, RATE, GOAL, CAP, wallet, { from: crowdsaleCreator, value: PAYMENT }
     )
-    expect(await this.crowdsaleFactory.payments(factoryOwner)).to.be.bignumber.equal(PAYMENT)
-    expect(await this.crowdsaleFactory.totalPayments()).to.be.bignumber.equal(PAYMENT)
-
-    await this.crowdsaleFactory.withdrawPayments({ from: factoryOwner })
-    expect(await this.crowdsaleFactory.payments(factoryOwner)).to.be.bignumber.equal(0)
-    expect(await this.crowdsaleFactory.totalPayments()).to.be.bignumber.equal(0)
 
     let balance = web3.eth.getBalance(factoryOwner)
     assert(Math.abs(balance - initialBalance - PAYMENT) < 1e16);
