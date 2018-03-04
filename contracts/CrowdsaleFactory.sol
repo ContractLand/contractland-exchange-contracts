@@ -19,7 +19,7 @@ contract CrowdsaleFactory is Ownable {
                              address _wallet) payable public returns (address) {
 
         require(msg.value >= cost);
-        owner.transfer(msg.value);
+        owner.send(msg.value);
 
         CrowdsaleToken token = (new CrowdsaleToken(_tokenName, _tokenSymbol));
         SimpleCrowdsale crowdsale = (new SimpleCrowdsale(_openingTime, _closingTime, _rate, _goal, _cap, _wallet, token));
