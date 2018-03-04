@@ -2,9 +2,10 @@ pragma solidity ^0.4.18;
 
 import "./CrowdsaleToken.sol";
 import "./SimpleCrowdsale.sol";
+import "zeppelin-solidity/contracts/payment/PullPayment.sol";
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 
-contract CrowdsaleFactory is Ownable {
+contract CrowdsaleFactory is Ownable, PullPayment {
     uint256 public cost = 1 * 10 ** 18;
     mapping (address => address[]) public creatorToCrowdsaleMap;
     address[] created;
@@ -19,7 +20,7 @@ contract CrowdsaleFactory is Ownable {
                              address _wallet) payable public returns (address) {
 
         require(msg.value >= cost);
-        owner.send(msg.value);
+        asyncSend(owner, msg.value);
 
         CrowdsaleToken token = (new CrowdsaleToken(_tokenName, _tokenSymbol));
         SimpleCrowdsale crowdsale = (new SimpleCrowdsale(_openingTime, _closingTime, _rate, _goal, _cap, _wallet, token));
