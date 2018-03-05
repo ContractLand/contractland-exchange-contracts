@@ -6,7 +6,7 @@ import "zeppelin-solidity/contracts/payment/PullPayment.sol";
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 
 contract CrowdsaleFactory is Ownable, PullPayment {
-    uint256 public cost = 1 * 10 ** 18;
+    uint256 public cost = 1 ether;
     mapping (address => address[]) public creatorToCrowdsaleMap;
     address[] created;
 
