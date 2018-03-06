@@ -12,9 +12,9 @@ contract CrowdsaleFactory is Ownable, PullPayment {
 
     function createCrowdsale(string _tokenName,
                              string _tokenSymbol,
-                             uint256 _openingTime,
+                             uint256[] _rates,
+                             uint256[] _rateStartTimes,
                              uint256 _closingTime,
-                             uint256 _rate,
                              uint256 _goal,
                              uint256 _cap,
                              address _wallet) payable public returns (address) {
@@ -23,7 +23,7 @@ contract CrowdsaleFactory is Ownable, PullPayment {
         asyncSend(owner, msg.value);
 
         CrowdsaleToken token = (new CrowdsaleToken(_tokenName, _tokenSymbol));
-        SimpleCrowdsale crowdsale = (new SimpleCrowdsale(_openingTime, _closingTime, _rate, _goal, _cap, _wallet, token));
+        SimpleCrowdsale crowdsale = (new SimpleCrowdsale(_rates, _rateStartTimes, _closingTime, _goal, _cap, _wallet, token));
         token.transferOwnership(address(crowdsale));
 
         creatorToCrowdsaleMap[msg.sender].push(address(crowdsale));
