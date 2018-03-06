@@ -5,6 +5,7 @@ import "zeppelin-solidity/contracts/crowdsale/validation/TimedCrowdsale.sol";
 import "zeppelin-solidity/contracts/crowdsale/distribution/RefundableCrowdsale.sol";
 import "zeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
 import "zeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol";
+import "./DynamicallyPricedCrowdsale.sol";
 
 /**
  * @title CrowdsaleTemplate
@@ -17,19 +18,20 @@ import "zeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol";
  * After adding multiple features it's good practice to run integration tests
  * to ensure that subcontracts works together as intended.
  */
-contract SimpleCrowdsale is CappedCrowdsale, RefundableCrowdsale, MintedCrowdsale {
+contract SimpleCrowdsale is CappedCrowdsale, RefundableCrowdsale, MintedCrowdsale, DynamicallyPricedCrowdsale {
 
-  function SimpleCrowdsale(uint256 _openingTime,
+  function SimpleCrowdsale(uint256[] _rates,
+                           uint256[] _rateStartTimes,
                            uint256 _closingTime,
-                           uint256 _rate,
                            uint256 _goal,
                            uint256 _cap,
                            address _wallet,
                            MintableToken _token) public
-    Crowdsale(_rate, _wallet, _token)
+    Crowdsale(_rates[0], _wallet, _token)
     CappedCrowdsale(_cap)
-    TimedCrowdsale(_openingTime, _closingTime)
     RefundableCrowdsale(_goal)
+    TimedCrowdsale(_rateStartTimes[0], _closingTime)
+    DynamicallyPricedCrowdsale(_rates, _rateStartTimes)
   {
     //As goal needs to be met for a successful crowdsale
     //the value needs to less or equal than a cap which is limit for accepted funds
