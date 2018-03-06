@@ -26,19 +26,20 @@ module.exports = function (deployer, network, accounts) {
         const tokenName = 'ContractLand Token'
         const tokenSymbol = 'CLT'
         const openingTime = web3.eth.getBlock('latest').timestamp
+        const rates = [new BigNumber(500), new BigNumber(666)]
+        const rateStartTimes = [openingTime, openingTime + duration.seconds(30)]
         const closingTime = openingTime + duration.weeks(1)
-        const rate = new BigNumber(500)
         const goal = new BigNumber(web3.toWei(10, 'ether'));
         const cap = new BigNumber(web3.toWei(100, 'ether'));
         const wallet = accounts[9]
         const payment = new BigNumber(web3.toWei(1, 'ether'));
-        crowdsaleFactoryInstance.createCrowdsale.estimateGas(tokenName, tokenSymbol, openingTime, closingTime, rate, goal, cap, wallet)
+        crowdsaleFactoryInstance.createCrowdsale.estimateGas(tokenName, tokenSymbol, rates, rateStartTimes, goal, cap, wallet)
         .then((gasCost) => {
           console.log('==========gasCost for creating a crowdsale is: ', gasCost)
         })
 
         //Create a crowdsale instance
-        crowdsaleFactoryInstance.createCrowdsale(tokenName, tokenSymbol, openingTime, closingTime, rate, goal, cap, wallet, { value: payment })
+        crowdsaleFactoryInstance.createCrowdsale(tokenName, tokenSymbol, rates, rateStartTimes, closingTime, goal, cap, wallet, { value: payment })
         .then((tx) => {
           console.log('========transaction is: ', tx)
         })
