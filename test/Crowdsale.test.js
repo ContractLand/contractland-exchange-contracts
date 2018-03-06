@@ -15,7 +15,7 @@ const SimpleCrowdsale = artifacts.require('SimpleCrowdsale');
 const CrowdsaleToken = artifacts.require('CrowdsaleToken');
 
 contract('SimpleCrowdsale', function ([owner, wallet, investor]) {
-  const RATE = new BigNumber(10);
+  const RATES = [new BigNumber(10), new BigNumber(20)];
   const GOAL = ether(10);
   const CAP = ether(20);
 
@@ -26,12 +26,14 @@ contract('SimpleCrowdsale', function ([owner, wallet, investor]) {
 
   beforeEach(async function () {
     this.openingTime = latestTime() + duration.weeks(1);
-    this.closingTime = this.openingTime + duration.weeks(1);
+    this.rateIncreaseTime = this.openingTime + duration.weeks(1);
+    this.closingTime = this.openingTime + duration.weeks(2);
     this.afterclosingTime = this.closingTime + duration.seconds(1);
+    this.rateStartTimes = [this.openingTime, this.rateIncreaseTime];
 
     this.token = await CrowdsaleToken.new('Token Name', 'Token Symbol');
     this.crowdsale = await SimpleCrowdsale.new(
-      this.openingTime, this.closingTime, RATE, GOAL, CAP, wallet, this.token.address
+      RATES, this.rateStartTimes, this.closingTime, GOAL, CAP, wallet, this.token.address
     );
     await this.token.transferOwnership(this.crowdsale.address);
   });
@@ -49,7 +51,7 @@ contract('SimpleCrowdsale', function ([owner, wallet, investor]) {
 
     openingTime.should.be.bignumber.equal(this.openingTime);
     closingTime.should.be.bignumber.equal(this.closingTime);
-    rate.should.be.bignumber.equal(RATE);
+    rate.should.be.bignumber.equal(RATES[0]);
     walletAddress.should.be.equal(wallet);
     goal.should.be.bignumber.equal(GOAL);
     cap.should.be.bignumber.equal(CAP);
@@ -62,11 +64,23 @@ contract('SimpleCrowdsale', function ([owner, wallet, investor]) {
 
   it('should accept payments during the sale', async function () {
     const investmentAmount = ether(1);
-    const expectedTokenAmount = RATE.mul(investmentAmount);
+    const expectedTokenAmount = RATES[0].mul(investmentAmount);
 
     await increaseTimeTo(this.openingTime);
     await this.crowdsale.buyTokens(investor, { value: investmentAmount, from: investor }).should.be.fulfilled;
 
+    (await this.token.balanceOf(investor)).should.be.bignumber.equal(expectedTokenAmount);
+    (await this.token.totalSupply()).should.be.bignumber.equal(expectedTokenAmount);
+  });
+
+  it('should allow a dynamic pricing strategy', async function () {
+    const investmentAmount = ether(1);
+    const expectedTokenAmount = RATES[1].mul(investmentAmount);
+
+    await increaseTimeTo(this.rateIncreaseTime);
+    (await this.crowdsale.getCurrentRate()).should.be.bignumber.equal(RATES[1]);
+
+    await this.crowdsale.buyTokens(investor, { value: investmentAmount, from: investor }).should.be.fulfilled;
     (await this.token.balanceOf(investor)).should.be.bignumber.equal(expectedTokenAmount);
     (await this.token.totalSupply()).should.be.bignumber.equal(expectedTokenAmount);
   });
@@ -107,9 +121,5 @@ contract('SimpleCrowdsale', function ([owner, wallet, investor]) {
 
     const balanceAfterRefund = web3.eth.getBalance(investor);
     balanceBeforeInvestment.should.be.bignumber.equal(balanceAfterRefund);
-  });
-
-  it.skip('should dynamic pricing strategy', async function () {
-
   });
 });

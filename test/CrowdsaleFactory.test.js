@@ -34,7 +34,7 @@ contract('CrowdsaleFactory', function ([factoryOwner, crowdsaleCreator, wallet, 
 
   it('should create token and crowdsale with correct parameters', async function () {
     await this.crowdsaleFactory.createCrowdsale(
-      TOKEN_NAME, TOKEN_SYMBOL, this.openingTime, this.closingTime, RATE, GOAL, CAP, wallet, { from: crowdsaleCreator, value: PAYMENT }
+      TOKEN_NAME, TOKEN_SYMBOL, [RATE], [this.openingTime], this.closingTime, GOAL, CAP, wallet, { from: crowdsaleCreator, value: PAYMENT }
     );
 
     const crowdsale = SimpleCrowdsale.at(await this.crowdsaleFactory.creatorToCrowdsaleMap(crowdsaleCreator, 0));
@@ -54,7 +54,7 @@ contract('CrowdsaleFactory', function ([factoryOwner, crowdsaleCreator, wallet, 
 
   it('should transfer token ownership to crowdsale', async function () {
     await this.crowdsaleFactory.createCrowdsale(
-      TOKEN_NAME, TOKEN_SYMBOL, this.openingTime, this.closingTime, RATE, GOAL, CAP, wallet, { from: crowdsaleCreator, value: PAYMENT }
+      TOKEN_NAME, TOKEN_SYMBOL, [RATE], [this.openingTime], this.closingTime, GOAL, CAP, wallet, { from: crowdsaleCreator, value: PAYMENT }
     );
 
     const crowdsale = SimpleCrowdsale.at(await this.crowdsaleFactory.creatorToCrowdsaleMap(crowdsaleCreator, 0))
@@ -65,7 +65,7 @@ contract('CrowdsaleFactory', function ([factoryOwner, crowdsaleCreator, wallet, 
   it('should revert when payment is below required payment', async function () {
     const INSUFFICIENT_PAYMENT = PAYMENT / 2
     await this.crowdsaleFactory.createCrowdsale(
-      TOKEN_NAME, TOKEN_SYMBOL, this.openingTime, this.closingTime, RATE, GOAL, CAP, wallet, { from: crowdsaleCreator, value: INSUFFICIENT_PAYMENT }
+      TOKEN_NAME, TOKEN_SYMBOL, [RATE], [this.openingTime], this.closingTime, GOAL, CAP, wallet, { from: crowdsaleCreator, value: INSUFFICIENT_PAYMENT }
     ).should.be.rejectedWith(EVMRevert);
   })
 
@@ -73,7 +73,7 @@ contract('CrowdsaleFactory', function ([factoryOwner, crowdsaleCreator, wallet, 
     let initialBalance = web3.eth.getBalance(factoryOwner)
 
     await this.crowdsaleFactory.createCrowdsale(
-      TOKEN_NAME, TOKEN_SYMBOL, this.openingTime, this.closingTime, RATE, GOAL, CAP, wallet, { from: crowdsaleCreator, value: PAYMENT }
+      TOKEN_NAME, TOKEN_SYMBOL, [RATE], [this.openingTime], this.closingTime, GOAL, CAP, wallet, { from: crowdsaleCreator, value: PAYMENT }
     )
     expect(await this.crowdsaleFactory.payments(factoryOwner)).to.be.bignumber.equal(PAYMENT)
     expect(await this.crowdsaleFactory.totalPayments()).to.be.bignumber.equal(PAYMENT)
