@@ -1,5 +1,6 @@
 import { expect } from 'chai'
 import ether from './helpers/ether'
+import token from './helpers/token'
 import EVMRevert from './helpers/EVMRevert'
 
 const BigNumber = web3.BigNumber
@@ -12,70 +13,345 @@ require('chai')
 const Exchange = artifacts.require('Exchange')
 const CrowdsaleToken = artifacts.require('CrowdsaleToken')
 
-contract('Exchange', accounts => {
-  const ETHER_ADDRESS = '0x0'
+contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, invalidAccount]) => {
+  const ETHER_ADDRESS = '0x0000000000000000000000000000000000000000'
 
   beforeEach(async function () {
     this.exchange = await Exchange.new()
-    this.erc20Token = await CrowdsaleToken.new("ERC20 TOKEN", "TKN", { from: accounts[0] })
-    this.depositAccount = accounts[0]
+    this.erc20Token = await CrowdsaleToken.new("ERC20 TOKEN", "TKN", { from: coinbase })
     this.depositAmount = ether(1)
-    this.erc20Token.mint(this.depositAccount, ether(10000))
+    this.erc20Token.mint(depositAccount, this.depositAmount)
+    this.erc20Token.mint(makerAccount, this.depositAmount)
+    this.erc20Token.mint(takerAccount, this.depositAmount)
 
-    //deposit ether and erc20 token into exchange for depositAccount
-    await this.exchange.deposit({ from: this.depositAccount, value: this.depositAmount })
-    await this.erc20Token.approve(this.exchange.address, this.depositAmount, { from: this.depositAccount })
-    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: this.depositAccount })
+    //fund ether and erc20 token into accounts for depositAccount, makerAccount, and takerAccount
+    await web3.eth.sendTransaction({ from: coinbase, to: makerAccount, value: this.depositAmount })
+    await web3.eth.sendTransaction({ from: coinbase, to: takerAccount, value: this.depositAmount })
+    await this.erc20Token.approve(this.exchange.address, this.depositAmount, { from: depositAccount })
+    await this.erc20Token.approve(this.exchange.address, this.depositAmount, { from: makerAccount })
+    await this.erc20Token.approve(this.exchange.address, this.depositAmount, { from: takerAccount })
   })
 
-  it("should be able to deposit and withdraw erc20 token", async function () {
-    expect(await this.exchange.balanceOf(this.erc20Token.address, this.depositAccount)).to.be.bignumber.equal(this.depositAmount)
+  it("should be able to deposit funds", async function () {
+    // erc20 token
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: depositAccount })
+    expect(await this.exchange.balanceOf(this.erc20Token.address, depositAccount)).to.be.bignumber.equal(this.depositAmount)
     expect(await this.erc20Token.balanceOf(this.exchange.address)).to.be.bignumber.equal(this.depositAmount)
 
-    const withdrawAmount = ether(1)
-    await this.exchange.withdraw(this.erc20Token.address, withdrawAmount, { from: this.depositAccount })
-    expect(await this.exchange.balanceOf(this.erc20Token.address, this.depositAccount)).to.be.bignumber.equal(this.depositAmount - withdrawAmount)
-    expect(await this.erc20Token.balanceOf(this.exchange.address)).to.be.bignumber.equal(this.depositAmount - withdrawAmount)
+    // ether
+    await this.exchange.deposit({ from: depositAccount, value: this.depositAmount })
+    expect(await this.exchange.balanceOf(ETHER_ADDRESS, depositAccount)).to.be.bignumber.equal(this.depositAmount)
+    expect(web3.eth.getBalance(this.exchange.address)).to.be.bignumber.equal(this.depositAmount)
   })
 
-  it("should allow deposit and withdraw of ether", async function () {
-    expect(await this.exchange.balanceOf(ETHER_ADDRESS, this.depositAccount)).to.be.bignumber.equal(this.depositAmount)
-    expect(web3.eth.getBalance(this.exchange.address)).to.be.bignumber.equal(this.depositAmount)
+  it("should allow withdraw funds", async function () {
+    const withdrawAmount = this.depositAmount
 
-    const withdrawAmount = ether(1)
-    await this.exchange.withdraw(ETHER_ADDRESS, withdrawAmount, { from: this.depositAccount })
-    expect(await this.exchange.balanceOf(ETHER_ADDRESS, this.depositAccount)).to.be.bignumber.equal(this.depositAmount - withdrawAmount)
+    // erc20 token
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: depositAccount })
+    await this.exchange.withdraw(this.erc20Token.address, withdrawAmount, { from: depositAccount })
+    expect(await this.exchange.balanceOf(this.erc20Token.address, depositAccount)).to.be.bignumber.equal(this.depositAmount - withdrawAmount)
+    expect(await this.erc20Token.balanceOf(this.exchange.address)).to.be.bignumber.equal(this.depositAmount - withdrawAmount)
+
+    // ether
+    await this.exchange.deposit({ from: depositAccount, value: this.depositAmount })
+    await this.exchange.withdraw(ETHER_ADDRESS, withdrawAmount, { from: depositAccount })
+    expect(await this.exchange.balanceOf(ETHER_ADDRESS, depositAccount)).to.be.bignumber.equal(this.depositAmount - withdrawAmount)
     expect(web3.eth.getBalance(this.exchange.address)).to.be.bignumber.equal(this.depositAmount - withdrawAmount)
   })
 
   it("should not allow overdraft of funds", async function () {
+    await this.exchange.deposit({ from: depositAccount, value: this.depositAmount })
+
     const overDraft = ether(10)
-    await this.exchange.withdraw(ETHER_ADDRESS, overDraft, { from: this.depositAccount }).should.be.rejectedWith(EVMRevert)
+    await this.exchange.withdraw(ETHER_ADDRESS, overDraft, { from: depositAccount }).should.be.rejectedWith(EVMRevert)
   })
 
   it("should not allow deposit of funds value equal to 0", async function () {
     const zeroDepositAmount = ether(0)
-    await this.exchange.deposit({ from: this.depositAccount, value: zeroDepositAmount }).should.be.rejectedWith(EVMRevert)
+    await this.exchange.deposit({ from: depositAccount, value: zeroDepositAmount }).should.be.rejectedWith(EVMRevert)
 
-    await this.erc20Token.approve(this.exchange.address, ether(1), { from: this.depositAccount })
-    await this.exchange.depositToken(this.erc20Token.address, zeroDepositAmount, { from: this.depositAccount }).should.be.rejectedWith(EVMRevert)
+    await this.erc20Token.approve(this.exchange.address, ether(1), { from: depositAccount })
+    await this.exchange.depositToken(this.erc20Token.address, zeroDepositAmount, { from: depositAccount }).should.be.rejectedWith(EVMRevert)
   })
 
   it("should not allow withdraw of funds value equal to 0", async function () {
+    await this.exchange.deposit({ from: depositAccount, value: this.depositAmount })
+
     const zeroWithdrawAmount = ether(0)
-    await this.exchange.withdraw(ETHER_ADDRESS, zeroWithdrawAmount, { from: this.depositAccount }).should.be.rejectedWith(EVMRevert)
+    await this.exchange.withdraw(ETHER_ADDRESS, zeroWithdrawAmount, { from: depositAccount }).should.be.rejectedWith(EVMRevert)
   })
 
   it("should not allow withdrawal of other's funds", async function () {
-    const invalidWithdrawAccount = accounts[1]
+    await this.exchange.deposit({ from: depositAccount, value: this.depositAmount })
+
+    const invalidWithdrawAccount = invalidAccount
     await this.exchange.withdraw(ETHER_ADDRESS, this.depositAmount, { from: invalidWithdrawAccount }).should.be.rejectedWith(EVMRevert)
   })
 
   it("should not be able to create orders until you fund your balance", async function () {
-    const emptyAccount = accounts[1]
-    const sellToken = this.erc20Token.address
-    const buyToken = ETHER_ADDRESS
-    const amount = ether(1)
-    await this.exchange.createOrder(sellToken, buyToken, amount, { from: emptyAccount }).should.be.rejectedWith(EVMRevert)
+    const emptyAccount = invalidAccount
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = ether(1)
+    const amountGet = ether(1)
+    await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: emptyAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should not be able to create orders with zero amountGive or amountGet", async function () {
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const zeroAmount = ether(0)
+
+    // fund maker account
+    await this.exchange.deposit({ from: makerAccount, value: this.depositAmount })
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    await this.exchange.createOrder(tokenGive, tokenGet, zeroAmount, ether(1), { from: makerAccount }).should.be.rejectedWith(EVMRevert)
+    await this.exchange.createOrder(tokenGive, tokenGet, ether(1), zeroAmount, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should not be able to create orders where give and get tokens are the same", async function () {
+    const tokenGive = this.erc20Token.address
+    const tokenGet = this.erc20Token.address
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    await this.exchange.createOrder(tokenGive, tokenGet, ether(1), ether(1), { from: makerAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should be able to create and cancel orders", async function () {
+    // fund makerAccount
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    // should create orders with correct parameters
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = ether(1)
+    const amountGet = ether(0.0001)
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = parseInt(order.logs[0].args._id.toString())
+    expect((await this.exchange.numOfOrders()).toString()).to.equal('1')
+    expect((await this.exchange.getOrder(orderId))[0]).to.equal(makerAccount)
+    expect((await this.exchange.getOrder(orderId))[1]).to.equal(tokenGive)
+    expect((await this.exchange.getOrder(orderId))[2]).to.equal(tokenGet)
+    expect((await this.exchange.getOrder(orderId))[3]).to.be.bignumber.equal(amountGive)
+    expect((await this.exchange.getOrder(orderId))[4]).to.be.bignumber.equal(amountGet)
+
+    // should not be able to withdraw token listed in order
+    await this.exchange.withdraw(this.erc20Token.address, amountGive, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
+
+    // cancel and withdraw should return user's funds back
+    const initialBalance = await this.erc20Token.balanceOf(makerAccount)
+    await this.exchange.cancelOrder(orderId, { from: makerAccount });
+    await this.exchange.withdraw(this.erc20Token.address, amountGive, { from: makerAccount })
+    expect(await this.erc20Token.balanceOf(makerAccount)).to.be.bignumber.equal(initialBalance + amountGive)
+  })
+
+  it("should disallow cancelling or other people's orders", async function () {
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = this.depositAmount
+    const amountGet = ether(0.0001)
+
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = parseInt(order.logs[0].args._id.toString())
+
+    const notCreator = invalidAccount
+    await this.exchange.cancelOrder(orderId, { from: notCreator }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should not be able to cancel orders that are already cancelled", async function () {
+    // fund taker and maker accounts
+    await this.exchange.deposit({ from: takerAccount, value: this.depositAmount })
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    // create order
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = token(1)
+    const amountGet = ether(1)
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = parseInt(order.logs[0].args._id.toString())
+
+    // cancel order
+    await this.exchange.cancelOrder(orderId, { from: makerAccount })
+
+    // cancel again
+    await this.exchange.cancelOrder(orderId, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should be able to create multiple orders", async function () {
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = ether(0.5)
+    const amountGet = ether(0.0001)
+
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    // create orders
+    const orderOne = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderOneId = parseInt(orderOne.logs[0].args._id.toString())
+    const orderTwo = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderTwoId = parseInt(orderOne.logs[0].args._id.toString())
+
+    // verify orders are created
+    expect((await this.exchange.numOfOrders()).toString()).to.equal('2')
+    expect((await this.exchange.getOrder(orderOneId))[0]).to.equal(makerAccount)
+    expect((await this.exchange.getOrder(orderTwoId))[0]).to.equal(makerAccount)
+
+    // should fail due to out of funds
+    await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should adjust account balances properly when executing trade", async function () {
+    // fund taker and maker accounts
+    await this.exchange.deposit({ from: takerAccount, value: this.depositAmount })
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    // create order
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = token(1)
+    const amountGet = ether(0.01)
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = parseInt(order.logs[0].args._id.toString())
+
+    // get balances before order execution
+    const makerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, makerAccount)
+    const takerInitialTokenGiveBalance = await this.exchange.balanceOf(tokenGive, takerAccount)
+    const takerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, takerAccount)
+
+    // execute order
+    const amountFill = token(0.5)
+    const trade = await this.exchange.executeOrder(orderId, amountFill, { from: takerAccount })
+    // rate is 0.01 / 1 = 0.01 ethers per token
+    // for 0.5 tokens, you get 0.5 * 0.01 = 0.005 ethers
+    const expectedMakerTokenGetAmount = ether(0.005)
+    // taker and maker should have correct balance after trade
+    expect(await this.exchange.balanceOf(tokenGet, makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance + expectedMakerTokenGetAmount)
+    expect((await this.exchange.getOrder(orderId))[3]).to.be.bignumber.equal(amountGive - amountFill)
+    expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance + amountFill)
+    expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance - expectedMakerTokenGetAmount)
+  })
+
+  it("should not execute trade if taker does not have enough fund to fulfill the order", async function () {
+    // fund maker accounts
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    // create order
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = token(1)
+    const amountGet = ether(1)
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = parseInt(order.logs[0].args._id.toString())
+
+    // execute order
+    const amountFill = token(0.1)
+    const deficientFundAccount = invalidAccount
+    await this.exchange.executeOrder(orderId, amountFill, { from: deficientFundAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should not execute trade if fill amount exceed order capacity", async function () {
+    // fund taker and maker accounts
+    await this.exchange.deposit({ from: takerAccount, value: this.depositAmount })
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    // create order
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = token(0.1)
+    const amountGet = ether(0.1)
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = parseInt(order.logs[0].args._id.toString())
+
+    // execute order
+    const overFillAmount = token(1)
+    await this.exchange.executeOrder(orderId, overFillAmount, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should not execute orders that does not exist", async function () {
+    // fund taker and maker accounts
+    await this.exchange.deposit({ from: takerAccount, value: this.depositAmount })
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    // create order
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = token(1)
+    const amountGet = ether(1)
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = parseInt(order.logs[0].args._id.toString())
+
+    // execute order
+    const amountFill = token(0.1)
+    await this.exchange.executeOrder(orderId + 1, amountFill, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should not execute orders that fill 0 amount", async function () {
+    // fund taker and maker accounts
+    await this.exchange.deposit({ from: takerAccount, value: this.depositAmount })
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    // create order
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = token(1)
+    const amountGet = ether(1)
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = parseInt(order.logs[0].args._id.toString())
+
+    // execute order
+    const zeroFillAmount = token(0)
+    await this.exchange.executeOrder(orderId, zeroFillAmount, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should not let user trade against themselfs", async function () {
+    // fund maker accounts
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+    await this.exchange.deposit({ from: makerAccount, value: this.depositAmount })
+
+    // create order
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = token(1)
+    const amountGet = ether(1)
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = parseInt(order.logs[0].args._id.toString())
+
+    // execute order
+    const amountFill = token(0.1)
+    await this.exchange.executeOrder(orderId, amountFill, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
+  });
+
+  it("should not be able to cancel orders that has already been fulfilled", async function () {
+    // fund taker and maker accounts
+    await this.exchange.deposit({ from: takerAccount, value: this.depositAmount })
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    // create order
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = token(1)
+    const amountGet = ether(1)
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = parseInt(order.logs[0].args._id.toString())
+
+    // fill entire order
+    const fillAll = token(1)
+    await this.exchange.executeOrder(orderId, fillAll, { from: takerAccount })
+
+    // try to cancel
+    await this.exchange.cancelOrder(orderId, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it.skip("should collect exchange fee from taker", async function () {
+
+  })
+
+  it.skip("should collect exchange fee from maker", async function () {
+
   })
 })
