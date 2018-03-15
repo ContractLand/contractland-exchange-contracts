@@ -4,17 +4,17 @@ pragma solidity ^0.4.18;
  * @title ERC20Token
  * @dev ERC20 token interface
  */
-contract ERC20Token {
-    bytes32 public standard;
-    bytes32 public name;
-    bytes32 public symbol;
-    uint256 public totalSupply;
+ contract ERC20Token {
+    string public name;
+    string public symbol;
     uint8 public decimals;
-    bool public allowTransactions;
-    mapping (address => uint256) public balanceOf;
-    mapping (address => mapping (address => uint256)) public allowance;
-    function transfer(address _to, uint256 _value) returns (bool success);
-    function approveAndCall(address _spender, uint256 _value, bytes _extraData) returns (bool success);
-    function approve(address _spender, uint256 _value) returns (bool success);
-    function transferFrom(address _from, address _to, uint256 _value) returns (bool success);
-}
+    function totalSupply() public constant returns (uint);
+    function balanceOf(address tokenOwner) public constant returns (uint balance);
+    function allowance(address tokenOwner, address spender) public constant returns (uint remaining);
+    function transfer(address to, uint tokens) public returns (bool success);
+    function approve(address spender, uint tokens) public returns (bool success);
+    function transferFrom(address from, address to, uint tokens) public returns (bool success);
+
+    event Transfer(address indexed from, address indexed to, uint tokens);
+    event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
+ }
