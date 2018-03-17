@@ -8,7 +8,7 @@ contract TestToken is StandardToken {
   string public constant symbol = "TST";
   uint8 public constant decimals = 18;
 
-  uint256 public constant INITIAL_SUPPLY = 10000 * (10 ** uint256(decimals));
+  uint256 public constant INITIAL_SUPPLY = 1000000 * (10 ** uint256(decimals));
 
   function TestToken() public {
     totalSupply_ = INITIAL_SUPPLY;
