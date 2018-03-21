@@ -39,9 +39,17 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     expect(await this.erc20Token.balanceOf(this.exchange.address)).to.be.bignumber.equal(this.depositAmount)
 
     // ether
-    await this.exchange.deposit({ from: depositAccount, value: this.depositAmount })
+    const depositTx = await this.exchange.deposit({ from: depositAccount, value: this.depositAmount })
     expect(await this.exchange.balanceOf(ETHER_ADDRESS, depositAccount)).to.be.bignumber.equal(this.depositAmount)
     expect(web3.eth.getBalance(this.exchange.address)).to.be.bignumber.equal(this.depositAmount)
+
+    // should emit deposit event
+    const logs = depositTx.logs
+    expect(logs.length).to.equal(1)
+    expect(logs[0].event).to.equal('Deposit')
+    expect(logs[0].args._token).to.equal(ETHER_ADDRESS)
+    expect(logs[0].args._owner).to.equal(depositAccount)
+    expect(logs[0].args._amount).to.be.bignumber.equal(this.depositAmount)
   })
 
   it("should allow withdraw funds", async function () {
@@ -55,9 +63,17 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
 
     // ether
     await this.exchange.deposit({ from: depositAccount, value: this.depositAmount })
-    await this.exchange.withdraw(ETHER_ADDRESS, withdrawAmount, { from: depositAccount })
+    const withdrawTx = await this.exchange.withdraw(ETHER_ADDRESS, withdrawAmount, { from: depositAccount })
     expect(await this.exchange.balanceOf(ETHER_ADDRESS, depositAccount)).to.be.bignumber.equal(this.depositAmount - withdrawAmount)
     expect(web3.eth.getBalance(this.exchange.address)).to.be.bignumber.equal(this.depositAmount - withdrawAmount)
+
+    // should emit withdraw event
+    const logs = withdrawTx.logs
+    expect(logs.length).to.equal(1)
+    expect(logs[0].event).to.equal('Withdraw')
+    expect(logs[0].args._token).to.equal(ETHER_ADDRESS)
+    expect(logs[0].args._owner).to.equal(depositAccount)
+    expect(logs[0].args._amount).to.be.bignumber.equal(withdrawAmount)
   })
 
   it("should not allow overdraft of funds", async function () {
@@ -137,14 +153,31 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     expect((await this.exchange.getOrder(orderId))[3]).to.be.bignumber.equal(amountGive)
     expect((await this.exchange.getOrder(orderId))[4]).to.be.bignumber.equal(amountGet)
 
+    // should emit create order event
+    const orderCreateLogs = order.logs
+    expect(orderCreateLogs.length).to.equal(1)
+    expect(orderCreateLogs[0].event).to.equal('NewOrder')
+    expect(orderCreateLogs[0].args._id).to.be.bignumber.equal(orderId)
+    expect(orderCreateLogs[0].args._creator).to.equal(makerAccount)
+    expect(orderCreateLogs[0].args._tokenGive).to.be.bignumber.equal(tokenGive)
+    expect(orderCreateLogs[0].args._tokenGet).to.be.bignumber.equal(tokenGet)
+    expect(orderCreateLogs[0].args._amountGive).to.be.bignumber.equal(amountGive)
+    expect(orderCreateLogs[0].args._amountGet).to.be.bignumber.equal(amountGet)
+
     // should not be able to withdraw token listed in order
     await this.exchange.withdraw(this.erc20Token.address, amountGive, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
 
     // cancel and withdraw should return user's funds back
     const initialBalance = await this.erc20Token.balanceOf(makerAccount)
-    await this.exchange.cancelOrder(orderId, { from: makerAccount });
+    const cancelOrder = await this.exchange.cancelOrder(orderId, { from: makerAccount });
     await this.exchange.withdraw(this.erc20Token.address, amountGive, { from: makerAccount })
     expect(await this.erc20Token.balanceOf(makerAccount)).to.be.bignumber.equal(initialBalance + amountGive)
+
+    // should emit order cancel event
+    const orderCancelLogs = cancelOrder.logs
+    expect(orderCancelLogs.length).to.equal(1)
+    expect(orderCancelLogs[0].event).to.equal('OrderCancelled')
+    expect(orderCancelLogs[0].args._id).to.be.bignumber.equal(orderId)
   })
 
   it("should disallow cancelling or other people's orders", async function () {
@@ -234,6 +267,16 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     expect((await this.exchange.getOrder(orderId))[3]).to.be.bignumber.equal(amountGive - amountFill)
     expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance + amountFill)
     expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance - expectedMakerTokenGetAmount)
+
+    // should emit trade event
+    const logs = trade.logs
+    expect(logs.length).to.equal(1)
+    expect(logs[0].event).to.equal('Trade')
+    expect(logs[0].args._taker).to.equal(takerAccount)
+    expect(logs[0].args._maker).to.equal(makerAccount)
+    expect(logs[0].args._orderId).to.be.bignumber.equal(orderId)
+    expect(logs[0].args._amountFilled).to.be.bignumber.equal(amountFill)
+    expect(logs[0].args._amountReceived).to.be.bignumber.equal(expectedMakerTokenGetAmount)
   })
 
   it("should not execute trade if taker does not have enough fund to fulfill the order", async function () {
@@ -345,6 +388,29 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
 
     // try to cancel
     await this.exchange.cancelOrder(orderId, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should emit OrderFulfilled event when order is fully filled", async function () {
+    // fund taker and maker accounts
+    await this.exchange.deposit({ from: takerAccount, value: this.depositAmount })
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    // create order
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = token(1)
+    const amountGet = ether(1)
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = order.logs[0].args._id
+
+    // fill entire order
+    const fillAll = token(1)
+    const { logs } = await this.exchange.executeOrder(orderId, fillAll, { from: takerAccount })
+
+    // emit log
+    expect(logs.length).to.equal(2)
+    expect(logs[1].event).to.equal('OrderFulfilled')
+    expect(logs[1].args._id).to.be.bignumber.equal(orderId)
   })
 
   it.skip("should collect exchange fee from taker", async function () {
