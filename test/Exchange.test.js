@@ -413,6 +413,42 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     expect(logs[1].args._id).to.be.bignumber.equal(orderId)
   })
 
+  it("should be able to batch execute orders", async function () {
+    // fund taker and maker accounts
+    await this.exchange.deposit({ from: takerAccount, value: this.depositAmount })
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = token(0.5)
+    const amountGet = ether(0.5)
+
+    // create sell order 1
+    const orderOne = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderOneId = orderOne.logs[0].args._id
+
+    // create sell order 2
+    const orderTwo = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderTwoId = orderTwo.logs[0].args._id
+
+    // get balances before order execution
+    const makerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, makerAccount)
+    const takerInitialTokenGiveBalance = await this.exchange.balanceOf(tokenGive, takerAccount)
+    const takerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, takerAccount)
+
+    // fill order with amount of both orders
+    const orderIds = [orderOneId, orderTwoId]
+    const fillAmounts = [token(0.5), token(0.5)]
+    await this.exchange.batchExecute(orderIds, fillAmounts, { from: takerAccount })
+
+    const expectedMakerTokenGetAmount = ether(1) //0.5 + 0.5
+    const totalAmountFill = token(1)
+    // taker and maker should have correct balance after trade
+    expect(await this.exchange.balanceOf(tokenGet, makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance + expectedMakerTokenGetAmount)
+    expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance + totalAmountFill)
+    expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance - expectedMakerTokenGetAmount)
+  })
+
   it.skip("should collect exchange fee from taker", async function () {
 
   })

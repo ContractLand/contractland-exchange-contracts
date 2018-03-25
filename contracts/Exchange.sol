@@ -122,4 +122,9 @@ contract Exchange {
     if (order.amountGive == 0) { OrderFulfilled(orderId, now); }
   }
 
+  function batchExecute(uint256[] orderIds, uint256[] amountFills) {
+    for (uint i = 0; i < orderIds.length; i++) {
+      executeOrder(orderIds[i], amountFills[i]);
+    }
+  }
 }
