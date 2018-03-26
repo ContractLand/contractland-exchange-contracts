@@ -99,13 +99,18 @@ contract Exchange {
     OrderCancelled(orderId, now);
   }
 
-  function executeOrder(uint256 orderId, uint256 amountFill) {
+  function executeOrder(uint256 orderId, uint256 amountFill, bool allowPartialFill) {
     require(orderId < numOfOrders);
     require(amountFill != 0);
 
     Order storage order    = orderBook[orderId];
     require(msg.sender != order.creator);
-    require(order.amountGive >= amountFill);
+    require(order.amountGive > 0);
+
+    if (order.amountGive < amountFill) {
+      require(allowPartialFill);
+      amountFill = order.amountGive;
+    }
 
     uint256 tokenGetAmount = amountFill.mul(order.amountGet).div(order.amountGive);
     require(balances[msg.sender][order.tokenGet] >= tokenGetAmount);
@@ -122,9 +127,9 @@ contract Exchange {
     if (order.amountGive == 0) { OrderFulfilled(orderId, now); }
   }
 
-  function batchExecute(uint256[] orderIds, uint256[] amountFills) {
+  function batchExecute(uint256[] orderIds, uint256[] amountFills, bool allowPartialFill) {
     for (uint i = 0; i < orderIds.length; i++) {
-      executeOrder(orderIds[i], amountFills[i]);
+      executeOrder(orderIds[i], amountFills[i], allowPartialFill);
     }
   }
 }

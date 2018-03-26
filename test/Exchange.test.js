@@ -258,7 +258,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
 
     // execute order
     const amountFill = token(0.5)
-    const trade = await this.exchange.executeOrder(orderId, amountFill, { from: takerAccount })
+    const trade = await this.exchange.executeOrder(orderId, amountFill, false, { from: takerAccount })
     // rate is 0.01 / 1 = 0.01 ethers per token
     // for 0.5 tokens, you get 0.5 * 0.01 = 0.005 ethers
     const expectedMakerTokenGetAmount = ether(0.005)
@@ -294,7 +294,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     // execute order
     const amountFill = token(0.1)
     const deficientFundAccount = invalidAccount
-    await this.exchange.executeOrder(orderId, amountFill, { from: deficientFundAccount }).should.be.rejectedWith(EVMRevert)
+    await this.exchange.executeOrder(orderId, amountFill, false, { from: deficientFundAccount }).should.be.rejectedWith(EVMRevert)
   })
 
   it("should not execute trade if fill amount exceed order capacity", async function () {
@@ -312,7 +312,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
 
     // execute order
     const overFillAmount = token(1)
-    await this.exchange.executeOrder(orderId, overFillAmount, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
+    await this.exchange.executeOrder(orderId, overFillAmount, false, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
   })
 
   it("should not execute orders that does not exist", async function () {
@@ -330,7 +330,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
 
     // execute order
     const amountFill = token(0.1)
-    await this.exchange.executeOrder(orderId + 1, amountFill, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
+    await this.exchange.executeOrder(orderId + 1, amountFill, false, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
   })
 
   it("should not execute orders that fill 0 amount", async function () {
@@ -348,7 +348,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
 
     // execute order
     const zeroFillAmount = token(0)
-    await this.exchange.executeOrder(orderId, zeroFillAmount, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
+    await this.exchange.executeOrder(orderId, zeroFillAmount, false, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
   })
 
   it("should not let user trade against themselfs", async function () {
@@ -366,7 +366,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
 
     // execute order
     const amountFill = token(0.1)
-    await this.exchange.executeOrder(orderId, amountFill, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
+    await this.exchange.executeOrder(orderId, amountFill, false, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
   });
 
   it("should not be able to cancel orders that has already been fulfilled", async function () {
@@ -384,7 +384,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
 
     // fill entire order
     const fillAll = token(1)
-    await this.exchange.executeOrder(orderId, fillAll, { from: takerAccount })
+    await this.exchange.executeOrder(orderId, fillAll, false, { from: takerAccount })
 
     // try to cancel
     await this.exchange.cancelOrder(orderId, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
@@ -405,7 +405,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
 
     // fill entire order
     const fillAll = token(1)
-    const { logs } = await this.exchange.executeOrder(orderId, fillAll, { from: takerAccount })
+    const { logs } = await this.exchange.executeOrder(orderId, fillAll, false, { from: takerAccount })
 
     // emit log
     expect(logs.length).to.equal(2)
@@ -439,13 +439,45 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     // fill order with amount of both orders
     const orderIds = [orderOneId, orderTwoId]
     const fillAmounts = [token(0.5), token(0.5)]
-    await this.exchange.batchExecute(orderIds, fillAmounts, { from: takerAccount })
+    await this.exchange.batchExecute(orderIds, fillAmounts, false, { from: takerAccount })
 
     const expectedMakerTokenGetAmount = ether(1) //0.5 + 0.5
     const totalAmountFill = token(1)
     // taker and maker should have correct balance after trade
     expect(await this.exchange.balanceOf(tokenGet, makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance + expectedMakerTokenGetAmount)
     expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance + totalAmountFill)
+    expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance - expectedMakerTokenGetAmount)
+  })
+
+  it("should allow partial fill of order if take amount exceeds remaining order amount", async function () {
+    // fund taker and maker accounts
+    await this.exchange.deposit({ from: takerAccount, value: this.depositAmount })
+    await this.exchange.depositToken(this.erc20Token.address, this.depositAmount, { from: makerAccount })
+
+    const tokenGive = this.erc20Token.address
+    const tokenGet = ETHER_ADDRESS
+    const amountGive = token(1)
+    const amountGet = ether(1)
+
+    // create order
+    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
+    const orderId = order.logs[0].args._id
+
+    // get balances before order execution
+    const makerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, makerAccount)
+    const takerInitialTokenGiveBalance = await this.exchange.balanceOf(tokenGive, takerAccount)
+    const takerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, takerAccount)
+
+    // fill order with amount of both orders
+    const excessfillAmount = token(2)
+    const allowPartialFill = true
+    await this.exchange.executeOrder(orderId, excessfillAmount, allowPartialFill, { from: takerAccount })
+
+    const expectedMakerTokenGetAmount = ether(1)
+    const expectedFillAmount = amountGive
+    // taker and maker should have correct balance after trade
+    expect(await this.exchange.balanceOf(tokenGet, makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance + expectedMakerTokenGetAmount)
+    expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance + expectedFillAmount)
     expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance - expectedMakerTokenGetAmount)
   })
 
