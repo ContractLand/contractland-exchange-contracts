@@ -8,7 +8,8 @@
   },
   "scripts": {
     "build-local": "truffle migrate --reset --network development && npm run copy-abi",
-    "build-testnet": "truffle migrate --reset --network rinkeby && npm run copy-abi",
+    "build-rinkeby": "truffle migrate --reset --network rinkeby && npm run copy-abi",
+    "build-ropsten": "truffle migrate --reset --network ropsten && npm run copy-abi",
     "build-mainnet": "truffle migrate --reset --network mainnet && npm run copy-abi",
     "copy-abi": "cp -R build/contracts ../contractland-app/",
     "test": "echo \"Error: no test specified\" && exit 1"
