@@ -28,7 +28,7 @@ contract FundStore is Manageable {
     Deposit(etherAddress, msg.sender, msg.value, now);
   }
 
-  function depositToken(address token, uint256 amount) {
+  function depositToken(address token, uint256 amount) public {
     require(amount != 0);
     require(ERC20Token(token).transferFrom(msg.sender, this, amount));
     balances[msg.sender][token] = balances[msg.sender][token].add(amount);

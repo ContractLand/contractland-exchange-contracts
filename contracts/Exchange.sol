@@ -61,7 +61,7 @@ contract Exchange {
             orderBook[orderId].amountGet);
   }
 
-  function cancelOrder(uint256 orderId) {
+  function cancelOrder(uint256 orderId) public {
     Order storage order = orderBook[orderId];
     require(order.amountGive != 0);
     require(msg.sender == order.creator);
@@ -72,7 +72,7 @@ contract Exchange {
     OrderCancelled(orderId, now);
   }
 
-  function executeOrder(uint256 orderId, uint256 amountFill, bool allowPartialFill) {
+  function executeOrder(uint256 orderId, uint256 amountFill, bool allowPartialFill) public {
     require(orderId < numOfOrders);
     require(amountFill != 0);
 
@@ -100,7 +100,7 @@ contract Exchange {
     if (order.amountGive == 0) { OrderFulfilled(orderId, now); }
   }
 
-  function batchExecute(uint256[] orderIds, uint256[] amountFills, bool allowPartialFill) {
+  function batchExecute(uint256[] orderIds, uint256[] amountFills, bool allowPartialFill) public {
     for (uint i = 0; i < orderIds.length; i++) {
       executeOrder(orderIds[i], amountFills[i], allowPartialFill);
     }
