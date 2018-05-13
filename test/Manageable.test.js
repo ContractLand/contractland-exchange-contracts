@@ -2,17 +2,17 @@ import EVMRevert from './helpers/EVMRevert'
 
 const MockManageable = artifacts.require('MockManageable')
 
-contract('Manageable', ([owner, manager, newManager, nonOwner, nonManager]) => {
+contract('Manageable', ([owner, newManager, nonOwner, nonManager]) => {
   beforeEach(async function () {
-    this.manageable = await MockManageable.new(manager, {from: owner})
+    this.manageable = await MockManageable.new({from: owner})
   })
 
   it('should assign ownership to creator', async function () {
     expect(await this.manageable.owner()).equal(owner)
   })
 
-  it('should assign manager on construction', async function () {
-    expect(await this.manageable.manager()).equal(manager)
+  it('should assign owner as manager on construction', async function () {
+    expect(await this.manageable.manager()).equal(owner)
   })
 
   it('only owner can reassign management', async function () {
@@ -24,6 +24,6 @@ contract('Manageable', ([owner, manager, newManager, nonOwner, nonManager]) => {
 
   it('only manager can call managed functions', async function () {
     await this.manageable.managedFunction({from: nonManager}).should.be.rejectedWith(EVMRevert)
-    await this.manageable.managedFunction({from: manager}).should.not.be.rejectedWith(EVMRevert)
+    await this.manageable.managedFunction({from: owner}).should.not.be.rejectedWith(EVMRevert)
   })
 })

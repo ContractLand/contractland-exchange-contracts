@@ -1,5 +1,6 @@
 pragma solidity ^0.4.18;
 
+import "./FundStore.sol";
 import "./ERC20Token.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -18,60 +19,32 @@ contract Exchange {
     uint256 amountGet;
   }
 
-  address private etherAddress = 0x0;
-
-  // mapping of account address to mapping of token address to amount
-  mapping(address => mapping(address => uint256)) public balances;
+  FundStore fundStore;
 
   uint256 public numOfOrders = 0;
   mapping(uint256 => Order) public orderBook;
 
-  event Deposit(address indexed _token, address indexed _owner, uint256 _amount, uint256 _time);
-  event Withdraw(address indexed _token, address indexed _owner, uint256 _amount, uint256 _time);
   event NewOrder(uint256 _id, address indexed _creator, address indexed _tokenGive, address indexed _tokenGet, uint256 _amountGive, uint256 _amountGet, uint256 _time);
   event OrderCancelled(uint256 indexed _id, uint256 _time);
   event OrderFulfilled(uint256 indexed _id, uint256 _time);
   event Trade(address indexed _taker, address indexed _maker, uint256 indexed _orderId, uint256 _amountFilled, uint256 _amountReceived, uint256 _time);
 
+  function Exchange(address _fundStore) public {
+      fundStore = FundStore(_fundStore);
+  }
+
   function balanceOf(address token, address user) view public returns (uint256) {
-    return balances[user][token];
-  }
-
-  function deposit() public payable {
-    require(msg.value != 0);
-    balances[msg.sender][etherAddress] = balances[msg.sender][etherAddress].add(msg.value);
-    Deposit(etherAddress, msg.sender, msg.value, now);
-  }
-
-  function depositToken(address token, uint256 amount) {
-    require(amount != 0);
-    require(ERC20Token(token).transferFrom(msg.sender, this, amount));
-    balances[msg.sender][token] = balances[msg.sender][token].add(amount);
-    Deposit(token, msg.sender, amount, now);
-  }
-
-  function withdraw(address token, uint256 amount) public {
-    require(amount != 0);
-    require(amount <= balances[msg.sender][token]);
-
-    balances[msg.sender][token] = balances[msg.sender][token].sub(amount);
-    if (token == etherAddress) {
-      msg.sender.transfer(amount);
-    } else {
-      require(ERC20Token(token).transfer(msg.sender, amount));
-    }
-
-    Withdraw(token, msg.sender, amount, now);
+    return fundStore.balanceOf(user, token);
   }
 
   function createOrder(address tokenGive, address tokenGet, uint256 amountGive, uint256 amountGet) public returns (uint256 orderId) {
     require(amountGive != 0 && amountGet != 0);
     require(tokenGive != tokenGet);
-    require(balances[msg.sender][tokenGive] >= amountGive);
+    require(fundStore.balanceOf(msg.sender, tokenGive) >= amountGive);
 
     orderId = numOfOrders++;
     orderBook[orderId] = Order(msg.sender, tokenGive, tokenGet, amountGive, amountGet);
-    balances[msg.sender][tokenGive] = balances[msg.sender][tokenGive].sub(amountGive);
+    fundStore.setBalance(msg.sender, tokenGive, fundStore.balanceOf(msg.sender, tokenGive).sub(amountGive));
 
     NewOrder(orderId, msg.sender, tokenGive, tokenGet, amountGive, amountGet, now);
   }
@@ -93,7 +66,7 @@ contract Exchange {
     require(order.amountGive != 0);
     require(msg.sender == order.creator);
 
-    balances[msg.sender][order.tokenGive] = balances[msg.sender][order.tokenGive].add(order.amountGive);
+    fundStore.setBalance(msg.sender, order.tokenGive, fundStore.balanceOf(msg.sender, order.tokenGive).add(order.amountGive));
     order.amountGive = 0;
 
     OrderCancelled(orderId, now);
@@ -103,7 +76,7 @@ contract Exchange {
     require(orderId < numOfOrders);
     require(amountFill != 0);
 
-    Order storage order    = orderBook[orderId];
+    Order storage order = orderBook[orderId];
     require(msg.sender != order.creator);
     require(order.amountGive > 0);
 
@@ -113,12 +86,12 @@ contract Exchange {
     }
 
     uint256 tokenGetAmount = amountFill.mul(order.amountGet).div(order.amountGive);
-    require(balances[msg.sender][order.tokenGet] >= tokenGetAmount);
+    require(fundStore.balanceOf(msg.sender, order.tokenGet) >= tokenGetAmount);
 
     /*uint256 fee = amount.div(feeMultiplier);*/
-    balances[order.creator][order.tokenGet]   = balances[order.creator][order.tokenGet].add(tokenGetAmount);
-    balances[msg.sender][order.tokenGet]      = balances[msg.sender][order.tokenGet].sub(tokenGetAmount);
-    balances[msg.sender][order.tokenGive]     = balances[msg.sender][order.tokenGive].add(amountFill);/*.sub(fee);*/
+    fundStore.setBalance(order.creator, order.tokenGet, fundStore.balanceOf(order.creator, order.tokenGet).add(tokenGetAmount));
+    fundStore.setBalance(msg.sender, order.tokenGet, fundStore.balanceOf(msg.sender, order.tokenGet).sub(tokenGetAmount));
+    fundStore.setBalance(msg.sender, order.tokenGive, fundStore.balanceOf(msg.sender, order.tokenGive).add(amountFill));/*.sub(fee);*/
     /*balances[order.owner][order.sellToken]    = balances[order.owner][order.sellToken].add(fee);*/
 
     order.amountGive = order.amountGive.sub(amountFill);

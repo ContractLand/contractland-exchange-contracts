@@ -1,5 +1,6 @@
 var Exchange = artifacts.require('./Exchange.sol');
 
 module.exports = function (deployer) {
-  deployer.deploy(Exchange)
+  const fundStore = '0x0000000000000000000000000000000000000000'
+  deployer.deploy(Exchange, fundStore)
 }

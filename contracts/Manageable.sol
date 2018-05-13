@@ -10,8 +10,8 @@ contract Manageable is Ownable {
     _;
   }
 
-  function Manageable(address _manager) public {
-    manager = _manager;
+  function Manageable() public {
+    manager = msg.sender;
   }
 
   function updateManager(address newManager) public onlyOwner {
