@@ -26,14 +26,6 @@ contract('FundStore', ([coinbase, manager, depositAccount, invalidAccount]) => {
     await this.erc20Token.approve(this.fundStore.address, this.depositAmount, { from: depositAccount })
   })
 
-  it("should only allow the manager to set the token balance of an address", async function () {
-    const newBalance = ether(10)
-
-    await this.fundStore.setBalance(depositAccount, ETHER_ADDRESS, newBalance, { from: manager })
-    expect(await this.fundStore.balanceOf(depositAccount, ETHER_ADDRESS)).to.be.bignumber.equal(newBalance)
-    await this.fundStore.setBalance(depositAccount, ETHER_ADDRESS, newBalance, { from: depositAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
   it("should be able to deposit funds", async function () {
     // erc20 token
     await this.fundStore.depositToken(this.erc20Token.address, this.depositAmount, { from: depositAccount })
@@ -105,5 +97,13 @@ contract('FundStore', ([coinbase, manager, depositAccount, invalidAccount]) => {
 
     const invalidWithdrawAccount = invalidAccount
     await this.fundStore.withdraw(ETHER_ADDRESS, this.depositAmount, { from: invalidWithdrawAccount }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should only allow the manager to set the token balance of an address", async function () {
+    const newBalance = ether(10)
+
+    await this.fundStore.setBalance(depositAccount, ETHER_ADDRESS, newBalance, { from: manager })
+    expect(await this.fundStore.balanceOf(depositAccount, ETHER_ADDRESS)).to.be.bignumber.equal(newBalance)
+    await this.fundStore.setBalance(depositAccount, ETHER_ADDRESS, newBalance, { from: depositAccount }).should.be.rejectedWith(EVMRevert)
   })
 })

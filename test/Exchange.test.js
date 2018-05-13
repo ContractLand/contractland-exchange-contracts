@@ -11,7 +11,7 @@ require('chai')
   .should()
 
 const Exchange = artifacts.require('Exchange')
-const CrowdsaleToken = artifacts.require('CrowdsaleToken')
+const TestToken = artifacts.require('TestToken')
 const FundStore = artifacts.require('FundStore')
 
 contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, invalidAccount]) => {
@@ -22,15 +22,15 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     this.exchange = await Exchange.new(this.fundStore.address, { from: coinbase })
     await this.fundStore.updateManager(this.exchange.address, { from: coinbase })
 
-    this.erc20Token = await CrowdsaleToken.new("ERC20 TOKEN", "TKN", { from: coinbase })
+    this.erc20Token = await TestToken.new({ from: coinbase })
     this.depositAmount = ether(1)
-    this.erc20Token.mint(depositAccount, this.depositAmount)
-    this.erc20Token.mint(makerAccount, this.depositAmount)
-    this.erc20Token.mint(takerAccount, this.depositAmount)
 
     //fund ether and erc20 token into accounts for depositAccount, makerAccount, and takerAccount
     await web3.eth.sendTransaction({ from: coinbase, to: makerAccount, value: this.depositAmount })
     await web3.eth.sendTransaction({ from: coinbase, to: takerAccount, value: this.depositAmount })
+    this.erc20Token.transfer(depositAccount, this.depositAmount, { from: coinbase })
+    this.erc20Token.transfer(makerAccount, this.depositAmount, { from: coinbase })
+    this.erc20Token.transfer(takerAccount, this.depositAmount, { from: coinbase })
     await this.erc20Token.approve(this.fundStore.address, this.depositAmount, { from: depositAccount })
     await this.erc20Token.approve(this.fundStore.address, this.depositAmount, { from: makerAccount })
     await this.erc20Token.approve(this.fundStore.address, this.depositAmount, { from: takerAccount })
