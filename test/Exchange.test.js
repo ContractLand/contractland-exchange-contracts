@@ -13,13 +13,15 @@ require('chai')
 const Exchange = artifacts.require('Exchange')
 const TestToken = artifacts.require('TestToken')
 const FundStore = artifacts.require('FundStore')
+const Orderbook = artifacts.require('Orderbook')
 
 contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, invalidAccount]) => {
   const ETHER_ADDRESS = '0x0000000000000000000000000000000000000000'
 
   beforeEach(async function () {
     this.fundStore = await FundStore.new({ from: coinbase })
-    this.exchange = await Exchange.new(this.fundStore.address, { from: coinbase })
+    this.orderbook = await Orderbook.new({ from: coinbase })
+    this.exchange = await Exchange.new(this.fundStore.address, this.orderbook.address, { from: coinbase })
     await this.fundStore.updateManager(this.exchange.address, { from: coinbase })
 
     this.erc20Token = await TestToken.new({ from: coinbase })
@@ -77,7 +79,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     const amountGet = ether(0.0001)
     const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, { from: makerAccount })
     const orderId = parseInt(order.logs[0].args._id.toString())
-    expect((await this.exchange.numOfOrders()).toString()).to.equal('1')
+    expect((await this.orderbook.numOfOrders()).toString()).to.equal('1')
     expect((await this.exchange.getOrder(orderId))[0]).to.equal(makerAccount)
     expect((await this.exchange.getOrder(orderId))[1]).to.equal(tokenGive)
     expect((await this.exchange.getOrder(orderId))[2]).to.equal(tokenGet)
@@ -161,7 +163,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     const orderTwoId = parseInt(orderOne.logs[0].args._id.toString())
 
     // verify orders are created
-    expect((await this.exchange.numOfOrders()).toString()).to.equal('2')
+    expect((await this.orderbook.numOfOrders()).toString()).to.equal('2')
     expect((await this.exchange.getOrder(orderOneId))[0]).to.equal(makerAccount)
     expect((await this.exchange.getOrder(orderTwoId))[0]).to.equal(makerAccount)
 
