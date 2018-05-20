@@ -12,14 +12,6 @@ import "zeppelin-solidity/contracts/math/SafeMath.sol";
 contract Exchange {
   using SafeMath for uint256;
 
-  struct Order {
-    address creator;
-    address tokenGive;
-    address tokenGet;
-    uint256 amountGive;
-    uint256 amountGet;
-  }
-
   FundStore fundStore;
   Orderbook orderbook;
 
