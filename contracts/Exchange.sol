@@ -98,7 +98,9 @@ contract Exchange {
     /*balances[order.owner][order.sellToken]    = balances[order.owner][order.sellToken].add(fee);*/
 
     uint256 newAmountGive = orderAmountGive.sub(amountFill);
+    uint256 newAmountGet = orderAmountGet.sub(tokenGetAmount);
     orderbook.updateAmountGive(orderId, newAmountGive);
+    orderbook.updateAmountGet(orderId, newAmountGet);
 
     Trade(msg.sender, orderCreator, orderId, amountFill, tokenGetAmount, now);
     if (newAmountGive == 0) { OrderFulfilled(orderId, now); }

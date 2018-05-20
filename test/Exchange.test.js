@@ -23,6 +23,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     this.orderbook = await Orderbook.new({ from: coinbase })
     this.exchange = await Exchange.new(this.fundStore.address, this.orderbook.address, { from: coinbase })
     await this.fundStore.updateManager(this.exchange.address, { from: coinbase })
+    await this.orderbook.updateManager(this.exchange.address, { from: coinbase })
 
     this.erc20Token = await TestToken.new({ from: coinbase })
     this.depositAmount = ether(1)
@@ -104,7 +105,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     const initialBalance = await this.erc20Token.balanceOf(makerAccount)
     const cancelOrder = await this.exchange.cancelOrder(orderId, { from: makerAccount });
     await this.fundStore.withdraw(this.erc20Token.address, amountGive, { from: makerAccount })
-    expect(await this.erc20Token.balanceOf(makerAccount)).to.be.bignumber.equal(initialBalance + amountGive)
+    expect(await this.erc20Token.balanceOf(makerAccount)).to.be.bignumber.equal(initialBalance.plus(amountGive))
 
     // should emit order cancel event
     const orderCancelLogs = cancelOrder.logs
@@ -185,21 +186,21 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     const orderId = parseInt(order.logs[0].args._id.toString())
 
     // get balances before order execution
-    const makerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, makerAccount)
-    const takerInitialTokenGiveBalance = await this.exchange.balanceOf(tokenGive, takerAccount)
-    const takerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, takerAccount)
+    let makerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, makerAccount)
+    let takerInitialTokenGiveBalance = await this.exchange.balanceOf(tokenGive, takerAccount)
+    let takerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, takerAccount)
 
     // execute order
-    const amountFill = token(0.5)
-    const trade = await this.exchange.executeOrder(orderId, amountFill, false, { from: takerAccount })
+    let amountFill = token(0.5)
+    let trade = await this.exchange.executeOrder(orderId, amountFill, false, { from: takerAccount })
     // rate is 0.01 / 1 = 0.01 ethers per token
     // for 0.5 tokens, you get 0.5 * 0.01 = 0.005 ethers
-    const expectedMakerTokenGetAmount = ether(0.005)
+    let expectedMakerTokenGetAmount = ether(0.005)
     // taker and maker should have correct balance after trade
-    expect(await this.exchange.balanceOf(tokenGet, makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance + expectedMakerTokenGetAmount)
-    expect((await this.exchange.getOrder(orderId))[3]).to.be.bignumber.equal(amountGive - amountFill)
-    expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance + amountFill)
-    expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance - expectedMakerTokenGetAmount)
+    expect(await this.exchange.balanceOf(tokenGet, makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance.plus(expectedMakerTokenGetAmount))
+    expect((await this.exchange.getOrder(orderId))[3]).to.be.bignumber.equal(amountGive.minus(amountFill))
+    expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance.plus(amountFill))
+    expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance.minus(expectedMakerTokenGetAmount))
 
     // should emit trade event
     const logs = trade.logs
@@ -210,6 +211,21 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     expect(logs[0].args._orderId).to.be.bignumber.equal(orderId)
     expect(logs[0].args._amountFilled).to.be.bignumber.equal(amountFill)
     expect(logs[0].args._amountReceived).to.be.bignumber.equal(expectedMakerTokenGetAmount)
+
+    //execute rest of orders
+    // get balances before order execution
+    makerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, makerAccount)
+    takerInitialTokenGiveBalance = await this.exchange.balanceOf(tokenGive, takerAccount)
+    takerInitialTokenGetBalance = await this.exchange.balanceOf(tokenGet, takerAccount)
+
+    amountFill = token(0.5)
+    trade = await this.exchange.executeOrder(orderId, amountFill, false, { from: takerAccount })
+    expectedMakerTokenGetAmount = ether(0.005)
+
+    expect(await this.exchange.balanceOf(tokenGet, makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance.plus(expectedMakerTokenGetAmount))
+    expect((await this.exchange.getOrder(orderId))[3]).to.be.bignumber.equal(token(0))
+    expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance.plus(amountFill))
+    expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance.minus(expectedMakerTokenGetAmount))
   })
 
   it("should not execute trade if taker does not have enough fund to fulfill the order", async function () {
@@ -377,9 +393,9 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     const expectedMakerTokenGetAmount = ether(1) //0.5 + 0.5
     const totalAmountFill = token(1)
     // taker and maker should have correct balance after trade
-    expect(await this.exchange.balanceOf(tokenGet, makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance + expectedMakerTokenGetAmount)
-    expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance + totalAmountFill)
-    expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance - expectedMakerTokenGetAmount)
+    expect(await this.exchange.balanceOf(tokenGet, makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance.plus(expectedMakerTokenGetAmount))
+    expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance.plus(totalAmountFill))
+    expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance.minus(expectedMakerTokenGetAmount))
   })
 
   it("should allow partial fill of order if take amount exceeds remaining order amount", async function () {
@@ -409,9 +425,9 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     const expectedMakerTokenGetAmount = ether(1)
     const expectedFillAmount = amountGive
     // taker and maker should have correct balance after trade
-    expect(await this.exchange.balanceOf(tokenGet, makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance + expectedMakerTokenGetAmount)
-    expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance + expectedFillAmount)
-    expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance - expectedMakerTokenGetAmount)
+    expect(await this.exchange.balanceOf(tokenGet, makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance.plus(expectedMakerTokenGetAmount))
+    expect(await this.exchange.balanceOf(tokenGive, takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance.plus(expectedFillAmount))
+    expect(await this.exchange.balanceOf(tokenGet, takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance.minus(expectedMakerTokenGetAmount))
   })
 
   it.skip("should collect exchange fee from taker", async function () {
