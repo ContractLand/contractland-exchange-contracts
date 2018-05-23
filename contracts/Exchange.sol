@@ -57,7 +57,7 @@ contract Exchange {
     require(msg.sender == orderCreator);
 
     fundStore.setBalance(msg.sender, orderTokenGive, fundStore.balanceOf(msg.sender, orderTokenGive).add(orderAmountGive));
-    orderbook.updateAmountGive(orderId, 0);
+    orderbook.setAmountGive(orderId, 0);
 
     OrderCancelled(orderId, now);
   }
@@ -91,8 +91,8 @@ contract Exchange {
 
     uint256 newAmountGive = orderAmountGive.sub(amountFill);
     uint256 newAmountGet = orderAmountGet.sub(tokenGetAmount);
-    orderbook.updateAmountGive(orderId, newAmountGive);
-    orderbook.updateAmountGet(orderId, newAmountGet);
+    orderbook.setAmountGive(orderId, newAmountGive);
+    orderbook.setAmountGet(orderId, newAmountGet);
 
     Trade(msg.sender, orderCreator, orderId, amountFill, tokenGetAmount, now);
     if (newAmountGive == 0) { OrderFulfilled(orderId, now); }

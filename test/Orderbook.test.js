@@ -36,17 +36,17 @@ contract('Orderbook', ([manager, nonManager, creator]) => {
 
   it('only manager can update order amount give', async function () {
     const newAmountGive = ether(2)
-    await this.orderbook.updateAmountGive(this.orderId, newAmountGive, {from: manager})
+    await this.orderbook.setAmountGive(this.orderId, newAmountGive, {from: manager})
     expect(await this.orderbook.getAmountGive(this.orderId)).to.be.bignumber.equal(newAmountGive)
 
-    await this.orderbook.updateAmountGive(this.orderId, newAmountGive, {from: nonManager}).should.be.rejectedWith(EVMRevert)
+    await this.orderbook.setAmountGive(this.orderId, newAmountGive, {from: nonManager}).should.be.rejectedWith(EVMRevert)
   })
 
   it('only manager can update order amount get', async function () {
     const newAmountGet= token(2)
-    await this.orderbook.updateAmountGet(this.orderId, newAmountGet, {from: manager})
+    await this.orderbook.setAmountGet(this.orderId, newAmountGet, {from: manager})
     expect(await this.orderbook.getAmountGet(this.orderId)).to.be.bignumber.equal(newAmountGet)
 
-    await this.orderbook.updateAmountGet(this.orderId, newAmountGet, {from: nonManager}).should.be.rejectedWith(EVMRevert)
+    await this.orderbook.setAmountGet(this.orderId, newAmountGet, {from: nonManager}).should.be.rejectedWith(EVMRevert)
   })
 })

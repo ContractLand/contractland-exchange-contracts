@@ -1,12 +1,8 @@
 pragma solidity ^0.4.18;
 
 import "./Manageable.sol";
-import "./ERC20Token.sol";
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract Orderbook is Manageable {
-  using SafeMath for uint256;
-
   struct Order {
     address creator;
     address tokenGive;
@@ -43,11 +39,11 @@ contract Orderbook is Manageable {
     return orders[orderId].amountGet;
   }
 
-  function updateAmountGive(uint256 orderId, uint256 newAmountGive) public onlyManager {
+  function setAmountGive(uint256 orderId, uint256 newAmountGive) public onlyManager {
     orders[orderId].amountGive = newAmountGive;
   }
 
-  function updateAmountGet(uint256 orderId, uint256 newAmountGet) public onlyManager {
+  function setAmountGet(uint256 orderId, uint256 newAmountGet) public onlyManager {
     orders[orderId].amountGet = newAmountGet;
   }
 }
