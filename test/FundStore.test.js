@@ -13,8 +13,9 @@ require('chai')
 const FundStore = artifacts.require('FundStore')
 const TestToken = artifacts.require('TestToken')
 
-contract('FundStore', ([coinbase, manager, depositAccount, invalidAccount]) => {
+contract('FundStore', ([coinbase, manager, depositAccount, receipient, invalidAccount]) => {
   const ETHER_ADDRESS = '0x0000000000000000000000000000000000000000'
+  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
   beforeEach(async function () {
     this.fundStore = await FundStore.new({ from: coinbase })
@@ -95,15 +96,39 @@ contract('FundStore', ([coinbase, manager, depositAccount, invalidAccount]) => {
   it("should not allow withdrawal of other's funds", async function () {
     await this.fundStore.deposit({ from: depositAccount, value: this.depositAmount })
 
-    const invalidWithdrawAccount = invalidAccount
-    await this.fundStore.withdraw(ETHER_ADDRESS, this.depositAmount, { from: invalidWithdrawAccount }).should.be.rejectedWith(EVMRevert)
+    await this.fundStore.withdraw(ETHER_ADDRESS, this.depositAmount, { from: invalidAccount }).should.be.rejectedWith(EVMRevert)
   })
 
-  it("should only allow the manager to set the token balance of an address", async function () {
-    const newBalance = ether(10)
+  it("should only allow the manager to transfer between accounts in fundStore", async function () {
+    await this.fundStore.transfer(depositAccount, receipient, ETHER_ADDRESS, ether(1), { from: invalidAccount }).should.be.rejectedWith(EVMRevert)
+  })
 
-    await this.fundStore.setBalance(depositAccount, ETHER_ADDRESS, newBalance, { from: manager })
-    expect(await this.fundStore.balanceOf(depositAccount, ETHER_ADDRESS)).to.be.bignumber.equal(newBalance)
-    await this.fundStore.setBalance(depositAccount, ETHER_ADDRESS, newBalance, { from: depositAccount }).should.be.rejectedWith(EVMRevert)
+  it("should only allow transfer to non-zero addresses", async function () {
+    const to = ZERO_ADDRESS
+    await this.fundStore.transfer(depositAccount, to, ETHER_ADDRESS, ether(1), { from: manager }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should not allow transfer of value greater than sender's balanec", async function () {
+    const tokenAddress = ETHER_ADDRESS
+    const value = ether(100)
+    const from = depositAccount
+    const to = receipient
+
+    await this.fundStore.transfer(from, to, tokenAddress, value, { from: manager }).should.be.rejectedWith(EVMRevert)
+  })
+
+  it("should be able to transfer value between accounts", async function () {
+    const tokenAddress = ETHER_ADDRESS
+    const value = this.depositAmount
+    const from = depositAccount
+    const to = receipient
+    await this.fundStore.deposit({ from: from, value: value })
+    const fromBalanceBefore = await this.fundStore.balanceOf(from, tokenAddress)
+    const toBalanceBefore = await this.fundStore.balanceOf(to, tokenAddress)
+
+    await this.fundStore.transfer(from, to, tokenAddress, value, { from: manager })
+
+    expect(await this.fundStore.balanceOf(from, tokenAddress)).to.be.bignumber.equal(fromBalanceBefore.minus(value))
+    expect(await this.fundStore.balanceOf(to, tokenAddress )).to.be.bignumber.equal(toBalanceBefore.plus(value))
   })
 })

@@ -35,7 +35,7 @@ contract Exchange {
     require(fundStore.balanceOf(msg.sender, tokenGive) >= amountGive);
 
     orderId = orderbook.newOrder(msg.sender, tokenGive, tokenGet, amountGive, amountGet);
-    fundStore.setBalance(msg.sender, tokenGive, fundStore.balanceOf(msg.sender, tokenGive).sub(amountGive));
+    fundStore.transfer(msg.sender, orderbook, tokenGive, amountGive);
 
     NewOrder(orderId, msg.sender, tokenGive, tokenGet, amountGive, amountGet, now);
   }
@@ -56,7 +56,7 @@ contract Exchange {
     require(orderAmountGive != 0);
     require(msg.sender == orderCreator);
 
-    fundStore.setBalance(msg.sender, orderTokenGive, fundStore.balanceOf(msg.sender, orderTokenGive).add(orderAmountGive));
+    fundStore.transfer(orderbook, msg.sender, orderTokenGive, orderAmountGive);
     orderbook.setAmountGive(orderId, 0);
 
     OrderCancelled(orderId, now);
@@ -84,9 +84,8 @@ contract Exchange {
     require(fundStore.balanceOf(msg.sender, orderTokenGet) >= tokenGetAmount);
 
     /*uint256 fee = amount.div(feeMultiplier);*/
-    fundStore.setBalance(orderCreator, orderTokenGet, fundStore.balanceOf(orderCreator, orderTokenGet).add(tokenGetAmount));
-    fundStore.setBalance(msg.sender, orderTokenGet, fundStore.balanceOf(msg.sender, orderTokenGet).sub(tokenGetAmount));
-    fundStore.setBalance(msg.sender, orderTokenGive, fundStore.balanceOf(msg.sender, orderTokenGive).add(amountFill));/*.sub(fee);*/
+    fundStore.transfer(msg.sender, orderCreator, orderTokenGet, tokenGetAmount);
+    fundStore.transfer(orderbook, msg.sender, orderTokenGive, amountFill);/*.sub(fee);*/
     /*balances[order.owner][order.sellToken]    = balances[order.owner][order.sellToken].add(fee);*/
 
     uint256 newAmountGive = orderAmountGive.sub(amountFill);

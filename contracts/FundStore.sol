@@ -18,8 +18,13 @@ contract FundStore is Manageable {
     return balances[user][token];
   }
 
-  function setBalance(address user, address token, uint256 newBalance) public onlyManager {
-    balances[user][token] = newBalance;
+  function transfer(address from, address to, address token, uint256 value) public onlyManager returns (bool) {
+    require(to != address(0));
+    require(value <= balances[from][token]);
+
+    balances[from][token] = balances[from][token].sub(value);
+    balances[to][token] = balances[to][token].add(value);
+    return true;
   }
 
   function deposit() public payable {
