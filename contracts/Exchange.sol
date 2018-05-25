@@ -4,12 +4,13 @@ import "./FundStore.sol";
 import "./Orderbook.sol";
 import "./ERC20Token.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
 /**
  * @title Exchange
  * @dev On-Chain ERC20 token exchange
  */
-contract Exchange {
+contract Exchange is Pausable {
   using SafeMath for uint256;
 
   FundStore fundStore;
@@ -29,7 +30,7 @@ contract Exchange {
     return fundStore.balanceOf(user, token);
   }
 
-  function createOrder(address tokenGive, address tokenGet, uint256 amountGive, uint256 amountGet) public returns (uint256 orderId) {
+  function createOrder(address tokenGive, address tokenGet, uint256 amountGive, uint256 amountGet) public whenNotPaused returns (uint256 orderId) {
     require(amountGive != 0 && amountGet != 0);
     require(tokenGive != tokenGet);
     require(fundStore.balanceOf(msg.sender, tokenGive) >= amountGive);
@@ -48,7 +49,7 @@ contract Exchange {
     return (orderbook.orders(orderId));
   }
 
-  function cancelOrder(uint256 orderId) public {
+  function cancelOrder(uint256 orderId) public whenNotPaused {
     uint256 orderAmountGive = orderbook.getAmountGive(orderId);
     address orderTokenGive = orderbook.getTokenGive(orderId);
     address orderCreator = orderbook.getCreator(orderId);
@@ -62,7 +63,7 @@ contract Exchange {
     OrderCancelled(orderId, now);
   }
 
-  function executeOrder(uint256 orderId, uint256 amountFill, bool allowPartialFill) public {
+  function executeOrder(uint256 orderId, uint256 amountFill, bool allowPartialFill) public whenNotPaused {
     require(orderId < orderbook.numOfOrders());
     require(amountFill != 0);
 
