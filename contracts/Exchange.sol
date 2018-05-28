@@ -1,7 +1,5 @@
 pragma solidity ^0.4.18;
 
-import "./FundStore.sol";
-import "./Orderbook.sol";
 import "./ERC20Token.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
@@ -13,89 +11,122 @@ import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
 contract Exchange is Pausable {
   using SafeMath for uint256;
 
-  FundStore fundStore;
-  Orderbook orderbook;
+  struct Order {
+    address creator;
+    address tokenGive;
+    address tokenGet;
+    uint256 amountGive;
+    uint256 amountGet;
+  }
 
+  address private etherAddress = 0x0;
+
+  // mapping of account address to mapping of token address to amount
+  mapping(address => mapping(address => uint256)) public balances;
+
+  uint256 public numOfOrders = 0;
+  mapping(uint256 => Order) public orderBook;
+
+  event Deposit(address indexed _token, address indexed _owner, uint256 _amount, uint256 _time);
+  event Withdraw(address indexed _token, address indexed _owner, uint256 _amount, uint256 _time);
   event NewOrder(uint256 _id, address indexed _creator, address indexed _tokenGive, address indexed _tokenGet, uint256 _amountGive, uint256 _amountGet, uint256 _time);
   event OrderCancelled(uint256 indexed _id, uint256 _time);
   event OrderFulfilled(uint256 indexed _id, uint256 _time);
   event Trade(address indexed _taker, address indexed _maker, uint256 indexed _orderId, uint256 _amountFilled, uint256 _amountReceived, uint256 _time);
 
-  function Exchange(address _fundStore, address _orderbook) public {
-      fundStore = FundStore(_fundStore);
-      orderbook = Orderbook(_orderbook);
+  function balanceOf(address token, address user) view public returns (uint256) {
+    return balances[user][token];
   }
 
-  function balanceOf(address token, address user) view public returns (uint256) {
-    return fundStore.balanceOf(user, token);
+  function deposit() public payable {
+    require(msg.value != 0);
+    balances[msg.sender][etherAddress] = balances[msg.sender][etherAddress].add(msg.value);
+    Deposit(etherAddress, msg.sender, msg.value, now);
+  }
+
+  function depositToken(address token, uint256 amount) public {
+    require(amount != 0);
+    require(ERC20Token(token).transferFrom(msg.sender, this, amount));
+    balances[msg.sender][token] = balances[msg.sender][token].add(amount);
+    Deposit(token, msg.sender, amount, now);
+  }
+
+  function withdraw(address token, uint256 amount) public {
+    require(amount != 0);
+    require(amount <= balances[msg.sender][token]);
+
+    balances[msg.sender][token] = balances[msg.sender][token].sub(amount);
+    if (token == etherAddress) {
+      msg.sender.transfer(amount);
+    } else {
+      require(ERC20Token(token).transfer(msg.sender, amount));
+    }
+
+    Withdraw(token, msg.sender, amount, now);
   }
 
   function createOrder(address tokenGive, address tokenGet, uint256 amountGive, uint256 amountGet) public whenNotPaused returns (uint256 orderId) {
     require(amountGive != 0 && amountGet != 0);
     require(tokenGive != tokenGet);
-    require(fundStore.balanceOf(msg.sender, tokenGive) >= amountGive);
+    require(balances[msg.sender][tokenGive] >= amountGive);
 
-    orderId = orderbook.newOrder(msg.sender, tokenGive, tokenGet, amountGive, amountGet);
-    fundStore.transfer(msg.sender, orderbook, tokenGive, amountGive);
+    orderId = numOfOrders++;
+    orderBook[orderId] = Order(msg.sender, tokenGive, tokenGet, amountGive, amountGet);
+    balances[msg.sender][tokenGive] = balances[msg.sender][tokenGive].sub(amountGive);
 
     NewOrder(orderId, msg.sender, tokenGive, tokenGet, amountGive, amountGet, now);
   }
 
-  function getOrder(uint256 orderId) public view returns (address creator,
-                                                          address tokenGive,
-                                                          address tokenGet,
-                                                          uint256 amountGive,
-                                                          uint256 amountGet) {
-    return (orderbook.orders(orderId));
+  function getOrder(uint256 orderId) public view returns (address,
+                                                          address,
+                                                          address,
+                                                          uint256,
+                                                          uint256) {
+    return (orderBook[orderId].creator,
+            orderBook[orderId].tokenGive,
+            orderBook[orderId].tokenGet,
+            orderBook[orderId].amountGive,
+            orderBook[orderId].amountGet);
   }
 
   function cancelOrder(uint256 orderId) public whenNotPaused {
-    uint256 orderAmountGive = orderbook.getAmountGive(orderId);
-    address orderTokenGive = orderbook.getTokenGive(orderId);
-    address orderCreator = orderbook.getCreator(orderId);
+    Order storage order = orderBook[orderId];
+    require(order.amountGive != 0);
+    require(msg.sender == order.creator);
 
-    require(orderAmountGive != 0);
-    require(msg.sender == orderCreator);
-
-    fundStore.transfer(orderbook, msg.sender, orderTokenGive, orderAmountGive);
-    orderbook.setAmountGive(orderId, 0);
+    balances[msg.sender][order.tokenGive] = balances[msg.sender][order.tokenGive].add(order.amountGive);
+    order.amountGive = 0;
 
     OrderCancelled(orderId, now);
   }
 
   function executeOrder(uint256 orderId, uint256 amountFill, bool allowPartialFill) public whenNotPaused {
-    require(orderId < orderbook.numOfOrders());
+    require(orderId < numOfOrders);
     require(amountFill != 0);
 
-    address orderCreator = orderbook.getCreator(orderId);
-    address orderTokenGive = orderbook.getTokenGive(orderId);
-    address orderTokenGet = orderbook.getTokenGet(orderId);
-    uint256 orderAmountGive = orderbook.getAmountGive(orderId);
-    uint256 orderAmountGet= orderbook.getAmountGet(orderId);
+    Order storage order = orderBook[orderId];
+    require(msg.sender != order.creator);
+    require(order.amountGive > 0);
 
-    require(msg.sender != orderCreator);
-    require(orderAmountGive > 0);
-
-    if (orderAmountGive < amountFill) {
+    if (order.amountGive < amountFill) {
       require(allowPartialFill);
-      amountFill = orderAmountGive;
+      amountFill = order.amountGive;
     }
 
-    uint256 tokenGetAmount = amountFill.mul(orderAmountGet).div(orderAmountGive);
-    require(fundStore.balanceOf(msg.sender, orderTokenGet) >= tokenGetAmount);
+    uint256 tokenGetAmount = amountFill.mul(order.amountGet).div(order.amountGive);
+    require(balances[msg.sender][order.tokenGet] >= tokenGetAmount);
 
     /*uint256 fee = amount.div(feeMultiplier);*/
-    fundStore.transfer(msg.sender, orderCreator, orderTokenGet, tokenGetAmount);
-    fundStore.transfer(orderbook, msg.sender, orderTokenGive, amountFill);/*.sub(fee);*/
+    balances[order.creator][order.tokenGet]   = balances[order.creator][order.tokenGet].add(tokenGetAmount);
+    balances[msg.sender][order.tokenGet]      = balances[msg.sender][order.tokenGet].sub(tokenGetAmount);
+    balances[msg.sender][order.tokenGive]     = balances[msg.sender][order.tokenGive].add(amountFill);/*.sub(fee);*/
     /*balances[order.owner][order.sellToken]    = balances[order.owner][order.sellToken].add(fee);*/
 
-    uint256 newAmountGive = orderAmountGive.sub(amountFill);
-    uint256 newAmountGet = orderAmountGet.sub(tokenGetAmount);
-    orderbook.setAmountGive(orderId, newAmountGive);
-    orderbook.setAmountGet(orderId, newAmountGet);
+    order.amountGive = order.amountGive.sub(amountFill);
+    order.amountGet = order.amountGet.sub(tokenGetAmount);
 
-    Trade(msg.sender, orderCreator, orderId, amountFill, tokenGetAmount, now);
-    if (newAmountGive == 0) { OrderFulfilled(orderId, now); }
+    Trade(msg.sender, order.creator, orderId, amountFill, tokenGetAmount, now);
+    if (order.amountGive == 0) { OrderFulfilled(orderId, now); }
   }
 
   function batchExecute(uint256[] orderIds, uint256[] amountFills, bool allowPartialFill) public {
