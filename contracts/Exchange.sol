@@ -26,10 +26,6 @@ contract Exchange is Pausable {
       orderbook = Orderbook(_orderbook);
   }
 
-  function balanceOf(address token, address user) view public returns (uint256) {
-    return fundStore.balanceOf(user, token);
-  }
-
   function createOrder(address tokenGive, address tokenGet, uint256 amountGive, uint256 amountGet) public whenNotPaused returns (uint256 orderId) {
     require(amountGive != 0 && amountGet != 0);
     require(tokenGive != tokenGet);
