@@ -3,14 +3,16 @@ pragma solidity ^0.4.18;
 import "./ERC20Token.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
+import 'zos-lib/contracts/migrations/Initializable.sol';
 
 /**
  * @title Exchange
  * @dev On-Chain ERC20 token exchange
  */
-contract Exchange is Pausable {
+contract Exchange is Initializable, Pausable {
   using SafeMath for uint256;
 
+  // ***Start of V1.0.0 storage variables***
   struct Order {
     address creator;
     address tokenGive;
@@ -26,6 +28,7 @@ contract Exchange is Pausable {
 
   uint256 public numOfOrders = 0;
   mapping(uint256 => Order) public orderBook;
+  // ***End of V1.0.0 storage variables***
 
   event Deposit(address indexed _token, address indexed _owner, uint256 _amount, uint256 _time);
   event Withdraw(address indexed _token, address indexed _owner, uint256 _amount, uint256 _time);
@@ -33,6 +36,11 @@ contract Exchange is Pausable {
   event OrderCancelled(uint256 indexed _id, uint256 _time);
   event OrderFulfilled(uint256 indexed _id, uint256 _time);
   event Trade(address indexed _taker, address indexed _maker, uint256 indexed _orderId, uint256 _amountFilled, uint256 _amountReceived, uint256 _time);
+
+  // Initialize owner for proxy
+  function initialize() isInitializer public {
+    owner = msg.sender;
+  }
 
   function balanceOf(address token, address user) view public returns (uint256) {
     return balances[user][token];
