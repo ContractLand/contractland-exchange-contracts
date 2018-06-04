@@ -10,8 +10,8 @@ contract TestToken is StandardToken {
 
   uint256 public constant INITIAL_SUPPLY = 1000000 * (10 ** uint256(decimals));
 
-  function TestToken() public {
+  function TestToken(address initialOwner) public {
     totalSupply_ = INITIAL_SUPPLY;
-    balances[msg.sender] = INITIAL_SUPPLY;
+    balances[initialOwner] = INITIAL_SUPPLY;
   }
 }
