@@ -38,8 +38,8 @@ contract Exchange is Initializable, Pausable {
   event Trade(address indexed _taker, address indexed _maker, uint256 indexed _orderId, uint256 _amountFilled, uint256 _amountReceived, uint256 _time);
 
   // Initialize owner for proxy
-  function initialize(address _owner) isInitializer public {
-    owner = _owner;
+  function initialize() isInitializer public {
+    owner = msg.sender;
   }
 
   function balanceOf(address token, address user) view public returns (uint256) {
