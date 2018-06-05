@@ -22,7 +22,7 @@ contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, inv
     this.exchangeProxy = await ExchangeProxy.new(this.exchangeContract.address, { from: proxyOwner })
     this.exchange = await Exchange.at(this.exchangeProxy.address)
     await this.exchange.initialize({ from: exchangeOwner })
-    this.erc20Token = await TestToken.new({ from: coinbase })
+    this.erc20Token = await TestToken.new(coinbase, { from: coinbase })
     this.depositAmount = ether(1)
 
     //fund ether and erc20 token into accounts for depositAccount, makerAccount, and takerAccount
