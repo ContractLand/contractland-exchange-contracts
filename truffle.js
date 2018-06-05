@@ -14,6 +14,12 @@ module.exports = {
       network_id: '*', // Match any network id
       gasPrice: 0,
     },
+    terra: {
+      provider: function() {
+        return new HDWalletProvider(mnemonic, "http://35.237.146.38:8545")
+      },
+      network_id: '*',
+    },
     ropsten: {
       provider: function() {
         return new HDWalletProvider(mnemonic, "https://ropsten.infura.io/KetwbGBGwNagOnjgPUkN")
@@ -27,14 +33,6 @@ module.exports = {
       },
       gas: 4600000,
       network_id: 4
-    },
-    mainnet: {
-      provider: function() {
-        return new HDWalletProvider(mnemonic, "https://mainnet.infura.io/KetwbGBGwNagOnjgPUkN")
-      },
-      gas: 4712388,
-      gasPrice: 100000000000,
-      network_id: 1
     },
   },
 };
