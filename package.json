@@ -10,6 +10,7 @@
     "build-local": "npm run clear-abi && truffle migrate --reset --network development && npm run copy-abi",
     "build-rinkeby": "npm run clear-abi && truffle migrate --reset --network rinkeby && npm run copy-abi",
     "build-ropsten": "npm run clear-abi && truffle migrate --reset --network ropsten && npm run copy-abi",
+    "build-terra": "npm run clear-abi && truffle migrate --reset --network terra && npm run copy-abi",
     "clear-abi": "rm -rf build",
     "copy-abi": "cp -R build/contracts ../contractland-app/",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -29,8 +30,11 @@
     "truffle-contract": "^3.0.4"
   },
   "dependencies": {
+    "colors": "^1.3.0",
+    "ethereumjs-abi": "^0.6.5",
     "ethereumjs-util": "^5.1.4",
     "truffle-hdwallet-provider": "0.0.3",
-    "zeppelin-solidity": "1.7.0"
+    "zeppelin-solidity": "1.7.0",
+    "zos-lib": "^1.0.0"
   }
 }

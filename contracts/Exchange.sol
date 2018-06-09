@@ -1,97 +1,101 @@
 pragma solidity ^0.4.18;
 
-import "./FundStore.sol";
-import "./Orderbook.sol";
 import "./ERC20Token.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
+import 'zos-lib/contracts/migrations/Initializable.sol';
 
 /**
  * @title Exchange
  * @dev On-Chain ERC20 token exchange
  */
-contract Exchange is Pausable {
+contract Exchange is Initializable, Pausable {
   using SafeMath for uint256;
 
-  FundStore fundStore;
-  Orderbook orderbook;
+  // ***Start of V1.0.0 storage variables***
+  struct Order {
+    address creator;
+    address tokenGive;
+    address tokenGet;
+    uint256 amountGive;
+    uint256 amountGet;
+  }
+
+  uint256 public numOfOrders = 0;
+  mapping(uint256 => Order) public orderBook;
+  // ***End of V1.0.0 storage variables***
 
   event NewOrder(uint256 _id, address indexed _creator, address indexed _tokenGive, address indexed _tokenGet, uint256 _amountGive, uint256 _amountGet, uint256 _time);
   event OrderCancelled(uint256 indexed _id, uint256 _time);
   event OrderFulfilled(uint256 indexed _id, uint256 _time);
   event Trade(address indexed _taker, address indexed _maker, uint256 indexed _orderId, uint256 _amountFilled, uint256 _amountReceived, uint256 _time);
 
-  function Exchange(address _fundStore, address _orderbook) public {
-      fundStore = FundStore(_fundStore);
-      orderbook = Orderbook(_orderbook);
+  // Initialize owner for proxy
+  function initialize() isInitializer public {
+    owner = msg.sender;
   }
 
   function createOrder(address tokenGive, address tokenGet, uint256 amountGive, uint256 amountGet) public whenNotPaused returns (uint256 orderId) {
     require(amountGive != 0 && amountGet != 0);
     require(tokenGive != tokenGet);
-    require(fundStore.balanceOf(msg.sender, tokenGive) >= amountGive);
 
-    orderId = orderbook.newOrder(msg.sender, tokenGive, tokenGet, amountGive, amountGet);
-    fundStore.transfer(msg.sender, orderbook, tokenGive, amountGive);
+    require(ERC20Token(tokenGive).transferFrom(msg.sender, this, amountGive));
+
+    orderId = numOfOrders++;
+    orderBook[orderId] = Order(msg.sender, tokenGive, tokenGet, amountGive, amountGet);
 
     NewOrder(orderId, msg.sender, tokenGive, tokenGet, amountGive, amountGet, now);
   }
 
-  function getOrder(uint256 orderId) public view returns (address creator,
-                                                          address tokenGive,
-                                                          address tokenGet,
-                                                          uint256 amountGive,
-                                                          uint256 amountGet) {
-    return (orderbook.orders(orderId));
+  function getOrder(uint256 orderId) public view returns (address,
+                                                          address,
+                                                          address,
+                                                          uint256,
+                                                          uint256) {
+    return (orderBook[orderId].creator,
+            orderBook[orderId].tokenGive,
+            orderBook[orderId].tokenGet,
+            orderBook[orderId].amountGive,
+            orderBook[orderId].amountGet);
   }
 
   function cancelOrder(uint256 orderId) public whenNotPaused {
-    uint256 orderAmountGive = orderbook.getAmountGive(orderId);
-    address orderTokenGive = orderbook.getTokenGive(orderId);
-    address orderCreator = orderbook.getCreator(orderId);
+    Order storage order = orderBook[orderId];
+    require(order.amountGive != 0);
+    require(msg.sender == order.creator);
 
-    require(orderAmountGive != 0);
-    require(msg.sender == orderCreator);
+    require(ERC20Token(order.tokenGive).transfer(msg.sender, order.amountGive));
 
-    fundStore.transfer(orderbook, msg.sender, orderTokenGive, orderAmountGive);
-    orderbook.setAmountGive(orderId, 0);
+    order.amountGive = 0;
 
     OrderCancelled(orderId, now);
   }
 
   function executeOrder(uint256 orderId, uint256 amountFill, bool allowPartialFill) public whenNotPaused {
-    require(orderId < orderbook.numOfOrders());
+    require(orderId < numOfOrders);
     require(amountFill != 0);
 
-    address orderCreator = orderbook.getCreator(orderId);
-    address orderTokenGive = orderbook.getTokenGive(orderId);
-    address orderTokenGet = orderbook.getTokenGet(orderId);
-    uint256 orderAmountGive = orderbook.getAmountGive(orderId);
-    uint256 orderAmountGet= orderbook.getAmountGet(orderId);
+    Order storage order = orderBook[orderId];
+    require(msg.sender != order.creator);
+    require(order.amountGive > 0);
 
-    require(msg.sender != orderCreator);
-    require(orderAmountGive > 0);
-
-    if (orderAmountGive < amountFill) {
+    if (order.amountGive < amountFill) {
       require(allowPartialFill);
-      amountFill = orderAmountGive;
+      amountFill = order.amountGive;
     }
 
-    uint256 tokenGetAmount = amountFill.mul(orderAmountGet).div(orderAmountGive);
-    require(fundStore.balanceOf(msg.sender, orderTokenGet) >= tokenGetAmount);
+    uint256 tokenGetAmount = amountFill.mul(order.amountGet).div(order.amountGive);
 
-    /*uint256 fee = amount.div(feeMultiplier);*/
-    fundStore.transfer(msg.sender, orderCreator, orderTokenGet, tokenGetAmount);
-    fundStore.transfer(orderbook, msg.sender, orderTokenGive, amountFill);/*.sub(fee);*/
-    /*balances[order.owner][order.sellToken]    = balances[order.owner][order.sellToken].add(fee);*/
+    // Transfer tokenGet from taker to maker
+    require(ERC20Token(order.tokenGet).transferFrom(msg.sender, order.creator, tokenGetAmount));
+    // Transfer tokenGive to taker
+    require(ERC20Token(order.tokenGive).transfer(msg.sender, amountFill));
 
-    uint256 newAmountGive = orderAmountGive.sub(amountFill);
-    uint256 newAmountGet = orderAmountGet.sub(tokenGetAmount);
-    orderbook.setAmountGive(orderId, newAmountGive);
-    orderbook.setAmountGet(orderId, newAmountGet);
+    order.amountGive = order.amountGive.sub(amountFill);
+    order.amountGet = order.amountGet.sub(tokenGetAmount);
 
-    Trade(msg.sender, orderCreator, orderId, amountFill, tokenGetAmount, now);
-    if (newAmountGive == 0) { OrderFulfilled(orderId, now); }
+    Trade(msg.sender, order.creator, orderId, amountFill, tokenGetAmount, now);
+    if (order.amountGive == 0) { OrderFulfilled(orderId, now); }
   }
 
   function batchExecute(uint256[] orderIds, uint256[] amountFills, bool allowPartialFill) public {
