@@ -1,8 +1,8 @@
 pragma solidity ^0.4.23;
 
-import "zeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
+import "zeppelin-solidity/contracts/token/ERC827/ERC827Token.sol";
 
-contract TestToken is StandardToken {
+contract TestToken is ERC827Token {
 
   string public constant name = "TestToken";
   string public constant symbol = "TST";
