@@ -35,16 +35,16 @@ contract Exchange is Initializable, Pausable {
     owner = msg.sender;
   }
 
-  function createOrder(address tokenGive, address tokenGet, uint256 amountGive, uint256 amountGet) public whenNotPaused returns (uint256 orderId) {
+  function createOrder(address tokenGive, address tokenGet, uint256 amountGive, uint256 amountGet, address maker) public whenNotPaused returns (uint256 orderId) {
     require(amountGive != 0 && amountGet != 0);
     require(tokenGive != tokenGet);
 
-    require(ERC827Token(tokenGive).transferFrom(msg.sender, this, amountGive));
+    require(ERC827Token(tokenGive).transferFrom(maker, this, amountGive));
 
     orderId = numOfOrders++;
-    orderBook[orderId] = Order(msg.sender, tokenGive, tokenGet, amountGive, amountGet);
+    orderBook[orderId] = Order(maker, tokenGive, tokenGet, amountGive, amountGet);
 
-    NewOrder(orderId, msg.sender, tokenGive, tokenGet, amountGive, amountGet, now);
+    NewOrder(orderId, maker, tokenGive, tokenGet, amountGive, amountGet, now);
   }
 
   function getOrder(uint256 orderId) public view returns (address,
