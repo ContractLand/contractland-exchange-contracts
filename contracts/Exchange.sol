@@ -1,6 +1,6 @@
 pragma solidity ^0.4.23;
 
-import "./ERC20Token.sol";
+import "./ERC827Token.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import 'zos-lib/contracts/migrations/Initializable.sol';
@@ -39,7 +39,7 @@ contract Exchange is Initializable, Pausable {
     require(amountGive != 0 && amountGet != 0);
     require(tokenGive != tokenGet);
 
-    require(ERC20Token(tokenGive).transferFrom(msg.sender, this, amountGive));
+    require(ERC827Token(tokenGive).transferFrom(msg.sender, this, amountGive));
 
     orderId = numOfOrders++;
     orderBook[orderId] = Order(msg.sender, tokenGive, tokenGet, amountGive, amountGet);
@@ -64,7 +64,7 @@ contract Exchange is Initializable, Pausable {
     require(order.amountGive != 0);
     require(msg.sender == order.creator);
 
-    require(ERC20Token(order.tokenGive).transfer(msg.sender, order.amountGive));
+    require(ERC827Token(order.tokenGive).transfer(msg.sender, order.amountGive));
 
     order.amountGive = 0;
 
@@ -87,9 +87,9 @@ contract Exchange is Initializable, Pausable {
     uint256 tokenGetAmount = amountFill.mul(order.amountGet).div(order.amountGive);
 
     // Transfer tokenGet from taker to maker
-    require(ERC20Token(order.tokenGet).transferFrom(msg.sender, order.creator, tokenGetAmount));
+    require(ERC827Token(order.tokenGet).transferFrom(msg.sender, order.creator, tokenGetAmount));
     // Transfer tokenGive to taker
-    require(ERC20Token(order.tokenGive).transfer(msg.sender, amountFill));
+    require(ERC827Token(order.tokenGive).transfer(msg.sender, amountFill));
 
     order.amountGive = order.amountGive.sub(amountFill);
     order.amountGet = order.amountGet.sub(tokenGetAmount);
