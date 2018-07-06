@@ -1,6 +1,6 @@
 const RBT = artifacts.require("./TestRedBlackTree");
 
-contract.only("RedBlackTree", () => {
+contract("RedBlackTree", () => {
     let rbt;
     let id;
 
