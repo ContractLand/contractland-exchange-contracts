@@ -38,6 +38,7 @@ contract Exchange is Initializable, Pausable {
   function createOrder(address tokenGive, address tokenGet, uint256 amountGive, uint256 amountGet, address maker) public whenNotPaused returns (uint256 orderId) {
     require(amountGive != 0 && amountGet != 0);
     require(tokenGive != tokenGet);
+    // TODO: require maker == msg.sender
 
     require(ERC827Token(tokenGive).transferFrom(maker, this, amountGive));
 
