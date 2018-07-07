@@ -35,4 +35,8 @@ module.exports = {
       network_id: 4
     },
   },
+  optimizer: {
+    "enabled": true,
+    "runs": 200
+  }
 };
