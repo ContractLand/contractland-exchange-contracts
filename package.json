@@ -14,7 +14,8 @@
     "clear-abi": "rm -rf build",
     "copy-abi": "cp -R build/contracts ../contractland-app/",
     "flatten": "cd scripts && bash flatten.sh",
-    "test": "truffle test --network development"
+    "test": "truffle test --network development",
+    "ganache": "ganache-cli --allowUnlimitedContractSize --gasLimit 10000000"
   },
   "author": "ContractLand Fundation",
   "license": "MIT",
@@ -29,7 +30,8 @@
     "chai-bignumber": "^2.0.2",
     "truffle": "^4.0.7",
     "truffle-contract": "^3.0.4",
-    "truffle-flattener": "^1.2.3"
+    "truffle-flattener": "^1.2.3",
+    "ganache-cli": "^6.1.5"
   },
   "dependencies": {
     "colors": "^1.3.0",
