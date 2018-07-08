@@ -3,6 +3,7 @@ pragma solidity ^0.4.23;
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "./libraries/RedBlackTree.sol";
 import "./ERC20Token.sol";
+import "./ERC827Token.sol";
 
 contract NewExchange {
     using SafeMath for uint;
@@ -145,11 +146,11 @@ contract NewExchange {
             uint tradeAmount;
             if (matchingOrder.amount >= order.amount) {
                 tradeAmount = order.amount;
-                matchingOrder.amount -= order.amount;
+                matchingOrder.amount = matchingOrder.amount.sub(order.amount);
                 order.amount = 0;
             } else {
                 tradeAmount = matchingOrder.amount;
-                order.amount -= matchingOrder.amount;
+                order.amount = order.amount.sub(matchingOrder.amount);
                 matchingOrder.amount = 0;
             }
 
@@ -240,17 +241,16 @@ contract NewExchange {
             uint tradeAmount;
             if (matchingOrder.amount >= order.amount) {
                 tradeAmount = order.amount;
-                matchingOrder.amount -= order.amount;
+                matchingOrder.amount = matchingOrder.amount.sub(order.amount);
                 order.amount = 0;
             } else {
                 tradeAmount = matchingOrder.amount;
-                order.amount -= matchingOrder.amount;
+                order.amount = order.amount.sub(matchingOrder.amount);
                 matchingOrder.amount = 0;
             }
 
             balances[baseToken][order.owner].reserved = balances[baseToken][order.owner].reserved.sub(tradeAmount.mul(order.price));
-            // TODO: Use safemath instead of '-'
-            balances[baseToken][order.owner].available = balances[baseToken][order.owner].available.add(tradeAmount.mul(order.price - matchingOrder.price));
+            balances[baseToken][order.owner].available = balances[baseToken][order.owner].available.add(tradeAmount.mul(order.price.sub(matchingOrder.price)));
             balances[tradeToken][matchingOrder.owner].reserved = balances[tradeToken][matchingOrder.owner].reserved.sub(tradeAmount);
             balances[baseToken][matchingOrder.owner].available = balances[baseToken][matchingOrder.owner].available.add(tradeAmount.mul(matchingOrder.price));
             balances[tradeToken][order.owner].available = balances[tradeToken][order.owner].available.add(tradeAmount);
