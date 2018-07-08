@@ -5,48 +5,7 @@ describe.only("Exchange", () => {
     const [buyer, seller] = web3.eth.accounts;
     let exchange, baseToken, tradeToken;
 
-    const etherDepositAmount = web3.toWei(1, "ether");
     const tokenDepositAmount = 10000;
-
-    describe("Funds Management", () => {
-        describe("Ether", () => {
-            before(() => {
-                return deployExchange();
-            });
-
-            const etherDepositAmount = web3.toWei(1, "ether");
-            it("deposit", () => {
-                return exchange.deposit({from: buyer, value: etherDepositAmount})
-                    .then(() => checkBalance(0, buyer, {available: etherDepositAmount, reserved: 0}));
-            });
-
-            it("withdrawal", () => {
-                const etherWithdrawalAmount = web3.toWei(0.1, "ether");
-                return exchange.withdraw(etherWithdrawalAmount, {from: buyer})
-                    .then(() => checkBalance(0, buyer, {available: etherDepositAmount - etherWithdrawalAmount, reserved: 0}));
-            });
-        });
-
-        describe("Token", () => {
-            before(() => {
-                return deployExchange();
-            });
-
-            const tokenDepositAmount = 1000;
-            it("deposit", () => {
-                return baseToken.setBalance(tokenDepositAmount, {from: seller})
-                    .then(() => baseToken.approve(exchange.address, tokenDepositAmount, {from: seller}))
-                    .then(() => exchange.depositToken(baseToken.address, tokenDepositAmount, {from: seller}))
-                    .then(() => checkBalance(baseToken.address, seller, {available: tokenDepositAmount, reserved: 0}));
-            });
-
-            it("withdrawal", () => {
-                const tokenWithdrawalAmount = 100;
-                return exchange.withdrawToken(baseToken.address, tokenWithdrawalAmount, {from: seller})
-                    .then(() => checkBalance(baseToken.address, seller, {available: tokenDepositAmount - tokenWithdrawalAmount, reserved: 0}));
-            });
-        });
-    });
 
     describe("Order Insertion", function() {
         beforeEach(() => {
@@ -419,10 +378,8 @@ describe.only("Exchange", () => {
     function initBalances() {
         return baseToken.setBalance(tokenDepositAmount, {from: buyer})
             .then(() => baseToken.approve(exchange.address, tokenDepositAmount, {from: buyer}))
-            .then(() => exchange.depositToken(baseToken.address, tokenDepositAmount, {from: buyer}))
             .then(() => tradeToken.setBalance(tokenDepositAmount, {from: seller}))
             .then(() => tradeToken.approve(exchange.address, tokenDepositAmount, {from: seller}))
-            .then(() => exchange.depositToken(tradeToken.address, tokenDepositAmount, {from: seller}))
     }
 
     function checkBalance(token, trader, expectedBalance) {
