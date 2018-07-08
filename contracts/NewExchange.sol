@@ -19,6 +19,7 @@ contract NewExchange {
     }
 
     struct Order {
+        //TODO: Add token addresses in Order
         address owner;
         uint amount;
         uint price;
@@ -39,14 +40,15 @@ contract NewExchange {
 
     uint64 lastOrderId;
     mapping(uint64 => Order) orders;
-    mapping(address => Pair) pairs;
+    // Mapping of base token to trade token to Pair
+    mapping(address => mapping(address => Pair)) pairs;
 
     event Deposit(address indexed token, address indexed owner, uint amount);
     event Withdraw(address indexed token, address indexed owner, uint amount);
-    event NewOrder(address indexed token, address indexed owner, uint64 id, bool sell, uint price, uint amount, uint64 timestamp);
-    event NewAsk(address indexed token, uint price);
-    event NewBid(address indexed token, uint price);
-    event NewTrade(address indexed token, uint64 indexed bidId, uint64 indexed askId, bool side, uint amount, uint price, uint timestamp);
+    event NewOrder(address indexed baseToken, address indexed tradeToken, address indexed owner, uint64 id, bool sell, uint price, uint64 timestamp);
+    event NewAsk(address indexed baseToken, address indexed tradeToken, uint price);
+    event NewBid(address indexed baseToken, address indexed tradeToken, uint price);
+    event NewTrade(address indexed baseToken, address indexed tradeToken, uint64 bidId, uint64 askId, bool side, uint amount, uint price, uint64 timestamp);
 
     modifier isToken(address token) {
         require(token != 0);
@@ -79,10 +81,9 @@ contract NewExchange {
         Withdraw(token, msg.sender, amount);
     }
 
-
-    function sell(address token, uint amount, uint price) public returns (uint64) {
-        balances[token][msg.sender].available = balances[token][msg.sender].available.sub(amount);
-        balances[token][msg.sender].reserved = balances[token][msg.sender].reserved.add(amount);
+    function sell(address baseToken, address tradeToken, uint amount, uint price) public returns (uint64) {
+        balances[tradeToken][msg.sender].available = balances[tradeToken][msg.sender].available.sub(amount);
+        balances[tradeToken][msg.sender].reserved = balances[tradeToken][msg.sender].reserved.add(amount);
 
         Order memory order;
         order.sell = true;
@@ -92,10 +93,10 @@ contract NewExchange {
         order.timestamp = uint64(now);
 
         uint64 id = ++lastOrderId;
-        NewOrder(token, msg.sender, id, true, price, amount, order.timestamp);
+        NewOrder(baseToken, tradeToken, msg.sender, id, true, price, order.timestamp);
 
-        Pair storage pair = pairs[token];
-        matchSell(token, pair, order, id);
+        Pair storage pair = pairs[baseToken][tradeToken];
+        matchSell(baseToken, tradeToken, pair, order, id);
 
         if (order.amount != 0) {
             uint64 currentOrderId;
@@ -126,7 +127,7 @@ contract NewExchange {
 
             if (currentOrderId == pair.bestAsk) {
                 pair.bestAsk = id;
-                NewAsk(token, order.price);
+                NewAsk(baseToken, tradeToken, order.price);
             }
 
             orders[id] = order;
@@ -137,7 +138,7 @@ contract NewExchange {
         return id;
     }
 
-    function matchSell(address token, Pair storage pair, Order order, uint64 id) private {
+    function matchSell(address baseToken, address tradeToken, Pair storage pair, Order order, uint64 id) private {
         uint64 currentOrderId = pair.bestBid;
         while (currentOrderId != 0 && order.amount != 0 && order.price <= orders[currentOrderId].price) {
             Order memory matchingOrder = orders[currentOrderId];
@@ -152,12 +153,13 @@ contract NewExchange {
                 matchingOrder.amount = 0;
             }
 
-            balances[token][msg.sender].reserved = balances[token][msg.sender].reserved.sub(tradeAmount);
-            balances[token][matchingOrder.owner].available = balances[token][matchingOrder.owner].available.add(tradeAmount);
-            balances[0][matchingOrder.owner].reserved = balances[0][matchingOrder.owner].reserved.sub(tradeAmount.mul(matchingOrder.price));
-            balances[0][msg.sender].available = balances[0][msg.sender].available.add(tradeAmount.mul(matchingOrder.price));
+            //TODO: Why not refund remaining tradeToken to seller here? Using matchingOrder's price only here for some reason
+            balances[tradeToken][msg.sender].reserved = balances[tradeToken][msg.sender].reserved.sub(tradeAmount);
+            balances[tradeToken][matchingOrder.owner].available = balances[tradeToken][matchingOrder.owner].available.add(tradeAmount);
+            balances[baseToken][matchingOrder.owner].reserved = balances[baseToken][matchingOrder.owner].reserved.sub(tradeAmount.mul(matchingOrder.price));
+            balances[baseToken][msg.sender].available = balances[baseToken][msg.sender].available.add(tradeAmount.mul(matchingOrder.price));
 
-            NewTrade(token, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
+            NewTrade(baseToken, tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
 
             if (matchingOrder.amount != 0) {
                 orders[currentOrderId] = matchingOrder;
@@ -170,13 +172,13 @@ contract NewExchange {
 
         if (pair.bestBid != currentOrderId) {
             pair.bestBid = currentOrderId;
-            NewBid(token, orders[currentOrderId].price);
+            NewBid(baseToken, tradeToken, orders[currentOrderId].price);
         }
     }
 
-    function buy(address token, uint amount, uint price) public returns (uint64) {
-        balances[0][msg.sender].available = balances[0][msg.sender].available.sub(amount.mul(price));
-        balances[0][msg.sender].reserved = balances[0][msg.sender].reserved.add(amount.mul(price));
+    function buy(address baseToken, address tradeToken, uint amount, uint price) public returns (uint64) {
+        balances[baseToken][msg.sender].available = balances[baseToken][msg.sender].available.sub(amount.mul(price));
+        balances[baseToken][msg.sender].reserved = balances[baseToken][msg.sender].reserved.add(amount.mul(price));
 
         Order memory order;
         order.sell = false;
@@ -186,10 +188,10 @@ contract NewExchange {
         order.timestamp = uint64(now);
 
         uint64 id = ++lastOrderId;
-        NewOrder(token, msg.sender, id, false, price, amount, order.timestamp);
+        NewOrder(baseToken, tradeToken, msg.sender, id, false, price, order.timestamp);
 
-        Pair storage pair = pairs[token];
-        matchBuy(token, pair, order, id);
+        Pair storage pair = pairs[baseToken][tradeToken];
+        matchBuy(baseToken, tradeToken, pair, order, id);
 
         if (order.amount != 0) {
             uint64 currentOrderId;
@@ -220,7 +222,7 @@ contract NewExchange {
 
             if (currentOrderId == pair.bestBid) {
                 pair.bestBid = id;
-                NewBid(token, order.price);
+                NewBid(baseToken, tradeToken, order.price);
             }
 
             orders[id] = order;
@@ -231,7 +233,7 @@ contract NewExchange {
         return id;
     }
 
-    function matchBuy(address token, Pair storage pair, Order order, uint64 id) private {
+    function matchBuy(address baseToken, address tradeToken, Pair storage pair, Order order, uint64 id) private {
         uint64 currentOrderId = pair.bestAsk;
         while (currentOrderId != 0 && order.amount > 0 && order.price >= orders[currentOrderId].price) {
             Order memory matchingOrder = orders[currentOrderId];
@@ -246,13 +248,14 @@ contract NewExchange {
                 matchingOrder.amount = 0;
             }
 
-            balances[0][order.owner].reserved = balances[0][order.owner].reserved.sub(tradeAmount.mul(order.price));
-            balances[0][order.owner].available = balances[0][order.owner].available.add(tradeAmount.mul(order.price - matchingOrder.price));
-            balances[token][matchingOrder.owner].reserved = balances[token][matchingOrder.owner].reserved.sub(tradeAmount);
-            balances[0][matchingOrder.owner].available = balances[0][matchingOrder.owner].available.add(tradeAmount.mul(matchingOrder.price));
-            balances[token][order.owner].available = balances[token][order.owner].available.add(tradeAmount);
+            balances[baseToken][order.owner].reserved = balances[baseToken][order.owner].reserved.sub(tradeAmount.mul(order.price));
+            // TODO: Use safemath instead of '-'
+            balances[baseToken][order.owner].available = balances[baseToken][order.owner].available.add(tradeAmount.mul(order.price - matchingOrder.price));
+            balances[tradeToken][matchingOrder.owner].reserved = balances[tradeToken][matchingOrder.owner].reserved.sub(tradeAmount);
+            balances[baseToken][matchingOrder.owner].available = balances[baseToken][matchingOrder.owner].available.add(tradeAmount.mul(matchingOrder.price));
+            balances[tradeToken][order.owner].available = balances[tradeToken][order.owner].available.add(tradeAmount);
 
-            NewTrade(token, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(now));
+            NewTrade(baseToken, tradeToken, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(now));
 
             if (matchingOrder.amount != 0) {
                 orders[currentOrderId] = matchingOrder;
@@ -265,31 +268,32 @@ contract NewExchange {
 
         if (pair.bestAsk != currentOrderId) {
             pair.bestAsk = currentOrderId;
-            NewAsk(token, orders[currentOrderId].price);
+            NewAsk(baseToken, tradeToken, orders[currentOrderId].price);
         }
     }
 
-    function cancelOrder(address token, uint64 id) isToken(token) public {
+    // TODO: Check other cancel conditions (see old exchange)
+    function cancelOrder(address baseToken, address tradeToken, uint64 id) isToken(baseToken) public {
         Order memory order = orders[id];
         require(order.owner == msg.sender);
 
         if (order.sell) {
-            balances[token][msg.sender].reserved = balances[token][msg.sender].reserved.sub(order.amount);
-            balances[token][msg.sender].available = balances[token][msg.sender].available.add(order.amount);
+            balances[tradeToken][msg.sender].reserved = balances[tradeToken][msg.sender].reserved.sub(order.amount);
+            balances[tradeToken][msg.sender].available = balances[tradeToken][msg.sender].available.add(order.amount);
         } else {
-            balances[0][msg.sender].reserved = balances[0][msg.sender].reserved.sub(order.amount.mul(order.price));
-            balances[0][msg.sender].available = balances[0][msg.sender].available.add(order.amount.mul(order.price));
+            balances[baseToken][msg.sender].reserved = balances[baseToken][msg.sender].reserved.sub(order.amount.mul(order.price));
+            balances[baseToken][msg.sender].available = balances[baseToken][msg.sender].available.add(order.amount.mul(order.price));
         }
 
-        Pair storage pair = pairs[token];
+        Pair storage pair = pairs[baseToken][tradeToken];
         ListItem memory orderItem = excludeItem(pair, id);
 
         if (pair.bestBid == id) {
             pair.bestBid = orderItem.prev;
-            NewBid(token, orders[pair.bestBid].price);
+            NewBid(baseToken, tradeToken, orders[pair.bestBid].price);
         } else if (pair.bestAsk == id) {
             pair.bestAsk = orderItem.next;
-            NewAsk(token, orders[pair.bestAsk].price);
+            NewAsk(baseToken, tradeToken, orders[pair.bestAsk].price);
         }
     }
 
@@ -323,20 +327,20 @@ contract NewExchange {
         reserved = balances[token][trader].reserved;
     }
 
-    function getOrderBookInfo(address token) public constant returns (uint64 firstOrder, uint64 bestBid, uint64 bestAsk, uint64 lastOrder) {
-        Pair memory pair = pairs[token];
+    function getOrderBookInfo(address baseToken, address tradeToken) public constant returns (uint64 firstOrder, uint64 bestBid, uint64 bestAsk, uint64 lastOrder) {
+        Pair memory pair = pairs[baseToken][tradeToken];
         firstOrder = pair.firstOrder;
         bestBid = pair.bestBid;
         bestAsk = pair.bestAsk;
         lastOrder = pair.lastOrder;
     }
 
-    function getOrder(address token, uint64 id) public constant returns (uint price, bool sell, uint amount, uint64 next, uint64 prev) {
+    function getOrder(address baseToken, address tradeToken, uint64 id) public constant returns (uint price, bool sell, uint amount, uint64 next, uint64 prev) {
         Order memory order = orders[id];
         price = order.price;
         sell = order.sell;
         amount = order.amount;
-        next = pairs[token].orderbook[id].next;
-        prev = pairs[token].orderbook[id].prev;
+        next = pairs[baseToken][tradeToken].orderbook[id].next;
+        prev = pairs[baseToken][tradeToken].orderbook[id].prev;
     }
 }
