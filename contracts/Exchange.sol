@@ -38,8 +38,6 @@ contract Exchange {
     // Mapping of base token to trade token to Pair
     mapping(address => mapping(address => Pair)) pairs;
 
-    event Deposit(address indexed token, address indexed owner, uint amount);
-    event Withdraw(address indexed token, address indexed owner, uint amount);
     event NewOrder(address indexed baseToken, address indexed tradeToken, address indexed owner, uint64 id, bool sell, uint price, uint64 timestamp);
     event NewAsk(address indexed baseToken, address indexed tradeToken, uint price);
     event NewBid(address indexed baseToken, address indexed tradeToken, uint price);
