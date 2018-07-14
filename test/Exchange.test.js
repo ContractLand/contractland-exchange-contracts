@@ -1,7 +1,7 @@
 const Exchange = artifacts.require("./Exchange.sol");
 const Token = artifacts.require("./TestToken.sol");
 
-describe("Exchange", () => {
+describe.only("Exchange", () => {
     const [buyer, seller] = web3.eth.accounts;
     let exchange, baseToken, tradeToken;
 
@@ -383,10 +383,18 @@ describe("Exchange", () => {
     }
 
     function checkBalance(token, trader, expectedBalance) {
-        return exchange.getBalance(token, trader)
-            .then(balance => {
-                assert.equal(balance[0].toFixed(), expectedBalance.available, "available balance");
-                assert.equal(balance[1].toFixed(), expectedBalance.reserved, "reserved balance");
+        return exchange.reserved(token, trader)
+            .then(reservedBalance => {
+                assert.equal(reservedBalance.toFixed(), expectedBalance.reserved, "reserved balance");
+            })
+            .then(() => {
+                return Token.at(token)
+            })
+            .then((tokenInstance) => {
+                return tokenInstance.balanceOf(trader)
+            })
+            .then((availableBalance) => {
+                assert.equal(availableBalance.toFixed(), expectedBalance.available, "available balance");
             });
     }
 

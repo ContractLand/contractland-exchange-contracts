@@ -8,12 +8,6 @@ contract Exchange {
     using SafeMath for uint;
     using RedBlackTree for RedBlackTree.Tree;
 
-    // TODO: Remove this struct. Only reserved is needed
-    struct Balance {
-        uint reserved;
-        uint available;
-    }
-
     struct ListItem {
         uint64 prev;
         uint64 next;
@@ -37,7 +31,7 @@ contract Exchange {
         uint64 lastOrder;
     }
 
-    mapping (address => mapping (address => Balance)) private balances;
+    mapping (address => mapping (address => uint)) public reserved;
 
     uint64 lastOrderId;
     mapping(uint64 => Order) orders;
@@ -61,7 +55,7 @@ contract Exchange {
 
     function sell(address baseToken, address tradeToken, uint amount, uint price) public returns (uint64) {
         ERC20(tradeToken).transferFrom(msg.sender, this, amount);
-        balances[tradeToken][msg.sender].reserved = balances[tradeToken][msg.sender].reserved.add(amount);
+        reserved[tradeToken][msg.sender] = reserved[tradeToken][msg.sender].add(amount);
 
         Order memory order;
         order.sell = true;
@@ -132,10 +126,10 @@ contract Exchange {
             }
 
             //TODO: Why not refund remaining tradeToken to seller here? Using matchingOrder's price only here for some reason
-            balances[tradeToken][msg.sender].reserved = balances[tradeToken][msg.sender].reserved.sub(tradeAmount);
+            reserved[tradeToken][msg.sender] = reserved[tradeToken][msg.sender].sub(tradeAmount);
             ERC20(tradeToken).transfer(matchingOrder.owner, tradeAmount);
             ERC20(baseToken).transfer(msg.sender, tradeAmount.mul(matchingOrder.price));
-            balances[baseToken][matchingOrder.owner].reserved = balances[baseToken][matchingOrder.owner].reserved.sub(tradeAmount.mul(matchingOrder.price));
+            reserved[baseToken][matchingOrder.owner] = reserved[baseToken][matchingOrder.owner].sub(tradeAmount.mul(matchingOrder.price));
 
             NewTrade(baseToken, tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
 
@@ -156,7 +150,7 @@ contract Exchange {
 
     function buy(address baseToken, address tradeToken, uint amount, uint price) public returns (uint64) {
         ERC20(baseToken).transferFrom(msg.sender, this, amount.mul(price));
-        balances[baseToken][msg.sender].reserved = balances[baseToken][msg.sender].reserved.add(amount.mul(price));
+        reserved[baseToken][msg.sender] = reserved[baseToken][msg.sender].add(amount.mul(price));
 
         Order memory order;
         order.sell = false;
@@ -226,9 +220,9 @@ contract Exchange {
                 matchingOrder.amount = 0;
             }
 
-            balances[baseToken][order.owner].reserved = balances[baseToken][order.owner].reserved.sub(tradeAmount.mul(order.price));
+            reserved[baseToken][order.owner] = reserved[baseToken][order.owner].sub(tradeAmount.mul(order.price));
             ERC20(baseToken).transfer(order.owner, tradeAmount.mul(order.price.sub(matchingOrder.price)));
-            balances[tradeToken][matchingOrder.owner].reserved = balances[tradeToken][matchingOrder.owner].reserved.sub(tradeAmount);
+            reserved[tradeToken][matchingOrder.owner] = reserved[tradeToken][matchingOrder.owner].sub(tradeAmount);
             ERC20(baseToken).transfer(matchingOrder.owner, tradeAmount.mul(matchingOrder.price));
             ERC20(tradeToken).transfer(order.owner, tradeAmount);
 
@@ -255,10 +249,10 @@ contract Exchange {
         require(order.owner == msg.sender);
 
         if (order.sell) {
-            balances[tradeToken][msg.sender].reserved = balances[tradeToken][msg.sender].reserved.sub(order.amount);
+            reserved[tradeToken][msg.sender] = reserved[tradeToken][msg.sender].sub(order.amount);
             ERC20(tradeToken).transfer(msg.sender, order.amount);
         } else {
-            balances[baseToken][msg.sender].reserved = balances[baseToken][msg.sender].reserved.sub(order.amount.mul(order.price));
+            reserved[baseToken][msg.sender] = reserved[baseToken][msg.sender].sub(order.amount.mul(order.price));
             ERC20(baseToken).transfer(msg.sender, order.amount.mul(order.price));
         }
 
@@ -297,11 +291,6 @@ contract Exchange {
         delete orders[id];
 
         return matchingOrderItem;
-    }
-
-    function getBalance(address token, address trader) public constant returns (uint available, uint reserved) {
-        available = ERC20(token).balanceOf(trader); //TODO: remove this
-        reserved = balances[token][trader].reserved;
     }
 
     function getOrderBookInfo(address baseToken, address tradeToken) public constant returns (uint64 firstOrder, uint64 bestBid, uint64 bestAsk, uint64 lastOrder) {
