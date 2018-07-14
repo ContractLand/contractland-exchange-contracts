@@ -1,10 +1,10 @@
 pragma solidity ^0.4.23;
 
 /**
- * @title ERC20Token
+ * @title ERC20
  * @dev ERC20 token interface
  */
- contract ERC20Token {
+ contract ERC20 {
     string public name;
     string public symbol;
     uint8 public decimals;

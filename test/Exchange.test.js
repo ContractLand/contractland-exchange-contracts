@@ -1,490 +1,506 @@
-import { expect } from 'chai'
-import token from './helpers/token'
-import EVMRevert from './helpers/EVMRevert'
-
-const BigNumber = web3.BigNumber
-
-require('chai')
-  .use(require('chai-as-promised'))
-  .use(require('chai-bignumber')(BigNumber))
-  .should()
-
-const Exchange = artifacts.require('Exchange')
-const ExchangeProxy = artifacts.require('AdminUpgradeabilityProxy')
-const TestToken = artifacts.require('TestToken')
-
-contract('Exchange', ([coinbase, depositAccount, makerAccount, takerAccount, invalidAccount, exchangeOwner, proxyOwner]) => {
-
-  beforeEach(async function () {
-    // create contracts
-    this.exchangeContract = await Exchange.new({ from: exchangeOwner })
-    this.exchangeProxy = await ExchangeProxy.new(this.exchangeContract.address, { from: proxyOwner })
-    this.exchange = await Exchange.at(this.exchangeProxy.address)
-    await this.exchange.initialize({ from: exchangeOwner })
-    this.erc827Token = await TestToken.new(coinbase, { from: coinbase })
-    this.anotherERC827Token = await TestToken.new(coinbase, { from: coinbase })
-
-    //fund tokens into accounts
-    this.depositAmount = token(1)
-    this.erc827Token.transfer(makerAccount, this.depositAmount, { from: coinbase })
-    this.erc827Token.transfer(takerAccount, this.depositAmount, { from: coinbase })
-    await this.erc827Token.approve(this.exchange.address, this.depositAmount, { from: makerAccount })
-    await this.erc827Token.approve(this.exchange.address, this.depositAmount, { from: takerAccount })
-    this.anotherERC827Token.transfer(makerAccount, this.depositAmount, { from: coinbase })
-    this.anotherERC827Token.transfer(takerAccount, this.depositAmount, { from: coinbase })
-    await this.anotherERC827Token.approve(this.exchange.address, this.depositAmount, { from: makerAccount })
-    await this.anotherERC827Token.approve(this.exchange.address, this.depositAmount, { from: takerAccount })
-  })
-
-  it("should not be able to create orders if you do not have enough token balance", async function () {
-    const emptyAccount = invalidAccount
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(1)
-    await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, emptyAccount, { from: emptyAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should not be able to create orders with zero amountGive or amountGet", async function () {
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const zeroAmount = token(0)
-
-    await this.exchange.createOrder(tokenGive, tokenGet, zeroAmount, this.depositAmount, makerAccount, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
-    await this.exchange.createOrder(tokenGive, tokenGet, this.depositAmount, zeroAmount, makerAccount, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should not be able to create orders where give and get tokens are the same", async function () {
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.erc827Token.address
-
-    await this.exchange.createOrder(tokenGive, tokenGet, this.depositAmount, this.depositAmount, makerAccount, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should be able to create and cancel orders", async function () {
-    // should create orders with correct parameters
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(0.0001)
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-    expect((await this.exchange.numOfOrders({ from: coinbase })).toString()).to.equal('1')
-    expect((await this.exchange.getOrder(orderId, { from: coinbase }))[0]).to.equal(makerAccount)
-    expect((await this.exchange.getOrder(orderId, { from: coinbase }))[1]).to.equal(tokenGive)
-    expect((await this.exchange.getOrder(orderId, { from: coinbase }))[2]).to.equal(tokenGet)
-    expect((await this.exchange.getOrder(orderId, { from: coinbase }))[3]).to.be.bignumber.equal(amountGive)
-    expect((await this.exchange.getOrder(orderId, { from: coinbase }))[4]).to.be.bignumber.equal(amountGet)
-
-    // should emit create order event
-    const orderCreateLogs = order.logs
-    expect(orderCreateLogs.length).to.equal(1)
-    expect(orderCreateLogs[0].event).to.equal('NewOrder')
-    expect(orderCreateLogs[0].args._id).to.be.bignumber.equal(orderId)
-    expect(orderCreateLogs[0].args._creator).to.equal(makerAccount)
-    expect(orderCreateLogs[0].args._tokenGive).to.be.bignumber.equal(tokenGive)
-    expect(orderCreateLogs[0].args._tokenGet).to.be.bignumber.equal(tokenGet)
-    expect(orderCreateLogs[0].args._amountGive).to.be.bignumber.equal(amountGive)
-    expect(orderCreateLogs[0].args._amountGet).to.be.bignumber.equal(amountGet)
-
-    // cancel order should return user's token back
-    const initialBalance = await this.erc827Token.balanceOf(makerAccount)
-    const cancelOrder = await this.exchange.cancelOrder(orderId, { from: makerAccount })
-    expect(await this.erc827Token.balanceOf(makerAccount)).to.be.bignumber.equal(initialBalance.plus(amountGive))
-
-    // should emit order cancel event
-    const orderCancelLogs = cancelOrder.logs
-    expect(orderCancelLogs.length).to.equal(1)
-    expect(orderCancelLogs[0].event).to.equal('OrderCancelled')
-    expect(orderCancelLogs[0].args._id).to.be.bignumber.equal(orderId)
-  })
-
-  it("should be able to create an order using approveAndCall of an erc827 token", async function () {
-    // should create orders with correct parameters
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(0.5)
-    const amountGet = token(0.0001)
-    const data = this.exchangeContract.contract.createOrder.getData(tokenGive, tokenGet, amountGive, amountGet, makerAccount)
-
-    await this.erc827Token.approveAndCall(this.exchange.address, amountGive, data, { from: makerAccount })
-
-    // should emit create order event
-    const OrderEvent = this.exchange.NewOrder({}, { fromBlock: 0, toBlock: 'latest' }, async (error, order) => {
-      if(error) {
-        throw "NewOrder event watch error"
-      } else {
-        const orderId = parseInt(order.args._id.toString())
-
-        expect(order.event).to.equal('NewOrder')
-        expect(order.args._id).to.be.bignumber.equal(orderId)
-        expect(order.args._creator).to.equal(makerAccount)
-        expect(order.args._tokenGive).to.be.bignumber.equal(tokenGive)
-        expect(order.args._tokenGet).to.be.bignumber.equal(tokenGet)
-        expect(order.args._amountGive).to.be.bignumber.equal(amountGive)
-        expect(order.args._amountGet).to.be.bignumber.equal(amountGet)
-
-        expect((await this.exchange.getOrder(orderId, { from: coinbase }))[0]).to.equal(makerAccount)
-        expect((await this.exchange.getOrder(orderId, { from: coinbase }))[1]).to.equal(tokenGive)
-        expect((await this.exchange.getOrder(orderId, { from: coinbase }))[2]).to.equal(tokenGet)
-        expect((await this.exchange.getOrder(orderId, { from: coinbase }))[3]).to.be.bignumber.equal(amountGive)
-        expect((await this.exchange.getOrder(orderId, { from: coinbase }))[4]).to.be.bignumber.equal(amountGet)
-
-        // cancel order should return user's token back
-        const initialBalance = await this.erc827Token.balanceOf(makerAccount)
-        const cancelOrder = await this.exchange.cancelOrder(orderId, { from: makerAccount })
-        expect(await this.erc827Token.balanceOf(makerAccount)).to.be.bignumber.equal(initialBalance.plus(amountGive))
-
-        // should emit order cancel event
-        const orderCancelLogs = cancelOrder.logs
-        expect(orderCancelLogs.length).to.equal(1)
-        expect(orderCancelLogs[0].event).to.equal('OrderCancelled')
-        expect(orderCancelLogs[0].args._id).to.be.bignumber.equal(orderId)
-      }
-    })
-    expect((await this.exchange.numOfOrders({ from: coinbase })).toString()).to.equal('1')
-  })
-
-  it("should disallow cancelling of other people's orders", async function () {
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = this.depositAmount
-    const amountGet = token(0.0001)
-
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-
-    const notCreator = invalidAccount
-    await this.exchange.cancelOrder(orderId, { from: notCreator }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should not be able to cancel orders that are already cancelled", async function () {
-    // create order
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(1)
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-
-    // cancel order
-    await this.exchange.cancelOrder(orderId, { from: makerAccount })
-
-    // cancel again
-    await this.exchange.cancelOrder(orderId, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should be able to create multiple orders", async function () {
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(0.5)
-    const amountGet = token(0.0001)
-
-    // create orders
-    const orderOne = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderOneId = parseInt(orderOne.logs[0].args._id.toString())
-    const orderTwo = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderTwoId = parseInt(orderOne.logs[0].args._id.toString())
-
-    // verify orders are created
-    expect((await this.exchange.numOfOrders({ from: coinbase })).toString()).to.equal('2')
-    expect((await this.exchange.getOrder(orderOneId, { from: coinbase }))[0]).to.equal(makerAccount)
-    expect((await this.exchange.getOrder(orderTwoId, { from: coinbase }))[0]).to.equal(makerAccount)
-
-    // should fail due to out of funds
-    await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should adjust account balances properly when executing trade", async function () {
-    // create order
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(0.01)
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-
-    // get balances before order execution
-    let makerInitialTokenGetBalance = await this.anotherERC827Token.balanceOf(makerAccount)
-    let takerInitialTokenGiveBalance = await this.erc827Token.balanceOf(takerAccount)
-    let takerInitialTokenGetBalance = await this.anotherERC827Token.balanceOf(takerAccount)
-
-    // execute order
-    let amountFill = token(0.5)
-    // rate is 0.01 / 1 = 0.01 tokenGet per tokenGive
-    // for 0.5 tokenGive, you get 0.5 * 0.01 = 0.005 tokenGet
-    let expectedMakerTokenGetAmount = token(0.005)
-    let trade = await this.exchange.executeOrder(orderId, amountFill, false, { from: takerAccount })
-    // taker and maker should have correct balance after trade
-    expect(await this.anotherERC827Token.balanceOf(makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance.plus(expectedMakerTokenGetAmount))
-    expect((await this.exchange.getOrder(orderId))[3]).to.be.bignumber.equal(amountGive.minus(amountFill))
-    expect(await this.erc827Token.balanceOf(takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance.plus(amountFill))
-    expect(await this.anotherERC827Token.balanceOf(takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance.minus(expectedMakerTokenGetAmount))
-
-    // should emit trade event
-    const logs = trade.logs
-    expect(logs.length).to.equal(1)
-    expect(logs[0].event).to.equal('Trade')
-    expect(logs[0].args._taker).to.equal(takerAccount)
-    expect(logs[0].args._maker).to.equal(makerAccount)
-    expect(logs[0].args._orderId).to.be.bignumber.equal(orderId)
-    expect(logs[0].args._amountFilled).to.be.bignumber.equal(amountFill)
-    expect(logs[0].args._amountReceived).to.be.bignumber.equal(expectedMakerTokenGetAmount)
-
-    //execute rest of orders
-
-    // get balances before order execution
-    makerInitialTokenGetBalance = await this.anotherERC827Token.balanceOf(makerAccount)
-    takerInitialTokenGiveBalance = await this.erc827Token.balanceOf(takerAccount)
-    takerInitialTokenGetBalance = await this.anotherERC827Token.balanceOf(takerAccount)
-
-    amountFill = token(0.5)
-    expectedMakerTokenGetAmount = token(0.005)
-    trade = await this.exchange.executeOrder(orderId, amountFill, false, { from: takerAccount })
-
-    expect(await this.anotherERC827Token.balanceOf(makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance.plus(expectedMakerTokenGetAmount))
-    expect((await this.exchange.getOrder(orderId))[3]).to.be.bignumber.equal(token(0))
-    expect(await this.erc827Token.balanceOf(takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance.plus(amountFill))
-    expect(await this.anotherERC827Token.balanceOf(takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance.minus(expectedMakerTokenGetAmount))
-  })
-
-  it("should not execute trade if taker does have enough token to fulfill a order", async function () {
-    // create order
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(0.01)
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-
-    // execute order
-    const amountFill = token(0.1)
-    await this.exchange.executeOrder(orderId, amountFill, false, { from: invalidAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should not execute trade if fill amount exceed order capacity", async function () {
-    // create order
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(0.1)
-    const amountGet = token(0.1)
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-
-    // execute order
-    const overFillAmount = token(1)
-    await this.exchange.executeOrder(orderId, overFillAmount, false, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should not execute orders that does not exist", async function () {
-    // create order
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(1)
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-
-    // execute order
-    const amountFill = token(0.1)
-    await this.exchange.executeOrder(orderId + 1, amountFill, false, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should not execute orders that fill 0 amount", async function () {
-    // create order
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(1)
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-
-    // execute order
-    const zeroFillAmount = token(0)
-    await this.exchange.executeOrder(orderId, zeroFillAmount, false, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should not let user trade against themselfs", async function () {
-    // create order
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(1)
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-
-    // execute order
-    const amountFill = token(0.1)
-    await this.exchange.executeOrder(orderId, amountFill, false, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should not be able to cancel orders that has already been fulfilled", async function () {
-    // create order
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(1)
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-
-    // fill entire order
-    const fillAll = token(1)
-    await this.exchange.executeOrder(orderId, fillAll, false, { from: takerAccount })
-
-    // try to cancel
-    await this.exchange.cancelOrder(orderId, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should emit OrderFulfilled event when order is fully filled", async function () {
-    // create order
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(1)
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = order.logs[0].args._id
-
-    // fill entire order
-    const fillAll = token(1)
-    const { logs } = await this.exchange.executeOrder(orderId, fillAll, false, { from: takerAccount })
-
-    // emit log
-    expect(logs.length).to.equal(2)
-    expect(logs[1].event).to.equal('OrderFulfilled')
-    expect(logs[1].args._id).to.be.bignumber.equal(orderId)
-  })
-
-  it("should be able to batch execute orders", async function () {
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(0.5)
-    const amountGet = token(0.5)
-
-    // create sell order 1
-    const orderOne = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderOneId = orderOne.logs[0].args._id
-
-    // create sell order 2
-    const orderTwo = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderTwoId = orderTwo.logs[0].args._id
-
-    // get balances before order execution
-    const makerInitialTokenGetBalance = await this.anotherERC827Token.balanceOf(makerAccount)
-    const takerInitialTokenGiveBalance = await this.erc827Token.balanceOf(takerAccount)
-    const takerInitialTokenGetBalance = await this.anotherERC827Token.balanceOf(takerAccount)
-
-    // fill order with amount of both orders
-    const orderIds = [orderOneId, orderTwoId]
-    const fillAmounts = [token(0.5), token(0.5)]
-    const expectedMakerTokenGetAmountTotal = token(1) //0.5 + 0.5
-    await this.exchange.batchExecute(orderIds, fillAmounts, false, { from: takerAccount })
-
-    const totalAmountFill = token(1)
-    // taker and maker should have correct balance after trade
-    expect(await this.anotherERC827Token.balanceOf(makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance.plus(expectedMakerTokenGetAmountTotal))
-    expect(await this.erc827Token.balanceOf(takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance.plus(totalAmountFill))
-    expect(await this.anotherERC827Token.balanceOf(takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance.minus(expectedMakerTokenGetAmountTotal))
-  })
-
-  it("should allow partial fill of order if take amount exceeds remaining order amount", async function () {
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(1)
-
-    // create order
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = order.logs[0].args._id
-
-    // get balances before order execution
-    const makerInitialTokenGetBalance = await this.anotherERC827Token.balanceOf(makerAccount)
-    const takerInitialTokenGiveBalance = await this.erc827Token.balanceOf(takerAccount)
-    const takerInitialTokenGetBalance = await this.anotherERC827Token.balanceOf(takerAccount)
-
-    // fill order with amount of both orders
-    const excessfillAmount = token(2)
-    const allowPartialFill = true
-    await this.exchange.executeOrder(orderId, excessfillAmount, allowPartialFill, { from: takerAccount })
-
-    const expectedMakerTokenGetAmount = token(1)
-    const expectedFillAmount = amountGive
-    // taker and maker should have correct balance after trade
-    expect(await this.anotherERC827Token.balanceOf(makerAccount)).to.be.bignumber.equal(makerInitialTokenGetBalance.plus(expectedMakerTokenGetAmount))
-    expect(await this.erc827Token.balanceOf(takerAccount)).to.be.bignumber.equal(takerInitialTokenGiveBalance.plus(expectedFillAmount))
-    expect(await this.anotherERC827Token.balanceOf(takerAccount)).to.be.bignumber.equal(takerInitialTokenGetBalance.minus(expectedMakerTokenGetAmount))
-  })
-
-  it("should not allow non-owner to pause exchange", async function () {
-    await this.exchange.pause({ from: invalidAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should not be able to create order when paused", async function () {
-    await this.exchange.pause({ from: exchangeOwner })
-
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(1)
-
-    await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should not be able to cancel order when paused", async function () {
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(1)
-
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-
-    await this.exchange.pause({ from: exchangeOwner })
-
-    await this.exchange.cancelOrder(orderId, { from: makerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should not be able to execute order when paused", async function () {
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(1)
-    const amountGet = token(1)
-
-    const order = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderId = parseInt(order.logs[0].args._id.toString())
-
-    await this.exchange.pause({ from: exchangeOwner })
-
-    let amountFill = token(0.5)
-    await this.exchange.executeOrder(orderId, amountFill, false, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it("should be not able to batch execute orders when paused", async function () {
-    const tokenGive = this.erc827Token.address
-    const tokenGet = this.anotherERC827Token.address
-    const amountGive = token(0.5)
-    const amountGet = token(0.5)
-
-    // create sell order 1
-    const orderOne = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderOneId = orderOne.logs[0].args._id
-
-    // create sell order 2
-    const orderTwo = await this.exchange.createOrder(tokenGive, tokenGet, amountGive, amountGet, makerAccount, { from: makerAccount })
-    const orderTwoId = orderTwo.logs[0].args._id
-
-    await this.exchange.pause({ from: exchangeOwner })
-
-    // fill order with amount of both orders
-    const orderIds = [orderOneId, orderTwoId]
-    const fillAmounts = [token(0.5), token(0.5)]
-    await this.exchange.batchExecute(orderIds, fillAmounts, false, { from: takerAccount }).should.be.rejectedWith(EVMRevert)
-  })
-
-  it.skip("should collect exchange fee from taker", async function () {
-
-  })
-
-  it.skip("should collect exchange fee from maker", async function () {
-
-  })
-})
+const Exchange = artifacts.require("./Exchange.sol");
+const Token = artifacts.require("./TestToken.sol");
+
+describe("Exchange", () => {
+    const [buyer, seller] = web3.eth.accounts;
+    let exchange, baseToken, tradeToken;
+
+    const tokenDepositAmount = 10000;
+
+    describe("Order Insertion", function() {
+        beforeEach(() => {
+            orderId = 1;
+            return deployExchange()
+            .then(() => initBalances())
+        });
+
+        it("should insert a new buy order as first", () => {
+            const order = buy(100, 5);
+            const orderState = {prev: 0, next: 0};
+            const orderbookState = {firstOrder: 1, bestBid: 1, bestAsk: 0, lastOrder: 1};
+            const newBidWatcher = exchange.NewBid();
+            const newOrderWatcher = exchange.NewOrder();
+            return testOrder(order, orderState, orderbookState)
+                .then(() => {
+                    let eventState = order;
+                    eventState.id = 1;
+                    checkNewOrderEvent(newOrderWatcher, eventState);
+                })
+                .then(() => checkNewBestOrderEvent(newBidWatcher, {price: order.price}))
+                .then(() => checkBalance(baseToken.address, order.from, {available: tokenDepositAmount - order.total, reserved: order.total}));
+        });
+
+        it("should insert a new sell order as first", () => {
+            const order = sell(100, 5);
+            const orderState = {prev: 0, next: 0};
+            const orderbookState = {firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 1};
+            const newAskWatcher = exchange.NewAsk();
+            const newOrderWatcher = exchange.NewOrder();
+            return testOrder(order, orderState, orderbookState)
+                .then(() => {
+                    let eventState = order;
+                    eventState.id = 1;
+                    checkNewOrderEvent(newOrderWatcher, eventState);
+                })
+                .then(() => checkNewBestOrderEvent(newAskWatcher, {price: order.price}))
+                .then(() => checkBalance(tradeToken.address, order.from, {available: tokenDepositAmount - order.amount, reserved: order.amount}));
+        });
+
+        it("should cancel the last single buy order", () => {
+            const order = buy(100, 5);
+            let orderId;
+            const newBidWatcher = exchange.NewBid();
+            return placeOrder(order)
+                .then(id => orderId = id)
+                .then(() => cancelOrder(orderId, order.from))
+                .then(() => checkOrder(orderId, undefined))
+                .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
+                .then(() => checkNewBestOrderEvent(newBidWatcher, {price: 0}))
+                .then(() => checkBalance(baseToken.address, order.from, {available: tokenDepositAmount, reserved: 0}));
+        });
+
+        it("should cancel the last single sell order", () => {
+            const order = sell(100, 5);
+            let orderId;
+            const newAskWatcher = exchange.NewAsk();
+            return placeOrder(order)
+                .then(id => orderId = id)
+                .then(() => cancelOrder(orderId, order.from))
+                .then(() => checkOrder(orderId, undefined))
+                .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
+                .then(() => checkNewBestOrderEvent(newAskWatcher, {price: 0}))
+                .then(() => checkBalance(tradeToken.address, order.from, {available: tokenDepositAmount, reserved: 0}));
+        });
+
+        it("should insert a new sell order, change the first order reference and update the best ask reference", () => {
+            const order = sell(100, 5);
+            const orderState = {prev: 0, next: 1};
+            const orderbookState = {firstOrder: 2, bestBid: 0, bestAsk: 2, lastOrder: 1};
+            let newAskWatcher;
+            return placeOrder(sell(110, 5))
+                .then(() => {
+                    newAskWatcher = exchange.NewAsk();
+                })
+                .then(() => testOrder(order, orderState, orderbookState))
+                .then(() => checkOrder(1, {prev: 2, next: 0}))
+                .then(() => checkNewBestOrderEvent(newAskWatcher, {price: order.price}));
+        });
+
+        it("should insert a new buy order, change the last order reference and update the best bid reference", () => {
+            const order = buy(110, 5);
+            const orderState = {prev: 1, next: 0};
+            const orderbookState = {firstOrder: 1, bestBid: 2, bestAsk: 0, lastOrder: 2};
+            let newBidWatcher;
+            return placeOrder(buy(100, 5))
+                .then(() => {
+                    newBidWatcher = exchange.NewBid();
+                })
+                .then(() => testOrder(order, orderState, orderbookState))
+                .then(() => checkOrder(1, {prev: 0, next: 2}))
+                .then(() => checkNewBestOrderEvent(newBidWatcher, {price: order.price}));
+        });
+
+        it("should insert a new buy order as first of buy orders", () => {
+            const order = buy(50, 5);
+            const orderState = {prev: 0, next: 1};
+            const orderbookState = {firstOrder: 2, bestBid: 1, bestAsk: 0, lastOrder: 1};
+            return placeOrder(buy(100, 5))
+                .then(() => testOrder(order, orderState, orderbookState))
+                .then(() => checkOrder(1, {prev: 2, next: 0}));
+        });
+
+        it("should insert a new sell order as last of sell orders", () => {
+            const order = sell(100, 5);
+            const orderState = {prev: 1, next: 0};
+            const orderbookState = {firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 2};
+            return placeOrder(sell(50, 5))
+                .then(() => testOrder(order, orderState, orderbookState))
+                .then(() => checkOrder(1, {prev: 0, next: 2}));
+        });
+
+        it("should insert a new buy order between two others", () => {
+            const order = buy(110, 5);
+            const orderState = {prev: 1, next: 2};
+            const orderbookState = {firstOrder: 1, bestBid: 2, bestAsk: 0, lastOrder: 2};
+            return placeOrder(buy(100, 5))
+                .then(() => placeOrder(buy(120, 5)))
+                .then(() => testOrder(order, orderState, orderbookState))
+                .then(() => checkOrder(1, {prev: 0, next: 3}))
+                .then(() => checkOrder(2, {prev: 3, next: 0}));
+        });
+
+        it("should insert a new sell order between two others", () => {
+            const order = sell(110, 5);
+            const orderState = {prev: 1, next: 2};
+            const orderbookState = {firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 2};
+            return placeOrder(sell(100, 5))
+                .then(() => placeOrder(sell(120, 5)))
+                .then(() => testOrder(order, orderState, orderbookState))
+                .then(() => checkOrder(1, {prev: 0, next: 3}))
+                .then(() => checkOrder(2, {prev: 3, next: 0}));
+        });
+
+        it("should insert a new sell order after the best buy order", () => {
+            const order = sell(130, 5);
+            const orderState = {prev: 1, next: 0};
+            const orderbookState = {firstOrder: 1, bestBid: 1, bestAsk: 2, lastOrder: 2};
+            return placeOrder(buy(100, 5))
+                .then(() => testOrder(order, orderState, orderbookState))
+                .then(() => checkOrder(1, {prev: 0, next: 2}));
+        });
+
+        it("should insert a new buy order before the best sell order", () => {
+            const order = buy(100, 5);
+            const orderState = {prev: 0, next: 1};
+            const orderbookState = {firstOrder: 2, bestBid: 2, bestAsk: 1, lastOrder: 1};
+            return placeOrder(sell(130, 5))
+                .then(() => testOrder(order, orderState, orderbookState))
+                .then(() => checkOrder(1, {prev: 2, next: 0}));
+        });
+
+        it("should cancel a sell order from the middle of sell orders", () => {
+            const order = sell(110, 5);
+            const orderState = {prev: 1, next: 0};
+            return placeOrder(sell(100, 5))
+                .then(() => placeOrder(order))
+                .then(() => placeOrder(sell(120, 5)))
+                .then(() => cancelOrder(2, order.from))
+                .then(() => checkOrder(2, undefined))
+                .then(() => checkOrder(1, {prev: 0, next: 3}))
+                .then(() => checkOrder(3, {prev: 1, next: 0}))
+                .then(() => checkOrderbook({firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 3}));
+        });
+
+        it("should cancel a buy order from the middle of buy orders", () => {
+            const order = buy(110, 5);
+            const orderState = {prev: 1, next: 0};
+            return placeOrder(buy(100, 5))
+                .then(() => placeOrder(order))
+                .then(() => placeOrder(buy(120, 5)))
+                .then(() => cancelOrder(2, order.from))
+                .then(() => checkOrder(2, undefined))
+                .then(() => checkOrder(1, {prev: 0, next: 3}))
+                .then(() => checkOrder(3, {prev: 1, next: 0}))
+                .then(() => checkOrderbook({firstOrder: 1, bestBid: 3, bestAsk: 0, lastOrder: 3}));
+        });
+    });
+
+    describe("Order Matching", function() {
+        beforeEach(() => {
+            orderId = 1;
+            return deployExchange()
+            .then(() => initBalances())
+        });
+
+        it("the best buy order should be partially filled by a new sell order", () => {
+            const buyOrder = buy(100, 5);
+            const sellOrder = sell(90, 2);
+            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: 2, price: buyOrder.price}];
+            const newTradeWatcher = exchange.NewTrade();
+            return placeOrder(buyOrder)
+                .then(() => placeOrder(sellOrder))
+                .then(() => checkOrder(2, undefined))
+                .then(() => checkOrder(1, {amount: buyOrder.amount - sellOrder.amount, prev: 0, next: 0}))
+                .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount - sellOrder.amount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: sellOrder.amount * buyOrder.price, reserved: 0}))
+                .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: sellOrder.amount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, buyOrder.from, {
+                        available: tokenDepositAmount - buyOrder.total,
+                        reserved: buyOrder.price * (buyOrder.amount - sellOrder.amount)
+                    }))
+                .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
+                .then(() => checkOrderbook({firstOrder: 1, bestBid: 1, bestAsk: 0, lastOrder: 1}));
+        });
+
+        it("the best sell order should be partially filled by a new buy order", () => {
+            const buyOrder = buy(100, 2);
+            const sellOrder = sell(90, 5);
+            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: 2, price: sellOrder.price}];
+            const newTradeWatcher = exchange.NewTrade();
+            return placeOrder(sellOrder)
+                .then(() => placeOrder(buyOrder))
+                .then(() => checkOrder(2, undefined))
+                .then(() => checkOrder(1, {amount: sellOrder.amount - buyOrder.amount, prev: 0, next: 0}))
+                .then(() => checkBalance(tradeToken.address, sellOrder.from, {
+                        available: tokenDepositAmount - sellOrder.amount,
+                        reserved: sellOrder.amount - buyOrder.amount
+                    }))
+                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: buyOrder.amount * sellOrder.price, reserved: 0}))
+                .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: buyOrder.amount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, buyOrder.from, {
+                        available: tokenDepositAmount - sellOrder.price * buyOrder.amount,
+                        reserved: 0
+                    }))
+                .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
+                .then(() => checkOrderbook({firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 1}));
+        });
+
+        it("a new sell order should be partially filled by the best buy order", () => {
+            const buyOrder = buy(100, 2);
+            const sellOrder = sell(90, 5);
+            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: 2, price: buyOrder.price}];
+            const newTradeWatcher = exchange.NewTrade();
+            return placeOrder(buyOrder)
+                .then(() => placeOrder(sellOrder))
+                .then(() => checkOrder(1, undefined))
+                .then(() => checkOrder(2, {amount: sellOrder.amount - buyOrder.amount, prev: 0, next: 0}))
+                .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount - sellOrder.amount, reserved: sellOrder.amount - buyOrder.amount}))
+                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: buyOrder.total, reserved: 0}))
+                .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: buyOrder.amount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, buyOrder.from, {available: tokenDepositAmount - buyOrder.total, reserved: 0}))
+                .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
+                .then(() => checkOrderbook({firstOrder: 2, bestBid: 0, bestAsk: 2, lastOrder: 2}));
+        });
+
+        it("a new buy order should be partially filled by the best sell order", () => {
+            const buyOrder = buy(100, 5);
+            const sellOrder = sell(90, 2);
+            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: 2, price: sellOrder.price}];
+            const newTradeWatcher = exchange.NewTrade();
+            return placeOrder(sellOrder)
+                .then(() => placeOrder(buyOrder))
+                .then(() => checkOrder(1, undefined))
+                .then(() => checkOrder(2, {amount: buyOrder.amount - sellOrder.amount, prev: 0, next: 0}))
+                .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount - sellOrder.amount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: sellOrder.total, reserved: 0}))
+                .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: sellOrder.amount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, buyOrder.from, {
+                        available: tokenDepositAmount - buyOrder.total + (buyOrder.price - sellOrder.price) * sellOrder.amount,
+                        reserved: buyOrder.price * (buyOrder.amount - sellOrder.amount)
+                    }))
+                .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
+                .then(() => checkOrderbook({firstOrder: 2, bestBid: 2, bestAsk: 0, lastOrder: 2}));
+        });
+
+        it("a new sell order should be completely filled and completely fill the best buy order", () => {
+            const buyOrder = buy(100, 2);
+            const sellOrder = sell(90, 2);
+            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: 2, price: buyOrder.price}];
+            const newTradeWatcher = exchange.NewTrade();
+            return placeOrder(buyOrder)
+                .then(() => placeOrder(sellOrder))
+                .then(() => checkOrder(1, undefined))
+                .then(() => checkOrder(2, undefined))
+                .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount - sellOrder.amount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: buyOrder.total, reserved: 0}))
+                .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: buyOrder.amount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, buyOrder.from, {available: tokenDepositAmount - buyOrder.total, reserved: 0}))
+                .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
+                .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}));
+        });
+
+        it("a new buy order should be completely filled and completely fill the best sell order", () => {
+            const buyOrder = buy(100, 2);
+            const sellOrder = sell(90, 2);
+            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: 2, price: sellOrder.price}];
+            const newTradeWatcher = exchange.NewTrade();
+            return placeOrder(sellOrder)
+                .then(() => placeOrder(buyOrder))
+                .then(() => checkOrder(1, undefined))
+                .then(() => checkOrder(2, undefined))
+                .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount - sellOrder.amount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: sellOrder.total, reserved: 0}))
+                .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: sellOrder.amount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, buyOrder.from, {available: tokenDepositAmount - sellOrder.total, reserved: 0}))
+                .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
+                .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}));
+        });
+
+        it("a new sell order should completely fill several buy orders", () => {
+            let [buy1, buy2, buy3] = [buy(100, 2), buy(110, 3), buy(120, 4)]
+            const sellOrder = sell(105, 10);
+            const tradeEventsStates = [
+                {bidId: 3, askId: 4, side: false, amount: buy3.amount, price: buy3.price},
+                {bidId: 2, askId: 4, side: false, amount: buy2.amount, price: buy2.price}
+            ];
+            const newTradeWatcher = exchange.NewTrade();
+            const expectedTokenSoldAmount = buy3.amount + buy2.amount;
+            return placeOrder(buy1)
+                .then(() => placeOrder(buy2))
+                .then(() => placeOrder(buy3))
+                .then(() => placeOrder(sellOrder))
+                .then(() => checkOrder(1, {amount: buy1.amount}))
+                .then(() => checkOrder(2, undefined))
+                .then(() => checkOrder(3, undefined))
+                .then(() => checkOrder(4, {amount: sellOrder.amount - expectedTokenSoldAmount}))
+                .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount - sellOrder.amount, reserved: sellOrder.amount - expectedTokenSoldAmount}))
+                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: buy3.total + buy2.total, reserved: 0}))
+                .then(() => checkBalance(tradeToken.address, buy1.from, {available: expectedTokenSoldAmount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, buy1.from, {available: tokenDepositAmount - (buy3.total + buy2.total + buy1.total), reserved: buy1.total}))
+                .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
+                .then(() => checkOrderbook({firstOrder: 1, bestBid: 1, bestAsk: 4, lastOrder: 4}));
+        });
+
+        it("a new buy order should completely fill several sell orders", () => {
+            let [sell1, sell2, sell3] = [sell(120, 4), sell(110, 3), sell(100, 2)]
+            const buyOrder = buy(115, 10);
+            const tradeEventsStates = [
+                {bidId: 4, askId: 3, side: true, amount: sell3.amount, price: sell3.price},
+                {bidId: 4, askId: 2, side: true, amount: sell2.amount, price: sell2.price}
+            ];
+            const newTradeWatcher = exchange.NewTrade();
+            const expectedTokenBoughtAmount = sell3.amount + sell2.amount;
+            return placeOrder(sell1)
+                .then(() => placeOrder(sell2))
+                .then(() => placeOrder(sell3))
+                .then(() => placeOrder(buyOrder))
+                .then(() => checkOrder(1, {amount: sell1.amount}))
+                .then(() => checkOrder(2, undefined))
+                .then(() => checkOrder(3, undefined))
+                .then(() => checkOrder(4, {amount: buyOrder.amount - expectedTokenBoughtAmount}))
+                .then(() => checkBalance(tradeToken.address, sell1.from, {available: tokenDepositAmount - (sell3.amount + sell2.amount + sell1.amount), reserved: sell1.amount}))
+                .then(() => checkBalance(baseToken.address, sell1.from, {available: sell3.total + sell2.total, reserved: 0}))
+                .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedTokenBoughtAmount, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, buyOrder.from, {
+                        available: tokenDepositAmount - (sell3.total + sell2.total + buyOrder.price * (buyOrder.amount - expectedTokenBoughtAmount)),
+                        reserved: buyOrder.price * (buyOrder.amount - expectedTokenBoughtAmount)
+                    }))
+                .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
+                .then(() => checkOrderbook({firstOrder: 4, bestBid: 4, bestAsk: 1, lastOrder: 1}));
+        });
+    });
+
+    function deployExchange() {
+        return Token.new()
+            .then(res => {
+                baseToken = res;
+            })
+            .then(() => Token.new())
+            .then(res => {
+                tradeToken = res;
+            })
+            .then(() => Exchange.new({ gas: 10000000 }))
+            .then(res => {
+                exchange = res;
+            });
+    }
+
+    function initBalances() {
+        return baseToken.setBalance(tokenDepositAmount, {from: buyer})
+            .then(() => baseToken.approve(exchange.address, tokenDepositAmount, {from: buyer}))
+            .then(() => tradeToken.setBalance(tokenDepositAmount, {from: seller}))
+            .then(() => tradeToken.approve(exchange.address, tokenDepositAmount, {from: seller}))
+    }
+
+    function checkBalance(token, trader, expectedBalance) {
+        return exchange.getBalance(token, trader)
+            .then(balance => {
+                assert.equal(balance[0].toFixed(), expectedBalance.available, "available balance");
+                assert.equal(balance[1].toFixed(), expectedBalance.reserved, "reserved balance");
+            });
+    }
+
+    function sell(price, amount) {
+        return {sell: true, price: price, amount: amount, from: seller, total: price * amount};
+    }
+
+    function buy(price, amount) {
+        return {sell: false, price: price, amount: amount, from: buyer, total: price * amount};
+    }
+
+    function checkOrder(id, orderState) {
+        if (orderState == undefined) {
+            orderState = {price: 0, sell: false, amount: 0, prev: 0, next: 0};
+        }
+
+        return exchange.getOrder(baseToken.address, tradeToken.address, id)
+            .then(order => {
+                if (orderState.price != undefined)
+                    assert.equal(order[0].toFixed(), orderState.price, "price");
+                if (orderState.sell != undefined)
+                    assert.equal(order[1], orderState.sell, "order type");
+                if (orderState.amount != undefined)
+                    assert.equal(order[2].toFixed(), orderState.amount, "amount");
+                if (orderState.next != undefined)
+                    assert.equal(order[3].toFixed(), orderState.next, "next order");
+                if (orderState.prev != undefined)
+                    assert.equal(order[4].toFixed(), orderState.prev, "prev order");
+            });
+    }
+
+    function checkOrderbook(orderbookState) {
+        return exchange.getOrderBookInfo(baseToken.address, tradeToken.address)
+            .then(orderbook => {
+                assert.equal(orderbook[0].toFixed(), orderbookState.firstOrder, "first order");
+                assert.equal(orderbook[1].toFixed(), orderbookState.bestBid, "best bid");
+                assert.equal(orderbook[2].toFixed(), orderbookState.bestAsk, "best ask");
+                assert.equal(orderbook[3].toFixed(), orderbookState.lastOrder, "last order");
+            });
+    }
+
+    function checkTradeEvents(watcher, eventsState) {
+        let events = watcher.get();
+        assert.equal(events.length, eventsState.length);
+
+        for (let i = 0; i < events.length; i++) {
+            let event = events[i].args;
+            let state = eventsState[i];
+            assert.equal(event.baseToken, baseToken.address);
+            assert.equal(event.tradeToken, tradeToken.address);
+            assert.equal(event.bidId, state.bidId);
+            assert.equal(event.askId, state.askId);
+            assert.equal(event.side, state.side);
+            assert.equal(event.amount, state.amount);
+            assert.equal(event.price.toFixed(), state.price);
+        }
+    }
+
+    function checkNewBestOrderEvent(watcher, expectedState) {
+        let events = watcher.get();
+        assert.equal(events.length, 1);
+
+        let event = events[0].args;
+        assert.equal(event.baseToken, baseToken.address);
+        assert.equal(event.tradeToken, tradeToken.address);
+        assert.equal(event.price.toFixed(), expectedState.price);
+    }
+
+    function checkNewOrderEvent(watcher, expectedState) {
+        let events = watcher.get();
+        assert.equal(events.length, 1);
+
+        let event = events[0].args;
+        assert.equal(event.baseToken, baseToken.address);
+        assert.equal(event.tradeToken, tradeToken.address);
+        assert.equal(event.owner, expectedState.from);
+        assert.equal(event.id, expectedState.id);
+        assert.equal(event.side, expectedState.side);
+        assert.equal(event.price, expectedState.price);
+        // assert.equal(event.amount, expectedState.amount);
+    }
+
+    function placeOrder(order) {
+        let placeOrderTestPromise;
+        if (order.sell === true) {
+            placeOrderTestPromise = exchange.sell(baseToken.address, tradeToken.address, order.amount, order.price, {from: order.from});
+        } else {
+            placeOrderTestPromise = exchange.buy(baseToken.address, tradeToken.address, order.amount, order.price, {from: order.from});
+        }
+        return placeOrderTestPromise.then(() => orderId++);
+    }
+
+    function cancelOrder(id, from) {
+        return exchange.cancelOrder(baseToken.address, tradeToken.address, id, {from: from});
+    }
+
+    let orderId = 1;
+    function testOrder(order, orderItemState, orderbookState) {
+        return placeOrder(order)
+            .then(id => {
+                let orderState;
+                if (orderItemState != undefined) {
+                    orderState = {
+                        price: order.price,
+                        sell: order.sell,
+                        amount: orderItemState.amount != undefined ? orderItemState.amount : order.amount,
+                        prev: orderItemState.prev,
+                        next: orderItemState.next
+                    };
+                }
+                return checkOrder(id, orderState);
+            }).then(() => {
+                return checkOrderbook(orderbookState);
+            });
+    }
+
+});
