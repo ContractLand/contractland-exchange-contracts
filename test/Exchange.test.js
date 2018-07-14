@@ -1,7 +1,7 @@
 const Exchange = artifacts.require("./Exchange.sol");
 const Token = artifacts.require("./TestToken.sol");
 
-describe.only("Exchange", () => {
+describe("Exchange", () => {
     const [buyer, seller] = web3.eth.accounts;
     let exchange, baseToken, tradeToken;
 
