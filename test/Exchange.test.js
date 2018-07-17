@@ -71,21 +71,86 @@ describe("Exchange", () => {
             await exchange.sell(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it.skip("should not be able to create order with zero amount", async () => {
+        it("should not be able to create sell order with zero amount", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': 0,
+              'price': toWei(5),
+              'from': seller
+            }
 
+            await exchange.sell(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it.skip("should not be able to create order with zero price", async () => {
+        it("should not be able to create buy order with zero amount", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': 0,
+              'price': toWei(5),
+              'from': buyer
+            }
 
+            await exchange.buy(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it.skip("should be able to create an order using approveAndCall of an erc827 token", async function () {
+        it("should not be able to create sell order with zero price", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': 100,
+              'price': 0,
+              'from': seller
+            }
+
+            await exchange.sell(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it.skip("should disallow cancelling of other people's orders", async function () {
+        it("should not be able to create buy order with zero price", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': 100,
+              'price': 0,
+              'from': buyer
+            }
+
+            await exchange.buy(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it.skip("should not be able to cancel orders that does not exist", async function () {
+        it.skip("should be able to create a sell order using approveAndCall", async function () {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': 100,
+              'price': toWei(5),
+              'from': seller
+            }
+
+            const data = exchange.contract.sell.getData(order.baseToken, order.tradeToken, order.amount, order.price)
+            console.log(tradeToken.approveAndCall)
+            await tradeToken.approveAndCall(exchange.address, order.amount, data, { from: order.from }).should.be.fulfilled
+        })
+
+        it("should disallow cancelling of other people's orders", async function () {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': 100,
+              'price': toWei(5),
+              'from': buyer
+            }
+            await exchange.buy(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.fulfilled
+
+            const invalidSender = seller
+            const orderId = 1
+            await exchange.cancelOrder(order.baseToken, order.tradeToken, orderId, {from: invalidSender}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to cancel orders that does not exist", async function () {
+            const orderId = 1
+            await exchange.cancelOrder(baseToken.address, tradeToken.address, orderId, {from: seller}).should.be.rejectedWith(EVMRevert)
         })
 
         it.skip("should not allow non-owner to pause exchange", async function () {

@@ -49,7 +49,9 @@ contract Exchange {
     }
 
     function sell(address baseToken, address tradeToken, uint amount, uint price) public returns (uint64) {
-        require(baseToken != tradeToken);
+        require(amount != 0 &&
+                price != 0 &&
+                baseToken != tradeToken);
 
         ERC20(tradeToken).transferFrom(msg.sender, this, amount);
         reserved[tradeToken][msg.sender] = reserved[tradeToken][msg.sender].add(amount);
@@ -151,7 +153,9 @@ contract Exchange {
     }
 
     function buy(address baseToken, address tradeToken, uint amount, uint price) public returns (uint64) {
-        require(baseToken != tradeToken);
+        require(amount != 0 &&
+                price != 0 &&
+                baseToken != tradeToken);
 
         uint reservedAmount = amount.mul(price).div(priceDenominator);
         ERC20(baseToken).transferFrom(msg.sender, this, reservedAmount);
@@ -252,7 +256,7 @@ contract Exchange {
         }
     }
 
-    // TODO: Check other cancel conditions (see old exchange)
+    // TODO: get ride of base and trade token address here, and get from order object
     function cancelOrder(address baseToken, address tradeToken, uint64 id) public {
         Order memory order = orders[id];
         require(order.owner == msg.sender);
