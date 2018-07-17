@@ -1,5 +1,7 @@
 import { expect } from 'chai'
 import EVMRevert from './helpers/EVMRevert'
+import toWei from './helpers/toWei'
+import fromWei from './helpers/fromWei'
 
 require('chai')
   .use(require('chai-as-promised'))
@@ -26,7 +28,7 @@ describe("Exchange", () => {
             'baseToken': baseToken.address,
             'tradeToken': baseToken.address,
             'amount': 100,
-            'price': 5,
+            'price': toWei(5),
             'from': buyer
           }
 
@@ -38,7 +40,7 @@ describe("Exchange", () => {
             'baseToken': tradeToken.address,
             'tradeToken': tradeToken.address,
             'amount': 100,
-            'price': 5,
+            'price': toWei(5),
             'from': seller
           }
 
@@ -50,7 +52,7 @@ describe("Exchange", () => {
               'baseToken': '0x0000000000000000000000000000000000000000',
               'tradeToken': tradeToken.address,
               'amount': 100,
-              'price': 5,
+              'price': toWei(5),
               'from': buyer
             }
 
@@ -62,7 +64,7 @@ describe("Exchange", () => {
               'baseToken': baseToken.address,
               'tradeToken': '0x0000000000000000000000000000000000000000',
               'amount': 100,
-              'price': 5,
+              'price': toWei(5),
               'from': seller
             }
 
@@ -283,11 +285,11 @@ describe("Exchange", () => {
                 .then(() => checkOrder(2, undefined))
                 .then(() => checkOrder(1, {amount: buyOrder.amount - sellOrder.amount, prev: 0, next: 0}))
                 .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount - sellOrder.amount, reserved: 0}))
-                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: sellOrder.amount * buyOrder.price, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: sellOrder.amount * fromWei(buyOrder.price), reserved: 0}))
                 .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: sellOrder.amount, reserved: 0}))
                 .then(() => checkBalance(baseToken.address, buyOrder.from, {
                         available: tokenDepositAmount - buyOrder.total,
-                        reserved: buyOrder.price * (buyOrder.amount - sellOrder.amount)
+                        reserved: fromWei(buyOrder.price) * (buyOrder.amount - sellOrder.amount)
                     }))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
                 .then(() => checkOrderbook({firstOrder: 1, bestBid: 1, bestAsk: 0, lastOrder: 1}));
@@ -306,10 +308,10 @@ describe("Exchange", () => {
                         available: tokenDepositAmount - sellOrder.amount,
                         reserved: sellOrder.amount - buyOrder.amount
                     }))
-                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: buyOrder.amount * sellOrder.price, reserved: 0}))
+                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: buyOrder.amount * fromWei(sellOrder.price), reserved: 0}))
                 .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: buyOrder.amount, reserved: 0}))
                 .then(() => checkBalance(baseToken.address, buyOrder.from, {
-                        available: tokenDepositAmount - sellOrder.price * buyOrder.amount,
+                        available: tokenDepositAmount - fromWei(sellOrder.price) * buyOrder.amount,
                         reserved: 0
                     }))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
@@ -346,8 +348,8 @@ describe("Exchange", () => {
                 .then(() => checkBalance(baseToken.address, sellOrder.from, {available: sellOrder.total, reserved: 0}))
                 .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: sellOrder.amount, reserved: 0}))
                 .then(() => checkBalance(baseToken.address, buyOrder.from, {
-                        available: tokenDepositAmount - buyOrder.total + (buyOrder.price - sellOrder.price) * sellOrder.amount,
-                        reserved: buyOrder.price * (buyOrder.amount - sellOrder.amount)
+                        available: tokenDepositAmount - buyOrder.total + fromWei(buyOrder.price.minus(sellOrder.price)) * sellOrder.amount,
+                        reserved: fromWei(buyOrder.price) * (buyOrder.amount - sellOrder.amount)
                     }))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
                 .then(() => checkOrderbook({firstOrder: 2, bestBid: 2, bestAsk: 0, lastOrder: 2}));
@@ -433,8 +435,8 @@ describe("Exchange", () => {
                 .then(() => checkBalance(baseToken.address, sell1.from, {available: sell3.total + sell2.total, reserved: 0}))
                 .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedTokenBoughtAmount, reserved: 0}))
                 .then(() => checkBalance(baseToken.address, buyOrder.from, {
-                        available: tokenDepositAmount - (sell3.total + sell2.total + buyOrder.price * (buyOrder.amount - expectedTokenBoughtAmount)),
-                        reserved: buyOrder.price * (buyOrder.amount - expectedTokenBoughtAmount)
+                        available: tokenDepositAmount - (sell3.total + sell2.total + fromWei(buyOrder.price) * (buyOrder.amount - expectedTokenBoughtAmount)),
+                        reserved: fromWei(buyOrder.price) * (buyOrder.amount - expectedTokenBoughtAmount)
                     }))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
                 .then(() => checkOrderbook({firstOrder: 4, bestBid: 4, bestAsk: 1, lastOrder: 1}));
@@ -480,11 +482,11 @@ describe("Exchange", () => {
     }
 
     function sell(price, amount) {
-        return {sell: true, price: price, amount: amount, from: seller, total: price * amount};
+        return {sell: true, price: toWei(price), amount: amount, from: seller, total: price * amount};
     }
 
     function buy(price, amount) {
-        return {sell: false, price: price, amount: amount, from: buyer, total: price * amount};
+        return {sell: false, price: toWei(price), amount: amount, from: buyer, total: price * amount};
     }
 
     function checkOrder(id, orderState) {
@@ -530,7 +532,7 @@ describe("Exchange", () => {
             assert.equal(event.askId, state.askId);
             assert.equal(event.side, state.side);
             assert.equal(event.amount, state.amount);
-            assert.equal(event.price.toFixed(), state.price);
+            assert.equal(event.price.toString(), state.price.toString());
         }
     }
 
@@ -541,7 +543,7 @@ describe("Exchange", () => {
         let event = events[0].args;
         assert.equal(event.baseToken, baseToken.address);
         assert.equal(event.tradeToken, tradeToken.address);
-        assert.equal(event.price.toFixed(), expectedState.price);
+        assert.equal(event.price.toString(), expectedState.price.toString());
     }
 
     function checkNewOrderEvent(watcher, expectedState) {
@@ -554,7 +556,7 @@ describe("Exchange", () => {
         assert.equal(event.owner, expectedState.from);
         assert.equal(event.id, expectedState.id);
         assert.equal(event.side, expectedState.side);
-        assert.equal(event.price, expectedState.price);
+        assert.equal(event.price.toString(), expectedState.price.toString());
         assert.equal(event.amount, expectedState.amount);
     }
 

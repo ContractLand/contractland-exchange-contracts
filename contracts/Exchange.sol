@@ -38,6 +38,8 @@ contract Exchange {
     // Mapping of base token to trade token to Pair
     mapping(address => mapping(address => Pair)) pairs;
 
+    uint64 private priceDenominator = 1000000000000000000; // 18 decimal places
+
     event NewOrder(address indexed baseToken, address indexed tradeToken, address indexed owner, uint64 id, bool sell, uint price, uint amount, uint64 timestamp);
     event NewAsk(address indexed baseToken, address indexed tradeToken, uint price);
     event NewBid(address indexed baseToken, address indexed tradeToken, uint price);
@@ -66,43 +68,47 @@ contract Exchange {
         matchSell(baseToken, tradeToken, pair, order, id);
 
         if (order.amount != 0) {
-            uint64 currentOrderId;
-            uint64 n = pair.pricesTree.find(price);
-            if (n != 0 && price >= orders[n].price) {
-                currentOrderId = pair.orderbook[n].next;
-            } else {
-                currentOrderId = n;
-            }
-
-            ListItem memory orderItem;
-            orderItem.next = currentOrderId;
-            uint64 prevOrderId;
-            if (currentOrderId != 0) {
-                prevOrderId = pair.orderbook[currentOrderId].prev;
-                pair.orderbook[currentOrderId].prev = id;
-            } else {
-                prevOrderId = pair.lastOrder;
-                pair.lastOrder = id;
-            }
-
-            orderItem.prev = prevOrderId;
-            if (prevOrderId != 0) {
-                pair.orderbook[prevOrderId].next = id;
-            } else {
-                pair.firstOrder = id;
-            }
-
-            if (currentOrderId == pair.bestAsk) {
-                pair.bestAsk = id;
-                NewAsk(baseToken, tradeToken, order.price);
-            }
-
-            orders[id] = order;
-            pair.orderbook[id] = orderItem;
-            pair.pricesTree.placeAfter(n, id, price);
+            addToAskOrder(id, pair, order, baseToken, tradeToken);
         }
 
         return id;
+    }
+
+    function addToAskOrder(uint64 id, Pair storage pair, Order memory order, address baseToken, address tradeToken) private {
+      uint64 currentOrderId;
+      uint64 n = pair.pricesTree.find(order.price);
+      if (n != 0 && order.price >= orders[n].price) {
+          currentOrderId = pair.orderbook[n].next;
+      } else {
+          currentOrderId = n;
+      }
+
+      ListItem memory orderItem;
+      orderItem.next = currentOrderId;
+      uint64 prevOrderId;
+      if (currentOrderId != 0) {
+          prevOrderId = pair.orderbook[currentOrderId].prev;
+          pair.orderbook[currentOrderId].prev = id;
+      } else {
+          prevOrderId = pair.lastOrder;
+          pair.lastOrder = id;
+      }
+
+      orderItem.prev = prevOrderId;
+      if (prevOrderId != 0) {
+          pair.orderbook[prevOrderId].next = id;
+      } else {
+          pair.firstOrder = id;
+      }
+
+      if (currentOrderId == pair.bestAsk) {
+          pair.bestAsk = id;
+          NewAsk(baseToken, tradeToken, order.price);
+      }
+
+      orders[id] = order;
+      pair.orderbook[id] = orderItem;
+      pair.pricesTree.placeAfter(n, id, order.price);
     }
 
     function matchSell(address baseToken, address tradeToken, Pair storage pair, Order order, uint64 id) private {
@@ -123,8 +129,9 @@ contract Exchange {
             //TODO: Why not refund remaining tradeToken to seller here? Using matchingOrder's price only here for some reason
             reserved[tradeToken][msg.sender] = reserved[tradeToken][msg.sender].sub(tradeAmount);
             ERC20(tradeToken).transfer(matchingOrder.owner, tradeAmount);
-            ERC20(baseToken).transfer(msg.sender, tradeAmount.mul(matchingOrder.price));
-            reserved[baseToken][matchingOrder.owner] = reserved[baseToken][matchingOrder.owner].sub(tradeAmount.mul(matchingOrder.price));
+            uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
+            ERC20(baseToken).transfer(msg.sender, baseTokenAmount);
+            reserved[baseToken][matchingOrder.owner] = reserved[baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
             NewTrade(baseToken, tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
 
@@ -146,8 +153,9 @@ contract Exchange {
     function buy(address baseToken, address tradeToken, uint amount, uint price) public returns (uint64) {
         require(baseToken != tradeToken);
 
-        ERC20(baseToken).transferFrom(msg.sender, this, amount.mul(price));
-        reserved[baseToken][msg.sender] = reserved[baseToken][msg.sender].add(amount.mul(price));
+        uint reservedAmount = amount.mul(price).div(priceDenominator);
+        ERC20(baseToken).transferFrom(msg.sender, this, reservedAmount);
+        reserved[baseToken][msg.sender] = reserved[baseToken][msg.sender].add(reservedAmount);
 
         Order memory order;
         order.sell = false;
@@ -163,43 +171,47 @@ contract Exchange {
         matchBuy(baseToken, tradeToken, pair, order, id);
 
         if (order.amount != 0) {
-            uint64 currentOrderId;
-            uint64 n = pair.pricesTree.find(price);
-            if (n != 0 && price <= orders[n].price) {
-                currentOrderId = pair.orderbook[n].prev;
-            } else {
-                currentOrderId = n;
-            }
-
-            ListItem memory orderItem;
-            orderItem.prev = currentOrderId;
-            uint64 prevOrderId;
-            if (currentOrderId != 0) {
-                prevOrderId = pair.orderbook[currentOrderId].next;
-                pair.orderbook[currentOrderId].next = id;
-            } else {
-                prevOrderId = pair.firstOrder;
-                pair.firstOrder = id;
-            }
-
-            orderItem.next = prevOrderId;
-            if (prevOrderId != 0) {
-                pair.orderbook[prevOrderId].prev = id;
-            } else {
-                pair.lastOrder = id;
-            }
-
-            if (currentOrderId == pair.bestBid) {
-                pair.bestBid = id;
-                NewBid(baseToken, tradeToken, order.price);
-            }
-
-            orders[id] = order;
-            pair.orderbook[id] = orderItem;
-            pair.pricesTree.placeAfter(n, id, order.price);
+            addToBidOrder(id, pair, order, baseToken, tradeToken);
         }
 
         return id;
+    }
+
+    function addToBidOrder(uint64 id, Pair storage pair, Order memory order, address baseToken, address tradeToken) private {
+      uint64 currentOrderId;
+      uint64 n = pair.pricesTree.find(order.price);
+      if (n != 0 && order.price <= orders[n].price) {
+          currentOrderId = pair.orderbook[n].prev;
+      } else {
+          currentOrderId = n;
+      }
+
+      ListItem memory orderItem;
+      orderItem.prev = currentOrderId;
+      uint64 prevOrderId;
+      if (currentOrderId != 0) {
+          prevOrderId = pair.orderbook[currentOrderId].next;
+          pair.orderbook[currentOrderId].next = id;
+      } else {
+          prevOrderId = pair.firstOrder;
+          pair.firstOrder = id;
+      }
+
+      orderItem.next = prevOrderId;
+      if (prevOrderId != 0) {
+          pair.orderbook[prevOrderId].prev = id;
+      } else {
+          pair.lastOrder = id;
+      }
+
+      if (currentOrderId == pair.bestBid) {
+          pair.bestBid = id;
+          NewBid(baseToken, tradeToken, order.price);
+      }
+
+      orders[id] = order;
+      pair.orderbook[id] = orderItem;
+      pair.pricesTree.placeAfter(n, id, order.price);
     }
 
     function matchBuy(address baseToken, address tradeToken, Pair storage pair, Order order, uint64 id) private {
@@ -217,10 +229,10 @@ contract Exchange {
                 matchingOrder.amount = 0;
             }
 
-            reserved[baseToken][order.owner] = reserved[baseToken][order.owner].sub(tradeAmount.mul(order.price));
-            ERC20(baseToken).transfer(order.owner, tradeAmount.mul(order.price.sub(matchingOrder.price)));
+            reserved[baseToken][order.owner] = reserved[baseToken][order.owner].sub(tradeAmount.mul(order.price).div(priceDenominator));
+            ERC20(baseToken).transfer(order.owner, tradeAmount.mul(order.price.sub(matchingOrder.price)).div(priceDenominator));
             reserved[tradeToken][matchingOrder.owner] = reserved[tradeToken][matchingOrder.owner].sub(tradeAmount);
-            ERC20(baseToken).transfer(matchingOrder.owner, tradeAmount.mul(matchingOrder.price));
+            ERC20(baseToken).transfer(matchingOrder.owner, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
             ERC20(tradeToken).transfer(order.owner, tradeAmount);
 
             NewTrade(baseToken, tradeToken, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(now));
@@ -249,8 +261,8 @@ contract Exchange {
             reserved[tradeToken][msg.sender] = reserved[tradeToken][msg.sender].sub(order.amount);
             ERC20(tradeToken).transfer(msg.sender, order.amount);
         } else {
-            reserved[baseToken][msg.sender] = reserved[baseToken][msg.sender].sub(order.amount.mul(order.price));
-            ERC20(baseToken).transfer(msg.sender, order.amount.mul(order.price));
+            reserved[baseToken][msg.sender] = reserved[baseToken][msg.sender].sub(order.amount.mul(order.price).div(priceDenominator));
+            ERC20(baseToken).transfer(msg.sender, order.amount.mul(order.price).div(priceDenominator));
         }
 
         Pair storage pair = pairs[baseToken][tradeToken];
