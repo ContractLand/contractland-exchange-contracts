@@ -10,7 +10,7 @@ require('chai')
 const Exchange = artifacts.require("./Exchange.sol");
 const Token = artifacts.require("./TestToken.sol");
 
-describe("Exchange", () => {
+describe.only("Exchange", () => {
     const [buyer, seller] = web3.eth.accounts;
     let exchange, baseToken, tradeToken;
 
@@ -32,7 +32,7 @@ describe("Exchange", () => {
             'from': buyer
           }
 
-          await exchange.buy(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+          await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
         it("should not be able to create sell order with same baseToken and tradeToken", async () => {
@@ -44,7 +44,7 @@ describe("Exchange", () => {
             'from': seller
           }
 
-          await exchange.sell(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+          await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
         it("should not be able to create buy order without sufficient baseToken", async () => {
@@ -56,7 +56,7 @@ describe("Exchange", () => {
               'from': buyer
             }
 
-            await exchange.buy(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
         it("should not be able to create sell order without sufficient tradeToken", async () => {
@@ -68,7 +68,7 @@ describe("Exchange", () => {
               'from': seller
             }
 
-            await exchange.sell(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+            await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
         it("should not be able to create sell order with zero amount", async () => {
@@ -80,7 +80,7 @@ describe("Exchange", () => {
               'from': seller
             }
 
-            await exchange.sell(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+            await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
         it("should not be able to create buy order with zero amount", async () => {
@@ -92,7 +92,7 @@ describe("Exchange", () => {
               'from': buyer
             }
 
-            await exchange.buy(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
         it("should not be able to create sell order with zero price", async () => {
@@ -104,7 +104,7 @@ describe("Exchange", () => {
               'from': seller
             }
 
-            await exchange.sell(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+            await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
         it("should not be able to create buy order with zero price", async () => {
@@ -116,21 +116,7 @@ describe("Exchange", () => {
               'from': buyer
             }
 
-            await exchange.buy(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
-        })
-
-        it.skip("should be able to create a sell order using approveAndCall", async function () {
-            const order = {
-              'baseToken': baseToken.address,
-              'tradeToken': tradeToken.address,
-              'amount': 100,
-              'price': toWei(5),
-              'from': seller
-            }
-
-            const data = exchange.contract.sell.getData(order.baseToken, order.tradeToken, order.amount, order.price)
-            console.log(tradeToken.approveAndCall)
-            await tradeToken.approveAndCall(exchange.address, order.amount, data, { from: order.from }).should.be.fulfilled
+            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
         it("should disallow cancelling of other people's orders", async function () {
@@ -141,7 +127,7 @@ describe("Exchange", () => {
               'price': toWei(5),
               'from': buyer
             }
-            await exchange.buy(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.fulfilled
+            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.fulfilled
 
             const invalidSender = seller
             const orderId = 1
@@ -628,9 +614,11 @@ describe("Exchange", () => {
     function placeOrder(order) {
         let placeOrderTestPromise;
         if (order.sell === true) {
-            placeOrderTestPromise = exchange.sell(baseToken.address, tradeToken.address, order.amount, order.price, {from: order.from});
+            const data = exchange.contract.sell.getData(baseToken.address, tradeToken.address, order.from, order.amount, order.price)
+            placeOrderTestPromise = tradeToken.approveAndCall(exchange.address, order.amount, data, { from: order.from })
         } else {
-            placeOrderTestPromise = exchange.buy(baseToken.address, tradeToken.address, order.amount, order.price, {from: order.from});
+            const data = exchange.contract.buy.getData(baseToken.address, tradeToken.address, order.from, order.amount, order.price)
+            placeOrderTestPromise = baseToken.approveAndCall(exchange.address, order.total, data, { from: order.from })
         }
         return placeOrderTestPromise.then(() => orderId++);
     }

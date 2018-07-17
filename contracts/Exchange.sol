@@ -49,17 +49,17 @@ contract Exchange {
     function Exchange() public {
     }
 
-    function sell(address baseToken, address tradeToken, uint amount, uint price) public returns (uint64) {
+    function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public returns (uint64) {
         require(amount != 0 &&
                 price != 0 &&
                 baseToken != tradeToken);
 
-        ERC20(tradeToken).transferFrom(msg.sender, this, amount);
-        reserved[tradeToken][msg.sender] = reserved[tradeToken][msg.sender].add(amount);
+        ERC20(tradeToken).transferFrom(owner, this, amount);
+        reserved[tradeToken][owner] = reserved[tradeToken][owner].add(amount);
 
         Order memory order;
         order.sell = true;
-        order.owner = msg.sender;
+        order.owner = owner;
         order.baseToken = baseToken;
         order.tradeToken = tradeToken;
         order.price = price;
@@ -67,7 +67,7 @@ contract Exchange {
         order.timestamp = uint64(now);
 
         uint64 id = ++lastOrderId;
-        NewOrder(baseToken, tradeToken, msg.sender, id, true, price, amount, order.timestamp);
+        NewOrder(baseToken, tradeToken, owner, id, true, price, amount, order.timestamp);
 
         Pair storage pair = pairs[baseToken][tradeToken];
         matchSell(pair, order, id);
@@ -132,10 +132,10 @@ contract Exchange {
             }
 
             //TODO: Why not refund remaining tradeToken to seller here? Using matchingOrder's price only here for some reason
-            reserved[order.tradeToken][msg.sender] = reserved[order.tradeToken][msg.sender].sub(tradeAmount);
+            reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(tradeAmount);
             ERC20(order.tradeToken).transfer(matchingOrder.owner, tradeAmount);
             uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
-            ERC20(order.baseToken).transfer(msg.sender, baseTokenAmount);
+            ERC20(order.baseToken).transfer(order.owner, baseTokenAmount);
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
             NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
@@ -155,18 +155,18 @@ contract Exchange {
         }
     }
 
-    function buy(address baseToken, address tradeToken, uint amount, uint price) public returns (uint64) {
+    function buy(address baseToken, address tradeToken, address owner, uint amount, uint price) public returns (uint64) {
         require(amount != 0 &&
                 price != 0 &&
                 baseToken != tradeToken);
 
         uint reservedAmount = amount.mul(price).div(priceDenominator);
-        ERC20(baseToken).transferFrom(msg.sender, this, reservedAmount);
-        reserved[baseToken][msg.sender] = reserved[baseToken][msg.sender].add(reservedAmount);
+        ERC20(baseToken).transferFrom(owner, this, reservedAmount);
+        reserved[baseToken][owner] = reserved[baseToken][owner].add(reservedAmount);
 
         Order memory order;
         order.sell = false;
-        order.owner = msg.sender;
+        order.owner = owner;
         order.baseToken = baseToken;
         order.tradeToken = tradeToken;
         order.price = price;
@@ -174,7 +174,7 @@ contract Exchange {
         order.timestamp = uint64(now);
 
         uint64 id = ++lastOrderId;
-        NewOrder(baseToken, tradeToken, msg.sender, id, false, price, amount, order.timestamp);
+        NewOrder(baseToken, tradeToken, owner, id, false, price, amount, order.timestamp);
 
         Pair storage pair = pairs[baseToken][tradeToken];
         matchBuy(pair, order, id);
