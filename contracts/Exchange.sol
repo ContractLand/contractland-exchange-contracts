@@ -38,20 +38,17 @@ contract Exchange {
     // Mapping of base token to trade token to Pair
     mapping(address => mapping(address => Pair)) pairs;
 
-    event NewOrder(address indexed baseToken, address indexed tradeToken, address indexed owner, uint64 id, bool sell, uint price, uint64 timestamp);
+    event NewOrder(address indexed baseToken, address indexed tradeToken, address indexed owner, uint64 id, bool sell, uint price, uint amount, uint64 timestamp);
     event NewAsk(address indexed baseToken, address indexed tradeToken, uint price);
     event NewBid(address indexed baseToken, address indexed tradeToken, uint price);
     event NewTrade(address indexed baseToken, address indexed tradeToken, uint64 bidId, uint64 askId, bool side, uint amount, uint price, uint64 timestamp);
-
-    modifier isToken(address token) {
-        require(token != 0);
-        _;
-    }
 
     function Exchange() public {
     }
 
     function sell(address baseToken, address tradeToken, uint amount, uint price) public returns (uint64) {
+        require(baseToken != tradeToken);
+
         ERC20(tradeToken).transferFrom(msg.sender, this, amount);
         reserved[tradeToken][msg.sender] = reserved[tradeToken][msg.sender].add(amount);
 
@@ -63,7 +60,7 @@ contract Exchange {
         order.timestamp = uint64(now);
 
         uint64 id = ++lastOrderId;
-        NewOrder(baseToken, tradeToken, msg.sender, id, true, price, order.timestamp);
+        NewOrder(baseToken, tradeToken, msg.sender, id, true, price, order.amount, order.timestamp);
 
         Pair storage pair = pairs[baseToken][tradeToken];
         matchSell(baseToken, tradeToken, pair, order, id);
@@ -147,6 +144,8 @@ contract Exchange {
     }
 
     function buy(address baseToken, address tradeToken, uint amount, uint price) public returns (uint64) {
+        require(baseToken != tradeToken);
+
         ERC20(baseToken).transferFrom(msg.sender, this, amount.mul(price));
         reserved[baseToken][msg.sender] = reserved[baseToken][msg.sender].add(amount.mul(price));
 
@@ -158,7 +157,7 @@ contract Exchange {
         order.timestamp = uint64(now);
 
         uint64 id = ++lastOrderId;
-        NewOrder(baseToken, tradeToken, msg.sender, id, false, price, order.timestamp);
+        NewOrder(baseToken, tradeToken, msg.sender, id, false, price, order.amount, order.timestamp);
 
         Pair storage pair = pairs[baseToken][tradeToken];
         matchBuy(baseToken, tradeToken, pair, order, id);
@@ -242,7 +241,7 @@ contract Exchange {
     }
 
     // TODO: Check other cancel conditions (see old exchange)
-    function cancelOrder(address baseToken, address tradeToken, uint64 id) isToken(baseToken) public {
+    function cancelOrder(address baseToken, address tradeToken, uint64 id) public {
         Order memory order = orders[id];
         require(order.owner == msg.sender);
 

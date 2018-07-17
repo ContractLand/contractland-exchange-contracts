@@ -1,3 +1,10 @@
+import { expect } from 'chai'
+import EVMRevert from './helpers/EVMRevert'
+
+require('chai')
+  .use(require('chai-as-promised'))
+  .should()
+
 const Exchange = artifacts.require("./Exchange.sol");
 const Token = artifacts.require("./TestToken.sol");
 
@@ -12,7 +19,81 @@ describe("Exchange", () => {
             orderId = 1;
             return deployExchange()
             .then(() => initBalances())
-        });
+        })
+
+        it("should not be able to create buy order with same baseToken and tradeToken", async () => {
+          const order = {
+            'baseToken': baseToken.address,
+            'tradeToken': baseToken.address,
+            'amount': 100,
+            'price': 5,
+            'from': buyer
+          }
+
+          await exchange.buy(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create sell order with same baseToken and tradeToken", async () => {
+          const order = {
+            'baseToken': tradeToken.address,
+            'tradeToken': tradeToken.address,
+            'amount': 100,
+            'price': 5,
+            'from': seller
+          }
+
+          await exchange.sell(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create buy order without sufficient baseToken", async () => {
+            const order = {
+              'baseToken': '0x0000000000000000000000000000000000000000',
+              'tradeToken': tradeToken.address,
+              'amount': 100,
+              'price': 5,
+              'from': buyer
+            }
+
+            await exchange.buy(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create sell order without sufficient tradeToken", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': '0x0000000000000000000000000000000000000000',
+              'amount': 100,
+              'price': 5,
+              'from': seller
+            }
+
+            await exchange.sell(order.baseToken, order.tradeToken, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it.skip("should not be able to create order with zero amount", async () => {
+
+        })
+
+        it.skip("should not be able to create order with zero price", async () => {
+
+        })
+
+        it.skip("should be able to create an order using approveAndCall of an erc827 token", async function () {
+        })
+
+        it.skip("should disallow cancelling of other people's orders", async function () {
+        })
+
+        it.skip("should not be able to cancel orders that does not exist", async function () {
+        })
+
+        it.skip("should not allow non-owner to pause exchange", async function () {
+        })
+
+        it.skip("should pause buy", async function () {
+        })
+
+        it.skip("should pause sell", async function () {
+        })
 
         it("should insert a new buy order as first", () => {
             const order = buy(100, 5);
@@ -474,7 +555,7 @@ describe("Exchange", () => {
         assert.equal(event.id, expectedState.id);
         assert.equal(event.side, expectedState.side);
         assert.equal(event.price, expectedState.price);
-        // assert.equal(event.amount, expectedState.amount);
+        assert.equal(event.amount, expectedState.amount);
     }
 
     function placeOrder(order) {
