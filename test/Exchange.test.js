@@ -145,12 +145,12 @@ describe("Exchange", () => {
 
             const invalidSender = seller
             const orderId = 1
-            await exchange.cancelOrder(order.baseToken, order.tradeToken, orderId, {from: invalidSender}).should.be.rejectedWith(EVMRevert)
+            await cancelOrder(orderId, invalidSender).should.be.rejectedWith(EVMRevert)
         })
 
         it("should not be able to cancel orders that does not exist", async function () {
             const orderId = 1
-            await exchange.cancelOrder(baseToken.address, tradeToken.address, orderId, {from: seller}).should.be.rejectedWith(EVMRevert)
+            await cancelOrder(orderId, seller).should.be.rejectedWith(EVMRevert)
         })
 
         it.skip("should not allow non-owner to pause exchange", async function () {
@@ -559,7 +559,7 @@ describe("Exchange", () => {
             orderState = {price: 0, sell: false, amount: 0, prev: 0, next: 0};
         }
 
-        return exchange.getOrder(baseToken.address, tradeToken.address, id)
+        return exchange.getOrder(id)
             .then(order => {
                 if (orderState.price != undefined)
                     assert.equal(order[0].toFixed(), orderState.price, "price");
@@ -636,7 +636,7 @@ describe("Exchange", () => {
     }
 
     function cancelOrder(id, from) {
-        return exchange.cancelOrder(baseToken.address, tradeToken.address, id, {from: from});
+        return exchange.cancelOrder(id, {from: from});
     }
 
     let orderId = 1;

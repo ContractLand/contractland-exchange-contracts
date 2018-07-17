@@ -14,8 +14,9 @@ contract Exchange {
     }
 
     struct Order {
-        //TODO: Add token addresses in Order
         address owner;
+        address baseToken;
+        address tradeToken;
         uint amount;
         uint price;
         bool sell;
@@ -59,24 +60,26 @@ contract Exchange {
         Order memory order;
         order.sell = true;
         order.owner = msg.sender;
+        order.baseToken = baseToken;
+        order.tradeToken = tradeToken;
         order.price = price;
         order.amount = amount;
         order.timestamp = uint64(now);
 
         uint64 id = ++lastOrderId;
-        NewOrder(baseToken, tradeToken, msg.sender, id, true, price, order.amount, order.timestamp);
+        NewOrder(baseToken, tradeToken, msg.sender, id, true, price, amount, order.timestamp);
 
         Pair storage pair = pairs[baseToken][tradeToken];
-        matchSell(baseToken, tradeToken, pair, order, id);
+        matchSell(pair, order, id);
 
         if (order.amount != 0) {
-            addToAskOrder(id, pair, order, baseToken, tradeToken);
+            addToAskOrder(id, pair, order);
         }
 
         return id;
     }
 
-    function addToAskOrder(uint64 id, Pair storage pair, Order memory order, address baseToken, address tradeToken) private {
+    function addToAskOrder(uint64 id, Pair storage pair, Order memory order) private {
       uint64 currentOrderId;
       uint64 n = pair.pricesTree.find(order.price);
       if (n != 0 && order.price >= orders[n].price) {
@@ -105,7 +108,7 @@ contract Exchange {
 
       if (currentOrderId == pair.bestAsk) {
           pair.bestAsk = id;
-          NewAsk(baseToken, tradeToken, order.price);
+          NewAsk(order.baseToken, order.tradeToken, order.price);
       }
 
       orders[id] = order;
@@ -113,7 +116,7 @@ contract Exchange {
       pair.pricesTree.placeAfter(n, id, order.price);
     }
 
-    function matchSell(address baseToken, address tradeToken, Pair storage pair, Order order, uint64 id) private {
+    function matchSell(Pair storage pair, Order order, uint64 id) private {
         uint64 currentOrderId = pair.bestBid;
         while (currentOrderId != 0 && order.amount != 0 && order.price <= orders[currentOrderId].price) {
             Order memory matchingOrder = orders[currentOrderId];
@@ -129,13 +132,13 @@ contract Exchange {
             }
 
             //TODO: Why not refund remaining tradeToken to seller here? Using matchingOrder's price only here for some reason
-            reserved[tradeToken][msg.sender] = reserved[tradeToken][msg.sender].sub(tradeAmount);
-            ERC20(tradeToken).transfer(matchingOrder.owner, tradeAmount);
+            reserved[order.tradeToken][msg.sender] = reserved[order.tradeToken][msg.sender].sub(tradeAmount);
+            ERC20(order.tradeToken).transfer(matchingOrder.owner, tradeAmount);
             uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
-            ERC20(baseToken).transfer(msg.sender, baseTokenAmount);
-            reserved[baseToken][matchingOrder.owner] = reserved[baseToken][matchingOrder.owner].sub(baseTokenAmount);
+            ERC20(order.baseToken).transfer(msg.sender, baseTokenAmount);
+            reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
-            NewTrade(baseToken, tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
+            NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
 
             if (matchingOrder.amount != 0) {
                 orders[currentOrderId] = matchingOrder;
@@ -148,7 +151,7 @@ contract Exchange {
 
         if (pair.bestBid != currentOrderId) {
             pair.bestBid = currentOrderId;
-            NewBid(baseToken, tradeToken, orders[currentOrderId].price);
+            NewBid(order.baseToken, order.tradeToken, orders[currentOrderId].price);
         }
     }
 
@@ -164,24 +167,26 @@ contract Exchange {
         Order memory order;
         order.sell = false;
         order.owner = msg.sender;
+        order.baseToken = baseToken;
+        order.tradeToken = tradeToken;
         order.price = price;
         order.amount = amount;
         order.timestamp = uint64(now);
 
         uint64 id = ++lastOrderId;
-        NewOrder(baseToken, tradeToken, msg.sender, id, false, price, order.amount, order.timestamp);
+        NewOrder(baseToken, tradeToken, msg.sender, id, false, price, amount, order.timestamp);
 
         Pair storage pair = pairs[baseToken][tradeToken];
-        matchBuy(baseToken, tradeToken, pair, order, id);
+        matchBuy(pair, order, id);
 
         if (order.amount != 0) {
-            addToBidOrder(id, pair, order, baseToken, tradeToken);
+            addToBidOrder(id, pair, order);
         }
 
         return id;
     }
 
-    function addToBidOrder(uint64 id, Pair storage pair, Order memory order, address baseToken, address tradeToken) private {
+    function addToBidOrder(uint64 id, Pair storage pair, Order memory order) private {
       uint64 currentOrderId;
       uint64 n = pair.pricesTree.find(order.price);
       if (n != 0 && order.price <= orders[n].price) {
@@ -210,7 +215,7 @@ contract Exchange {
 
       if (currentOrderId == pair.bestBid) {
           pair.bestBid = id;
-          NewBid(baseToken, tradeToken, order.price);
+          NewBid(order.baseToken, order.tradeToken, order.price);
       }
 
       orders[id] = order;
@@ -218,7 +223,7 @@ contract Exchange {
       pair.pricesTree.placeAfter(n, id, order.price);
     }
 
-    function matchBuy(address baseToken, address tradeToken, Pair storage pair, Order order, uint64 id) private {
+    function matchBuy(Pair storage pair, Order order, uint64 id) private {
         uint64 currentOrderId = pair.bestAsk;
         while (currentOrderId != 0 && order.amount > 0 && order.price >= orders[currentOrderId].price) {
             Order memory matchingOrder = orders[currentOrderId];
@@ -233,13 +238,13 @@ contract Exchange {
                 matchingOrder.amount = 0;
             }
 
-            reserved[baseToken][order.owner] = reserved[baseToken][order.owner].sub(tradeAmount.mul(order.price).div(priceDenominator));
-            ERC20(baseToken).transfer(order.owner, tradeAmount.mul(order.price.sub(matchingOrder.price)).div(priceDenominator));
-            reserved[tradeToken][matchingOrder.owner] = reserved[tradeToken][matchingOrder.owner].sub(tradeAmount);
-            ERC20(baseToken).transfer(matchingOrder.owner, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
-            ERC20(tradeToken).transfer(order.owner, tradeAmount);
+            reserved[order.baseToken][order.owner] = reserved[order.baseToken][order.owner].sub(tradeAmount.mul(order.price).div(priceDenominator));
+            ERC20(order.baseToken).transfer(order.owner, tradeAmount.mul(order.price.sub(matchingOrder.price)).div(priceDenominator));
+            reserved[order.tradeToken][matchingOrder.owner] = reserved[order.tradeToken][matchingOrder.owner].sub(tradeAmount);
+            ERC20(order.baseToken).transfer(matchingOrder.owner, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
+            ERC20(order.tradeToken).transfer(order.owner, tradeAmount);
 
-            NewTrade(baseToken, tradeToken, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(now));
+            NewTrade(order.baseToken, order.tradeToken, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(now));
 
             if (matchingOrder.amount != 0) {
                 orders[currentOrderId] = matchingOrder;
@@ -252,32 +257,31 @@ contract Exchange {
 
         if (pair.bestAsk != currentOrderId) {
             pair.bestAsk = currentOrderId;
-            NewAsk(baseToken, tradeToken, orders[currentOrderId].price);
+            NewAsk(order.baseToken, order.tradeToken, orders[currentOrderId].price);
         }
     }
 
-    // TODO: get ride of base and trade token address here, and get from order object
-    function cancelOrder(address baseToken, address tradeToken, uint64 id) public {
+    function cancelOrder(uint64 id) public {
         Order memory order = orders[id];
         require(order.owner == msg.sender);
 
         if (order.sell) {
-            reserved[tradeToken][msg.sender] = reserved[tradeToken][msg.sender].sub(order.amount);
-            ERC20(tradeToken).transfer(msg.sender, order.amount);
+            reserved[order.tradeToken][msg.sender] = reserved[order.tradeToken][msg.sender].sub(order.amount);
+            ERC20(order.tradeToken).transfer(msg.sender, order.amount);
         } else {
-            reserved[baseToken][msg.sender] = reserved[baseToken][msg.sender].sub(order.amount.mul(order.price).div(priceDenominator));
-            ERC20(baseToken).transfer(msg.sender, order.amount.mul(order.price).div(priceDenominator));
+            reserved[order.baseToken][msg.sender] = reserved[order.baseToken][msg.sender].sub(order.amount.mul(order.price).div(priceDenominator));
+            ERC20(order.baseToken).transfer(msg.sender, order.amount.mul(order.price).div(priceDenominator));
         }
 
-        Pair storage pair = pairs[baseToken][tradeToken];
+        Pair storage pair = pairs[order.baseToken][order.tradeToken];
         ListItem memory orderItem = excludeItem(pair, id);
 
         if (pair.bestBid == id) {
             pair.bestBid = orderItem.prev;
-            NewBid(baseToken, tradeToken, orders[pair.bestBid].price);
+            NewBid(order.baseToken, order.tradeToken, orders[pair.bestBid].price);
         } else if (pair.bestAsk == id) {
             pair.bestAsk = orderItem.next;
-            NewAsk(baseToken, tradeToken, orders[pair.bestAsk].price);
+            NewAsk(order.baseToken, order.tradeToken, orders[pair.bestAsk].price);
         }
     }
 
@@ -314,12 +318,12 @@ contract Exchange {
         lastOrder = pair.lastOrder;
     }
 
-    function getOrder(address baseToken, address tradeToken, uint64 id) public constant returns (uint price, bool sell, uint amount, uint64 next, uint64 prev) {
+    function getOrder(uint64 id) public constant returns (uint price, bool sell, uint amount, uint64 next, uint64 prev) {
         Order memory order = orders[id];
         price = order.price;
         sell = order.sell;
         amount = order.amount;
-        next = pairs[baseToken][tradeToken].orderbook[id].next;
-        prev = pairs[baseToken][tradeToken].orderbook[id].prev;
+        next = pairs[order.baseToken][order.tradeToken].orderbook[id].next;
+        prev = pairs[order.baseToken][order.tradeToken].orderbook[id].prev;
     }
 }
