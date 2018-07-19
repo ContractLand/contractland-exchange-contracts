@@ -8,11 +8,12 @@ require('chai')
   .should()
 
 const Exchange = artifacts.require("./Exchange.sol");
+const ExchangeProxy = artifacts.require('AdminUpgradeabilityProxy')
 const Token = artifacts.require("./TestToken.sol");
 
 describe.only("Exchange", () => {
-    const [buyer, seller] = web3.eth.accounts;
-    let exchange, baseToken, tradeToken;
+    const [deployer, buyer, seller, proxyOwner] = web3.eth.accounts;
+    let exchange, exchangeProxy, baseToken, tradeToken;
 
     const tokenDepositAmount = 10000;
 
@@ -120,23 +121,15 @@ describe.only("Exchange", () => {
         })
 
         it("should disallow cancelling of other people's orders", async function () {
-            const order = {
-              'baseToken': baseToken.address,
-              'tradeToken': tradeToken.address,
-              'amount': 100,
-              'price': toWei(5),
-              'from': buyer
-            }
-            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.fulfilled
+            const buyOrder = buy(100, 5)
+            await placeOrder(buyOrder).should.be.fulfilled
 
             const invalidSender = seller
-            const orderId = 1
-            await cancelOrder(orderId, invalidSender).should.be.rejectedWith(EVMRevert)
+            await cancelOrder(1, invalidSender).should.be.rejectedWith(EVMRevert)
         })
 
         it("should not be able to cancel orders that does not exist", async function () {
-            const orderId = 1
-            await cancelOrder(orderId, seller).should.be.rejectedWith(EVMRevert)
+            await cancelOrder(1, seller).should.be.rejectedWith(EVMRevert)
         })
 
         it.skip("should not allow non-owner to pause exchange", async function () {
@@ -494,26 +487,36 @@ describe.only("Exchange", () => {
         });
     });
 
-    function deployExchange() {
-        return Token.new()
-            .then(res => {
-                baseToken = res;
-            })
-            .then(() => Token.new())
-            .then(res => {
-                tradeToken = res;
-            })
-            .then(() => Exchange.new({ gas: 10000000 }))
-            .then(res => {
-                exchange = res;
-            });
+    describe("Upgrade", () => {
+        it("existing orders should remain after upgrade ", async () => {
+            // GIVEN
+            await deployExchange()
+            await initBalances()
+            const sellOrder = sell(105, 10)
+            await placeOrder(sellOrder)
+
+            // THEN
+            const newExchange = await Exchange.new({ gas: 10000000 })
+            await exchangeProxy.upgradeTo(newExchange.address, { from: proxyOwner })
+
+            // EXPECT
+            const actualOrder = await exchange.getOrder(1)
+            assert(actualOrder[0], sellOrder.price)
+        })
+    })
+
+    async function deployExchange() {
+        baseToken = await Token.new()
+        tradeToken = await Token.new()
+        let exchangeInstance = await Exchange.new({ gas: 10000000 })
+        exchangeProxy = await ExchangeProxy.new(exchangeInstance.address, { from: proxyOwner })
+        exchange = await Exchange.at(exchangeProxy.address)
+        await exchange.initialize()
     }
 
-    function initBalances() {
-        return baseToken.setBalance(tokenDepositAmount, {from: buyer})
-            .then(() => baseToken.approve(exchange.address, tokenDepositAmount, {from: buyer}))
-            .then(() => tradeToken.setBalance(tokenDepositAmount, {from: seller}))
-            .then(() => tradeToken.approve(exchange.address, tokenDepositAmount, {from: seller}))
+    async function initBalances() {
+        await baseToken.setBalance(tokenDepositAmount, {from: buyer})
+        await tradeToken.setBalance(tokenDepositAmount, {from: seller})
     }
 
     function checkBalance(token, trader, expectedBalance) {

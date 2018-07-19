@@ -1,12 +1,15 @@
 pragma solidity ^0.4.23;
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import 'zos-lib/contracts/migrations/Initializable.sol';
 import "./libraries/RedBlackTree.sol";
 import "./interfaces/ERC20.sol";
 
-contract Exchange {
+contract Exchange is Initializable {
     using SafeMath for uint;
     using RedBlackTree for RedBlackTree.Tree;
+
+    // ***Start of V1.0.0 storage variables***
 
     struct ListItem {
         uint64 prev;
@@ -39,14 +42,17 @@ contract Exchange {
     // Mapping of base token to trade token to Pair
     mapping(address => mapping(address => Pair)) pairs;
 
-    uint64 private priceDenominator = 1000000000000000000; // 18 decimal places
+    uint64 private priceDenominator; // should be 18 decimal places
+
+    // ***End of V1.0.0 storage variables***
 
     event NewOrder(address indexed baseToken, address indexed tradeToken, address indexed owner, uint64 id, bool sell, uint price, uint amount, uint64 timestamp);
     event NewAsk(address indexed baseToken, address indexed tradeToken, uint price);
     event NewBid(address indexed baseToken, address indexed tradeToken, uint price);
     event NewTrade(address indexed baseToken, address indexed tradeToken, uint64 bidId, uint64 askId, bool side, uint amount, uint price, uint64 timestamp);
 
-    function Exchange() public {
+    function initialize() isInitializer public {
+        priceDenominator = 1000000000000000000;
     }
 
     function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public returns (uint64) {
