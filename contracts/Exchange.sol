@@ -137,7 +137,6 @@ contract Exchange is Initializable {
                 matchingOrder.amount = 0;
             }
 
-            //TODO: Why not refund remaining tradeToken to seller here? Using matchingOrder's price only here for some reason
             reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(tradeAmount);
             ERC20(order.tradeToken).transfer(matchingOrder.owner, tradeAmount);
             uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
