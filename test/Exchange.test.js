@@ -14,7 +14,8 @@ const Token = artifacts.require("./TestToken.sol");
 describe.only("Exchange", () => {
     const [deployer, buyer, seller, proxyOwner] = web3.eth.accounts;
     let exchange, exchangeProxy, baseToken, tradeToken;
-
+    const etherAddress = '0x0000000000000000000000000000000000000000'
+    const invalidToken = '0x1111111111111111111111111111111111111111'
     const tokenDepositAmount = 10000;
 
     describe("Order Insertion", function() {
@@ -22,6 +23,49 @@ describe.only("Exchange", () => {
             orderId = 1;
             return deployExchange()
             .then(() => initBalances())
+        })
+
+        it("should be able to create sell order with ether", async () => {
+          const sellerEtherBalanceBefore = await web3.eth.getBalance(seller)
+          const exchangeEtherBalanceBefore = await web3.eth.getBalance(exchange.address)
+
+          const order = {
+            'baseToken': baseToken.address,
+            'tradeToken': etherAddress,
+            'amount': 100,
+            'price': toWei(5),
+            'from': seller
+          }
+
+          await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, { from: order.from, value: order.amount, gasPrice: 0 }).should.be.fulfilled
+
+          const expectedSellerEtherBalance = sellerEtherBalanceBefore.minus(order.amount)
+          const expectedExchangeEtherBalance = exchangeEtherBalanceBefore.plus(order.amount)
+
+          assert.equal(expectedSellerEtherBalance.toString(), (await web3.eth.getBalance(seller)).toString())
+          assert.equal(expectedExchangeEtherBalance.toString(), (await web3.eth.getBalance(exchange.address)).toString())
+        })
+
+        it("should be able to create buy order with ether", async () => {
+          const price = 5
+          const buyerEtherBalanceBefore = await web3.eth.getBalance(buyer)
+          const exchangeEtherBalanceBefore = await web3.eth.getBalance(exchange.address)
+
+          const order = {
+            'baseToken': etherAddress,
+            'tradeToken': tradeToken.address,
+            'amount': 100,
+            'price': toWei(price),
+            'from': buyer
+          }
+
+          await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, { from: order.from, value: order.amount * price, gasPrice: 0 }).should.be.fulfilled
+
+          const expectedBuyerEtherBalance = buyerEtherBalanceBefore.minus(order.amount * price)
+          const expectedExchangeEtherBalance = exchangeEtherBalanceBefore.plus(order.amount * price)
+
+          assert.equal(expectedBuyerEtherBalance.toString(), (await web3.eth.getBalance(buyer)).toString())
+          assert.equal(expectedExchangeEtherBalance.toString(), (await web3.eth.getBalance(exchange.address)).toString())
         })
 
         it("should not be able to create buy order with same baseToken and tradeToken", async () => {
@@ -50,7 +94,7 @@ describe.only("Exchange", () => {
 
         it("should not be able to create buy order without sufficient baseToken", async () => {
             const order = {
-              'baseToken': '0x0000000000000000000000000000000000000000',
+              'baseToken': invalidToken,
               'tradeToken': tradeToken.address,
               'amount': 100,
               'price': toWei(5),
@@ -63,7 +107,7 @@ describe.only("Exchange", () => {
         it("should not be able to create sell order without sufficient tradeToken", async () => {
             const order = {
               'baseToken': baseToken.address,
-              'tradeToken': '0x0000000000000000000000000000000000000000',
+              'tradeToken': invalidToken,
               'amount': 100,
               'price': toWei(5),
               'from': seller

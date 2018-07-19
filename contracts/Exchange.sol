@@ -55,12 +55,17 @@ contract Exchange is Initializable {
         priceDenominator = 1000000000000000000;
     }
 
-    function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public returns (uint64) {
+    function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public payable returns (uint64) {
         require(amount != 0 &&
                 price != 0 &&
                 baseToken != tradeToken);
 
-        ERC20(tradeToken).transferFrom(owner, this, amount);
+        if (tradeToken == address(0)) {
+            require(amount == msg.value);
+        } else {
+            ERC20(tradeToken).transferFrom(owner, this, amount);
+        }
+
         reserved[tradeToken][owner] = reserved[tradeToken][owner].add(amount);
 
         Order memory order;
@@ -138,9 +143,9 @@ contract Exchange is Initializable {
             }
 
             reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(tradeAmount);
-            ERC20(order.tradeToken).transfer(matchingOrder.owner, tradeAmount);
+            transferFund(order.tradeToken, matchingOrder.owner, tradeAmount);
             uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
-            ERC20(order.baseToken).transfer(order.owner, baseTokenAmount);
+            transferFund(order.baseToken, order.owner, baseTokenAmount);
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
             NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
@@ -160,13 +165,17 @@ contract Exchange is Initializable {
         }
     }
 
-    function buy(address baseToken, address tradeToken, address owner, uint amount, uint price) public returns (uint64) {
+    function buy(address baseToken, address tradeToken, address owner, uint amount, uint price) public payable returns (uint64) {
         require(amount != 0 &&
                 price != 0 &&
                 baseToken != tradeToken);
 
         uint reservedAmount = amount.mul(price).div(priceDenominator);
-        ERC20(baseToken).transferFrom(owner, this, reservedAmount);
+        if(baseToken == address(0)) {
+            require(msg.value == reservedAmount);
+        } else {
+            ERC20(baseToken).transferFrom(owner, this, reservedAmount);
+        }
         reserved[baseToken][owner] = reserved[baseToken][owner].add(reservedAmount);
 
         Order memory order;
@@ -244,10 +253,10 @@ contract Exchange is Initializable {
             }
 
             reserved[order.baseToken][order.owner] = reserved[order.baseToken][order.owner].sub(tradeAmount.mul(order.price).div(priceDenominator));
-            ERC20(order.baseToken).transfer(order.owner, tradeAmount.mul(order.price.sub(matchingOrder.price)).div(priceDenominator));
+            transferFund(order.baseToken, order.owner, tradeAmount.mul(order.price.sub(matchingOrder.price)).div(priceDenominator));
             reserved[order.tradeToken][matchingOrder.owner] = reserved[order.tradeToken][matchingOrder.owner].sub(tradeAmount);
-            ERC20(order.baseToken).transfer(matchingOrder.owner, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
-            ERC20(order.tradeToken).transfer(order.owner, tradeAmount);
+            transferFund(order.baseToken, matchingOrder.owner, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
+            transferFund(order.tradeToken, order.owner, tradeAmount);
 
             NewTrade(order.baseToken, order.tradeToken, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(now));
 
@@ -263,6 +272,14 @@ contract Exchange is Initializable {
         if (pair.bestAsk != currentOrderId) {
             pair.bestAsk = currentOrderId;
             NewAsk(order.baseToken, order.tradeToken, orders[currentOrderId].price);
+        }
+    }
+
+    function transferFund(address token, address recipient, uint amount) private {
+        if(token == address(0)) {
+            recipient.transfer(amount);
+        } else {
+            ERC20(token).transfer(recipient, amount);
         }
     }
 
