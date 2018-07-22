@@ -1,4 +1,4 @@
-# ContractLand exchange contracts
+# ContractLand Exchange Contracts
 Token exchange with orderbook and matching engine implemented as a smart contract written in Solidity.
 
 ## Supported features
