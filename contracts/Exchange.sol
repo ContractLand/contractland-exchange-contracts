@@ -60,12 +60,12 @@ contract Exchange is Initializable {
                 price != 0 &&
                 baseToken != tradeToken);
 
+        // Transfer funds from user
         if (tradeToken == address(0)) {
             require(amount == msg.value);
         } else {
             ERC20(tradeToken).transferFrom(owner, this, amount);
         }
-
         reserved[tradeToken][owner] = reserved[tradeToken][owner].add(amount);
 
         Order memory order;
@@ -78,19 +78,22 @@ contract Exchange is Initializable {
         order.timestamp = uint64(now);
 
         uint64 id = ++lastOrderId;
+
         NewOrder(baseToken, tradeToken, owner, id, true, price, amount, order.timestamp);
 
+        // Match trade
         Pair storage pair = pairs[baseToken][tradeToken];
         matchSell(pair, order, id);
 
+        // Add remaining order to orderbook
         if (order.amount != 0) {
-            addToAskOrder(id, pair, order);
+            addToAsks(pair, order, id);
         }
 
         return id;
     }
 
-    function addToAskOrder(uint64 id, Pair storage pair, Order memory order) private {
+    function addToAsks(Pair storage pair, Order memory order, uint64 id) private {
       uint64 currentOrderId;
       uint64 n = pair.pricesTree.find(order.price);
       if (n != 0 && order.price >= orders[n].price) {
@@ -170,6 +173,7 @@ contract Exchange is Initializable {
                 price != 0 &&
                 baseToken != tradeToken);
 
+        // Transfer funds from user
         uint reservedAmount = amount.mul(price).div(priceDenominator);
         if(baseToken == address(0)) {
             require(msg.value == reservedAmount);
@@ -188,19 +192,22 @@ contract Exchange is Initializable {
         order.timestamp = uint64(now);
 
         uint64 id = ++lastOrderId;
+
         NewOrder(baseToken, tradeToken, owner, id, false, price, amount, order.timestamp);
 
+        // Match trade
         Pair storage pair = pairs[baseToken][tradeToken];
         matchBuy(pair, order, id);
 
+        // Add remaining order to orderbook
         if (order.amount != 0) {
-            addToBidOrder(id, pair, order);
+            addToBids(id, pair, order);
         }
 
         return id;
     }
 
-    function addToBidOrder(uint64 id, Pair storage pair, Order memory order) private {
+    function addToBids(uint64 id, Pair storage pair, Order memory order) private {
       uint64 currentOrderId;
       uint64 n = pair.pricesTree.find(order.price);
       if (n != 0 && order.price <= orders[n].price) {
