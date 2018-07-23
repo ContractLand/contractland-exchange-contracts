@@ -20,3 +20,15 @@ The orderbook is built with a combination of maps and tree (Red and Black Tree) 
 
 ## Run Tests
 1. run `npm run test`
+
+## Usage & Interfaces
+
+- Create Sell Order
+
+- Create Buy Order
+
+- Cancel Order
+
+- Get Orderbook
+
+- Get Order
