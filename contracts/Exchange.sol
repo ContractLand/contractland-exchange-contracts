@@ -1,6 +1,6 @@
 pragma solidity ^0.4.23;
 
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import 'zos-lib/contracts/migrations/Initializable.sol';
 import "./libraries/RedBlackTree.sol";
 import "./interfaces/ERC20.sol";
