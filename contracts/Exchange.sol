@@ -79,7 +79,7 @@ contract Exchange is Initializable {
 
         uint64 id = ++lastOrderId;
 
-        NewOrder(baseToken, tradeToken, owner, id, true, price, amount, order.timestamp);
+        emit NewOrder(baseToken, tradeToken, owner, id, true, price, amount, order.timestamp);
 
         // Match trade
         Pair storage pair = pairs[baseToken][tradeToken];
@@ -122,7 +122,7 @@ contract Exchange is Initializable {
 
       if (currentOrderId == pair.bestAsk) {
           pair.bestAsk = id;
-          NewAsk(order.baseToken, order.tradeToken, order.price);
+          emit NewAsk(order.baseToken, order.tradeToken, order.price);
       }
 
       orders[id] = order;
@@ -151,7 +151,7 @@ contract Exchange is Initializable {
             transferFund(order.baseToken, order.owner, baseTokenAmount);
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
-            NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
+            emit NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
 
             if (matchingOrder.amount != 0) {
                 orders[currentOrderId] = matchingOrder;
@@ -164,7 +164,7 @@ contract Exchange is Initializable {
 
         if (pair.bestBid != currentOrderId) {
             pair.bestBid = currentOrderId;
-            NewBid(order.baseToken, order.tradeToken, orders[currentOrderId].price);
+            emit NewBid(order.baseToken, order.tradeToken, orders[currentOrderId].price);
         }
     }
 
@@ -193,7 +193,7 @@ contract Exchange is Initializable {
 
         uint64 id = ++lastOrderId;
 
-        NewOrder(baseToken, tradeToken, owner, id, false, price, amount, order.timestamp);
+        emit NewOrder(baseToken, tradeToken, owner, id, false, price, amount, order.timestamp);
 
         // Match trade
         Pair storage pair = pairs[baseToken][tradeToken];
@@ -236,7 +236,7 @@ contract Exchange is Initializable {
 
       if (currentOrderId == pair.bestBid) {
           pair.bestBid = id;
-          NewBid(order.baseToken, order.tradeToken, order.price);
+          emit NewBid(order.baseToken, order.tradeToken, order.price);
       }
 
       orders[id] = order;
@@ -265,7 +265,7 @@ contract Exchange is Initializable {
             transferFund(order.baseToken, matchingOrder.owner, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
             transferFund(order.tradeToken, order.owner, tradeAmount);
 
-            NewTrade(order.baseToken, order.tradeToken, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(now));
+            emit NewTrade(order.baseToken, order.tradeToken, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(now));
 
             if (matchingOrder.amount != 0) {
                 orders[currentOrderId] = matchingOrder;
@@ -278,7 +278,7 @@ contract Exchange is Initializable {
 
         if (pair.bestAsk != currentOrderId) {
             pair.bestAsk = currentOrderId;
-            NewAsk(order.baseToken, order.tradeToken, orders[currentOrderId].price);
+            emit NewAsk(order.baseToken, order.tradeToken, orders[currentOrderId].price);
         }
     }
 
@@ -307,10 +307,10 @@ contract Exchange is Initializable {
 
         if (pair.bestBid == id) {
             pair.bestBid = orderItem.prev;
-            NewBid(order.baseToken, order.tradeToken, orders[pair.bestBid].price);
+            emit NewBid(order.baseToken, order.tradeToken, orders[pair.bestBid].price);
         } else if (pair.bestAsk == id) {
             pair.bestAsk = orderItem.next;
-            NewAsk(order.baseToken, order.tradeToken, orders[pair.bestAsk].price);
+            emit NewAsk(order.baseToken, order.tradeToken, orders[pair.bestAsk].price);
         }
     }
 
@@ -347,10 +347,10 @@ contract Exchange is Initializable {
         lastOrder = pair.lastOrder;
     }
 
-    function getOrder(uint64 id) public constant returns (uint price, bool sell, uint amount, uint64 next, uint64 prev) {
+    function getOrder(uint64 id) public constant returns (uint price, bool isSell, uint amount, uint64 next, uint64 prev) {
         Order memory order = orders[id];
         price = order.price;
-        sell = order.sell;
+        isSell = order.sell;
         amount = order.amount;
         next = pairs[order.baseToken][order.tradeToken].orderbook[id].next;
         prev = pairs[order.baseToken][order.tradeToken].orderbook[id].prev;
