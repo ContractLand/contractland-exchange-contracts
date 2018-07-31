@@ -1,11 +1,12 @@
 pragma solidity ^0.4.23;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import 'zos-lib/contracts/migrations/Initializable.sol';
 import "./libraries/RedBlackTree.sol";
 import "./interfaces/ERC20.sol";
 
-contract Exchange is Initializable {
+contract Exchange is Initializable, Pausable {
     using SafeMath for uint;
     using RedBlackTree for RedBlackTree.Tree;
 
@@ -52,10 +53,11 @@ contract Exchange is Initializable {
     event NewTrade(address indexed baseToken, address indexed tradeToken, uint64 bidId, uint64 askId, bool side, uint amount, uint price, uint64 timestamp);
 
     function initialize() isInitializer public {
+        owner = msg.sender; // initialize owner for Pausable
         priceDenominator = 1000000000000000000;
     }
 
-    function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public payable returns (uint64) {
+    function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
         require(amount != 0 &&
                 price != 0 &&
                 baseToken != tradeToken);
@@ -168,7 +170,7 @@ contract Exchange is Initializable {
         }
     }
 
-    function buy(address baseToken, address tradeToken, address owner, uint amount, uint price) public payable returns (uint64) {
+    function buy(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
         require(amount != 0 &&
                 price != 0 &&
                 baseToken != tradeToken);

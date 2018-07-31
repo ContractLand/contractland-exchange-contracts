@@ -12,19 +12,19 @@ const ExchangeProxy = artifacts.require('AdminUpgradeabilityProxy')
 const Token = artifacts.require("./TestToken.sol");
 
 describe.only("Exchange", () => {
-    const [deployer, buyer, seller, proxyOwner] = web3.eth.accounts;
-    let exchange, exchangeProxy, baseToken, tradeToken;
+    const [deployer, buyer, seller, proxyOwner, exchangeOwner, notExchangeOwner] = web3.eth.accounts;
+    let exchange, exchangeProxy, baseToken, tradeToken, orderId;
     const etherAddress = '0x0000000000000000000000000000000000000000'
     const invalidToken = '0x1111111111111111111111111111111111111111'
     const tokenDepositAmount = 10000;
 
-    describe("Order Insertion", function() {
-        beforeEach(() => {
-            orderId = 1;
-            return deployExchange()
-            .then(() => initBalances())
-        })
+    beforeEach(async () => {
+        orderId = 1;
+        await deployExchange()
+        await initBalances()
+    })
 
+    describe("Order Insertion", function() {
         it("should be able to create sell order with ether", async () => {
           const sellerEtherBalanceBefore = await web3.eth.getBalance(seller)
           const exchangeEtherBalanceBefore = await web3.eth.getBalance(exchange.address)
@@ -174,15 +174,6 @@ describe.only("Exchange", () => {
 
         it("should not be able to cancel orders that does not exist", async function () {
             await cancelOrder(1, seller).should.be.rejectedWith(EVMRevert)
-        })
-
-        it.skip("should not allow non-owner to pause exchange", async function () {
-        })
-
-        it.skip("should pause buy", async function () {
-        })
-
-        it.skip("should pause sell", async function () {
         })
 
         it("should insert a new buy order as first", () => {
@@ -357,12 +348,6 @@ describe.only("Exchange", () => {
     });
 
     describe("Order Matching", function() {
-        beforeEach(() => {
-            orderId = 1;
-            return deployExchange()
-            .then(() => initBalances())
-        });
-
         it("the best buy order should be partially filled by a new sell order", () => {
             const buyOrder = buy(100, 5);
             const sellOrder = sell(90, 2);
@@ -531,11 +516,31 @@ describe.only("Exchange", () => {
         });
     });
 
+    describe("Pause", () => {
+        it("should not allow non-owner to pause exchange", async () => {
+            await exchange.pause({ from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create buy orders when paused", async () => {
+            const buyOrder = buy(105, 10)
+
+            await exchange.pause({ from: exchangeOwner }).should.be.fulfilled
+
+            await placeOrder(buyOrder).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create sell orders when paused", async function () {
+            const sellOrder = sell(105, 10)
+
+            await exchange.pause({ from: exchangeOwner }).should.be.fulfilled
+
+            await placeOrder(sellOrder).should.be.rejectedWith(EVMRevert)
+        })
+    })
+
     describe("Upgrade", () => {
         it("existing orders should remain after upgrade ", async () => {
             // GIVEN
-            await deployExchange()
-            await initBalances()
             const sellOrder = sell(105, 10)
             await placeOrder(sellOrder)
 
@@ -555,7 +560,7 @@ describe.only("Exchange", () => {
         let exchangeInstance = await Exchange.new({ gas: 10000000 })
         exchangeProxy = await ExchangeProxy.new(exchangeInstance.address, { from: proxyOwner })
         exchange = await Exchange.at(exchangeProxy.address)
-        await exchange.initialize()
+        await exchange.initialize({ from: exchangeOwner })
     }
 
     async function initBalances() {
@@ -674,7 +679,6 @@ describe.only("Exchange", () => {
         return exchange.cancelOrder(id, {from: from});
     }
 
-    let orderId = 1;
     function testOrder(order, orderItemState, orderbookState) {
         return placeOrder(order)
             .then(id => {
