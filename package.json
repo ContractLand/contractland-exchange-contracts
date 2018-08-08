@@ -34,6 +34,7 @@
     "ganache-cli": "^6.1.5"
   },
   "dependencies": {
+    "ethereumjs-wallet": "0.6.0",
     "ethereumjs-abi": "^0.6.5",
     "ethereumjs-util": "^5.1.4",
     "truffle-hdwallet-provider": "0.0.3",
