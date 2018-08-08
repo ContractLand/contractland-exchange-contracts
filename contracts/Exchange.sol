@@ -38,8 +38,8 @@ contract Exchange is Initializable, Pausable {
 
     /* --- EVENTS --- */
 
-    event NewAsk(address indexed baseToken, address indexed tradeToken, uint price);
-    event NewBid(address indexed baseToken, address indexed tradeToken, uint price);
+    event NewBestAsk(address indexed baseToken, address indexed tradeToken, uint price);
+    event NewBestBid(address indexed baseToken, address indexed tradeToken, uint price);
 
     event NewOrder(address indexed baseToken,
         address indexed tradeToken,
@@ -178,10 +178,10 @@ contract Exchange is Initializable, Pausable {
 
         if (pair.bestBid == id) {
             pair.bestBid = orderItem.prev;
-            emit NewBid(order.baseToken, order.tradeToken, orders[pair.bestBid].price);
+            emit NewBestBid(order.baseToken, order.tradeToken, orders[pair.bestBid].price);
         } else if (pair.bestAsk == id) {
             pair.bestAsk = orderItem.next;
-            emit NewAsk(order.baseToken, order.tradeToken, orders[pair.bestAsk].price);
+            emit NewBestAsk(order.baseToken, order.tradeToken, orders[pair.bestAsk].price);
         }
     }
 
@@ -272,7 +272,7 @@ contract Exchange is Initializable, Pausable {
 
         if (pair.bestAsk != currentOrderId) {
             pair.bestAsk = currentOrderId;
-            emit NewAsk(order.baseToken, order.tradeToken, orders[currentOrderId].price);
+            emit NewBestAsk(order.baseToken, order.tradeToken, orders[currentOrderId].price);
         }
     }
 
@@ -305,7 +305,7 @@ contract Exchange is Initializable, Pausable {
 
         if (currentOrderId == pair.bestBid) {
             pair.bestBid = id;
-            emit NewBid(order.baseToken, order.tradeToken, order.price);
+            emit NewBestBid(order.baseToken, order.tradeToken, order.price);
         }
 
         orders[id] = order;
@@ -342,7 +342,7 @@ contract Exchange is Initializable, Pausable {
 
         if (currentOrderId == pair.bestAsk) {
             pair.bestAsk = id;
-            emit NewAsk(order.baseToken, order.tradeToken, order.price);
+            emit NewBestAsk(order.baseToken, order.tradeToken, order.price);
         }
 
         orders[id] = order;
@@ -384,7 +384,7 @@ contract Exchange is Initializable, Pausable {
 
         if (pair.bestBid != currentOrderId) {
             pair.bestBid = currentOrderId;
-            emit NewBid(order.baseToken, order.tradeToken, orders[currentOrderId].price);
+            emit NewBestBid(order.baseToken, order.tradeToken, orders[currentOrderId].price);
         }
     }
 }
