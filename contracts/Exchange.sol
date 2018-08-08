@@ -2,7 +2,7 @@ pragma solidity ^0.4.23;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
-import 'zos-lib/contracts/migrations/Initializable.sol';
+import "zos-lib/contracts/migrations/Initializable.sol";
 import "./libraries/RedBlackTree.sol";
 import "./interfaces/ERC20.sol";
 
@@ -10,7 +10,7 @@ contract Exchange is Initializable, Pausable {
     using SafeMath for uint;
     using RedBlackTree for RedBlackTree.Tree;
 
-    // ***Start of V1.0.0 storage variables***
+    /* --- STRUCTS / CONSTANTS --- */
 
     struct ListItem {
         uint64 prev;
@@ -36,6 +36,32 @@ contract Exchange is Initializable, Pausable {
         uint64 lastOrder;
     }
 
+    /* --- EVENTS --- */
+
+    event NewAsk(address indexed baseToken, address indexed tradeToken, uint price);
+    event NewBid(address indexed baseToken, address indexed tradeToken, uint price);
+
+    event NewOrder(address indexed baseToken,
+        address indexed tradeToken,
+        address indexed owner,
+        uint64 id, bool sell,
+        uint price,
+        uint amount,
+        uint64 timestamp
+    );
+    
+    event NewTrade(address indexed baseToken,
+        address indexed tradeToken,
+        uint64 bidId, uint64 askId,
+        bool side,
+        uint amount,
+        uint price,
+        uint64 timestamp
+    );
+
+    /* --- FIELDS --- */
+    // ***Start of V1.0.0 storage variables***
+
     mapping (address => mapping (address => uint)) public reserved;
 
     uint64 lastOrderId;
@@ -47,20 +73,20 @@ contract Exchange is Initializable, Pausable {
 
     // ***End of V1.0.0 storage variables***
 
-    event NewOrder(address indexed baseToken, address indexed tradeToken, address indexed owner, uint64 id, bool sell, uint price, uint amount, uint64 timestamp);
-    event NewAsk(address indexed baseToken, address indexed tradeToken, uint price);
-    event NewBid(address indexed baseToken, address indexed tradeToken, uint price);
-    event NewTrade(address indexed baseToken, address indexed tradeToken, uint64 bidId, uint64 askId, bool side, uint amount, uint price, uint64 timestamp);
+    /* --- CONSTRUCTOR / INITIALIZATION --- */
 
-    function initialize() isInitializer public {
+    function initialize() public isInitializer {
         owner = msg.sender; // initialize owner for Pausable
         priceDenominator = 1000000000000000000;
     }
 
+    /* --- EXTERNAL / PUBLIC  METHODS --- */
+
     function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
         require(amount != 0 &&
-                price != 0 &&
-                baseToken != tradeToken);
+            price != 0 &&
+            baseToken != tradeToken
+        );
 
         // Transfer funds from user
         if (tradeToken == address(0)) {
@@ -95,85 +121,11 @@ contract Exchange is Initializable, Pausable {
         return id;
     }
 
-    function addToAsks(Pair storage pair, Order memory order, uint64 id) private {
-      uint64 currentOrderId;
-      uint64 n = pair.pricesTree.find(order.price);
-      if (n != 0 && order.price >= orders[n].price) {
-          currentOrderId = pair.orderbook[n].next;
-      } else {
-          currentOrderId = n;
-      }
-
-      ListItem memory orderItem;
-      orderItem.next = currentOrderId;
-      uint64 prevOrderId;
-      if (currentOrderId != 0) {
-          prevOrderId = pair.orderbook[currentOrderId].prev;
-          pair.orderbook[currentOrderId].prev = id;
-      } else {
-          prevOrderId = pair.lastOrder;
-          pair.lastOrder = id;
-      }
-
-      orderItem.prev = prevOrderId;
-      if (prevOrderId != 0) {
-          pair.orderbook[prevOrderId].next = id;
-      } else {
-          pair.firstOrder = id;
-      }
-
-      if (currentOrderId == pair.bestAsk) {
-          pair.bestAsk = id;
-          emit NewAsk(order.baseToken, order.tradeToken, order.price);
-      }
-
-      orders[id] = order;
-      pair.orderbook[id] = orderItem;
-      pair.pricesTree.placeAfter(n, id, order.price);
-    }
-
-    function matchSell(Pair storage pair, Order order, uint64 id) private {
-        uint64 currentOrderId = pair.bestBid;
-        while (currentOrderId != 0 && order.amount != 0 && order.price <= orders[currentOrderId].price) {
-            Order memory matchingOrder = orders[currentOrderId];
-            uint tradeAmount;
-            if (matchingOrder.amount >= order.amount) {
-                tradeAmount = order.amount;
-                matchingOrder.amount = matchingOrder.amount.sub(order.amount);
-                order.amount = 0;
-            } else {
-                tradeAmount = matchingOrder.amount;
-                order.amount = order.amount.sub(matchingOrder.amount);
-                matchingOrder.amount = 0;
-            }
-
-            reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(tradeAmount);
-            transferFund(order.tradeToken, matchingOrder.owner, tradeAmount);
-            uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
-            transferFund(order.baseToken, order.owner, baseTokenAmount);
-            reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
-
-            emit NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
-
-            if (matchingOrder.amount != 0) {
-                orders[currentOrderId] = matchingOrder;
-                break;
-            }
-
-            ListItem memory item = excludeItem(pair, currentOrderId);
-            currentOrderId = item.prev;
-        }
-
-        if (pair.bestBid != currentOrderId) {
-            pair.bestBid = currentOrderId;
-            emit NewBid(order.baseToken, order.tradeToken, orders[currentOrderId].price);
-        }
-    }
-
     function buy(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
         require(amount != 0 &&
-                price != 0 &&
-                baseToken != tradeToken);
+            price != 0 &&
+            baseToken != tradeToken
+        );
 
         // Transfer funds from user
         uint reservedAmount = amount.mul(price).div(priceDenominator);
@@ -209,41 +161,81 @@ contract Exchange is Initializable, Pausable {
         return id;
     }
 
-    function addToBids(uint64 id, Pair storage pair, Order memory order) private {
-      uint64 currentOrderId;
-      uint64 n = pair.pricesTree.find(order.price);
-      if (n != 0 && order.price <= orders[n].price) {
-          currentOrderId = pair.orderbook[n].prev;
-      } else {
-          currentOrderId = n;
-      }
+    function cancelOrder(uint64 id) public {
+        Order memory order = orders[id];
+        require(order.owner == msg.sender);
 
-      ListItem memory orderItem;
-      orderItem.prev = currentOrderId;
-      uint64 prevOrderId;
-      if (currentOrderId != 0) {
-          prevOrderId = pair.orderbook[currentOrderId].next;
-          pair.orderbook[currentOrderId].next = id;
-      } else {
-          prevOrderId = pair.firstOrder;
-          pair.firstOrder = id;
-      }
+        if (order.sell) {
+            reserved[order.tradeToken][msg.sender] = reserved[order.tradeToken][msg.sender].sub(order.amount);
+            ERC20(order.tradeToken).transfer(msg.sender, order.amount);
+        } else {
+            reserved[order.baseToken][msg.sender] = reserved[order.baseToken][msg.sender].sub(order.amount.mul(order.price).div(priceDenominator));
+            ERC20(order.baseToken).transfer(msg.sender, order.amount.mul(order.price).div(priceDenominator));
+        }
 
-      orderItem.next = prevOrderId;
-      if (prevOrderId != 0) {
-          pair.orderbook[prevOrderId].prev = id;
-      } else {
-          pair.lastOrder = id;
-      }
+        Pair storage pair = pairs[order.baseToken][order.tradeToken];
+        ListItem memory orderItem = excludeItem(pair, id);
 
-      if (currentOrderId == pair.bestBid) {
-          pair.bestBid = id;
-          emit NewBid(order.baseToken, order.tradeToken, order.price);
-      }
+        if (pair.bestBid == id) {
+            pair.bestBid = orderItem.prev;
+            emit NewBid(order.baseToken, order.tradeToken, orders[pair.bestBid].price);
+        } else if (pair.bestAsk == id) {
+            pair.bestAsk = orderItem.next;
+            emit NewAsk(order.baseToken, order.tradeToken, orders[pair.bestAsk].price);
+        }
+    }
 
-      orders[id] = order;
-      pair.orderbook[id] = orderItem;
-      pair.pricesTree.placeAfter(n, id, order.price);
+    function getOrderBookInfo(address baseToken, address tradeToken)
+        public view returns (uint64 firstOrder, uint64 bestBid, uint64 bestAsk, uint64 lastOrder) {
+        Pair memory pair = pairs[baseToken][tradeToken];
+        firstOrder = pair.firstOrder;
+        bestBid = pair.bestBid;
+        bestAsk = pair.bestAsk;
+        lastOrder = pair.lastOrder;
+    }
+
+    function getOrder(uint64 id) public view returns (uint price, bool isSell, uint amount, uint64 next, uint64 prev) {
+        Order memory order = orders[id];
+        price = order.price;
+        isSell = order.sell;
+        amount = order.amount;
+        next = pairs[order.baseToken][order.tradeToken].orderbook[id].next;
+        prev = pairs[order.baseToken][order.tradeToken].orderbook[id].prev;
+    }
+
+    /* --- INTERNAL / PRIVATE METHODS --- */
+
+    function excludeItem(Pair storage pair, uint64 id) private returns (ListItem) {
+        ListItem memory matchingOrderItem = pair.orderbook[id];
+        if (matchingOrderItem.next != 0) {
+            pair.orderbook[matchingOrderItem.next].prev = matchingOrderItem.prev;
+        }
+
+        if (matchingOrderItem.prev != 0) {
+            pair.orderbook[matchingOrderItem.prev].next = matchingOrderItem.next;
+        }
+
+        if (pair.lastOrder == id) {
+            pair.lastOrder = matchingOrderItem.prev;
+        }
+
+        if (pair.firstOrder == id) {
+            pair.firstOrder = matchingOrderItem.next;
+        }
+
+        pair.pricesTree.remove(id);
+        delete pair.orderbook[id];
+        delete orders[id];
+
+        return matchingOrderItem;
+    }
+
+    function transferFund(address token, address recipient, uint amount) private {
+        if(token == address(0)) {
+            recipient.transfer(amount);
+        } else {
+            ERC20(token).transfer(recipient, amount);
+        }
     }
 
     function matchBuy(Pair storage pair, Order order, uint64 id) private {
@@ -284,77 +276,115 @@ contract Exchange is Initializable, Pausable {
         }
     }
 
-    function transferFund(address token, address recipient, uint amount) private {
-        if(token == address(0)) {
-            recipient.transfer(amount);
+    function addToBids(uint64 id, Pair storage pair, Order memory order) private {
+        uint64 currentOrderId;
+        uint64 n = pair.pricesTree.find(order.price);
+        if (n != 0 && order.price <= orders[n].price) {
+            currentOrderId = pair.orderbook[n].prev;
         } else {
-            ERC20(token).transfer(recipient, amount);
+            currentOrderId = n;
         }
-    }
 
-    function cancelOrder(uint64 id) public {
-        Order memory order = orders[id];
-        require(order.owner == msg.sender);
-
-        if (order.sell) {
-            reserved[order.tradeToken][msg.sender] = reserved[order.tradeToken][msg.sender].sub(order.amount);
-            ERC20(order.tradeToken).transfer(msg.sender, order.amount);
+        ListItem memory orderItem;
+        orderItem.prev = currentOrderId;
+        uint64 prevOrderId;
+        if (currentOrderId != 0) {
+            prevOrderId = pair.orderbook[currentOrderId].next;
+            pair.orderbook[currentOrderId].next = id;
         } else {
-            reserved[order.baseToken][msg.sender] = reserved[order.baseToken][msg.sender].sub(order.amount.mul(order.price).div(priceDenominator));
-            ERC20(order.baseToken).transfer(msg.sender, order.amount.mul(order.price).div(priceDenominator));
+            prevOrderId = pair.firstOrder;
+            pair.firstOrder = id;
         }
 
-        Pair storage pair = pairs[order.baseToken][order.tradeToken];
-        ListItem memory orderItem = excludeItem(pair, id);
-
-        if (pair.bestBid == id) {
-            pair.bestBid = orderItem.prev;
-            emit NewBid(order.baseToken, order.tradeToken, orders[pair.bestBid].price);
-        } else if (pair.bestAsk == id) {
-            pair.bestAsk = orderItem.next;
-            emit NewAsk(order.baseToken, order.tradeToken, orders[pair.bestAsk].price);
+        orderItem.next = prevOrderId;
+        if (prevOrderId != 0) {
+            pair.orderbook[prevOrderId].prev = id;
+        } else {
+            pair.lastOrder = id;
         }
+
+        if (currentOrderId == pair.bestBid) {
+            pair.bestBid = id;
+            emit NewBid(order.baseToken, order.tradeToken, order.price);
+        }
+
+        orders[id] = order;
+        pair.orderbook[id] = orderItem;
+        pair.pricesTree.placeAfter(n, id, order.price);
     }
 
-    function excludeItem(Pair storage pair, uint64 id) private returns (ListItem) {
-        ListItem memory matchingOrderItem = pair.orderbook[id];
-        if (matchingOrderItem.next != 0) {
-            pair.orderbook[matchingOrderItem.next].prev = matchingOrderItem.prev;
+    function addToAsks(Pair storage pair, Order memory order, uint64 id) private {
+        uint64 currentOrderId;
+        uint64 n = pair.pricesTree.find(order.price);
+        if (n != 0 && order.price >= orders[n].price) {
+            currentOrderId = pair.orderbook[n].next;
+        } else {
+            currentOrderId = n;
         }
 
-        if (matchingOrderItem.prev != 0) {
-            pair.orderbook[matchingOrderItem.prev].next = matchingOrderItem.next;
+        ListItem memory orderItem;
+        orderItem.next = currentOrderId;
+        uint64 prevOrderId;
+        if (currentOrderId != 0) {
+            prevOrderId = pair.orderbook[currentOrderId].prev;
+            pair.orderbook[currentOrderId].prev = id;
+        } else {
+            prevOrderId = pair.lastOrder;
+            pair.lastOrder = id;
         }
 
-        if (pair.lastOrder == id) {
-            pair.lastOrder = matchingOrderItem.prev;
+        orderItem.prev = prevOrderId;
+        if (prevOrderId != 0) {
+            pair.orderbook[prevOrderId].next = id;
+        } else {
+            pair.firstOrder = id;
         }
 
-        if (pair.firstOrder == id) {
-            pair.firstOrder = matchingOrderItem.next;
+        if (currentOrderId == pair.bestAsk) {
+            pair.bestAsk = id;
+            emit NewAsk(order.baseToken, order.tradeToken, order.price);
         }
 
-        pair.pricesTree.remove(id);
-        delete pair.orderbook[id];
-        delete orders[id];
-
-        return matchingOrderItem;
+        orders[id] = order;
+        pair.orderbook[id] = orderItem;
+        pair.pricesTree.placeAfter(n, id, order.price);
     }
 
-    function getOrderBookInfo(address baseToken, address tradeToken) public constant returns (uint64 firstOrder, uint64 bestBid, uint64 bestAsk, uint64 lastOrder) {
-        Pair memory pair = pairs[baseToken][tradeToken];
-        firstOrder = pair.firstOrder;
-        bestBid = pair.bestBid;
-        bestAsk = pair.bestAsk;
-        lastOrder = pair.lastOrder;
-    }
+    function matchSell(Pair storage pair, Order order, uint64 id) private {
+        uint64 currentOrderId = pair.bestBid;
+        while (currentOrderId != 0 && order.amount != 0 && order.price <= orders[currentOrderId].price) {
+            Order memory matchingOrder = orders[currentOrderId];
+            uint tradeAmount;
+            if (matchingOrder.amount >= order.amount) {
+                tradeAmount = order.amount;
+                matchingOrder.amount = matchingOrder.amount.sub(order.amount);
+                order.amount = 0;
+            } else {
+                tradeAmount = matchingOrder.amount;
+                order.amount = order.amount.sub(matchingOrder.amount);
+                matchingOrder.amount = 0;
+            }
 
-    function getOrder(uint64 id) public constant returns (uint price, bool isSell, uint amount, uint64 next, uint64 prev) {
-        Order memory order = orders[id];
-        price = order.price;
-        isSell = order.sell;
-        amount = order.amount;
-        next = pairs[order.baseToken][order.tradeToken].orderbook[id].next;
-        prev = pairs[order.baseToken][order.tradeToken].orderbook[id].prev;
+            reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(tradeAmount);
+            transferFund(order.tradeToken, matchingOrder.owner, tradeAmount);
+            uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
+            transferFund(order.baseToken, order.owner, baseTokenAmount);
+            reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
+
+            emit NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
+
+            if (matchingOrder.amount != 0) {
+                orders[currentOrderId] = matchingOrder;
+                break;
+            }
+
+            ListItem memory item = excludeItem(pair, currentOrderId);
+            currentOrderId = item.prev;
+        }
+
+        if (pair.bestBid != currentOrderId) {
+            pair.bestBid = currentOrderId;
+            emit NewBid(order.baseToken, order.tradeToken, orders[currentOrderId].price);
+        }
     }
 }
