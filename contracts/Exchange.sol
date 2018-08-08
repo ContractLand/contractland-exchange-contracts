@@ -38,6 +38,7 @@ contract Exchange is Initializable, Pausable {
 
     /* --- EVENTS --- */
 
+    event CancelOrder(uint64 id);
     event NewBestAsk(address indexed baseToken, address indexed tradeToken, uint price);
     event NewBestBid(address indexed baseToken, address indexed tradeToken, uint price);
 
@@ -175,6 +176,7 @@ contract Exchange is Initializable, Pausable {
 
         Pair storage pair = pairs[order.baseToken][order.tradeToken];
         ListItem memory orderItem = excludeItem(pair, id);
+        emit CancelOrder(id);
 
         if (pair.bestBid == id) {
             pair.bestBid = orderItem.prev;
