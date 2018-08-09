@@ -180,6 +180,7 @@ describe.only("Exchange", () => {
             const order = buy(100, 5);
             const orderState = {prev: 0, next: 0};
             const orderbookState = {firstOrder: 1, bestBid: 1, bestAsk: 0, lastOrder: 1};
+            const newBestBidWatcher = exchange.NewBestBid();
             const newBidWatcher = exchange.NewBid();
             const newOrderWatcher = exchange.NewOrder();
             return testOrder(order, orderState, orderbookState)
@@ -188,7 +189,8 @@ describe.only("Exchange", () => {
                     eventState.id = 1;
                     checkNewOrderEvent(newOrderWatcher, eventState);
                 })
-                .then(() => checkNewBestOrderEvent(newBidWatcher, {price: order.price}))
+                .then(() => checkNewAskOrBidEvent(newBestBidWatcher, {price: order.price}))
+                .then(() => checkNewAskOrBidEvent(newBidWatcher, {price: order.price}))
                 .then(() => checkBalance(baseToken.address, order.from, {available: tokenDepositAmount - order.total, reserved: order.total}));
         });
 
@@ -196,6 +198,7 @@ describe.only("Exchange", () => {
             const order = sell(100, 5);
             const orderState = {prev: 0, next: 0};
             const orderbookState = {firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 1};
+            const newBestAskWatcher = exchange.NewBestAsk();
             const newAskWatcher = exchange.NewAsk();
             const newOrderWatcher = exchange.NewOrder();
             return testOrder(order, orderState, orderbookState)
@@ -204,33 +207,38 @@ describe.only("Exchange", () => {
                     eventState.id = 1;
                     checkNewOrderEvent(newOrderWatcher, eventState);
                 })
-                .then(() => checkNewBestOrderEvent(newAskWatcher, {price: order.price}))
+                .then(() => checkNewAskOrBidEvent(newBestAskWatcher, {price: order.price}))
+                .then(() => checkNewAskOrBidEvent(newAskWatcher, {price: order.price}))
                 .then(() => checkBalance(tradeToken.address, order.from, {available: tokenDepositAmount - order.amount, reserved: order.amount}));
         });
 
         it("should cancel the last single buy order", () => {
             const order = buy(100, 5);
             let orderId;
-            const newBidWatcher = exchange.NewBid();
+            const newBestBidWatcher = exchange.NewBestBid();
+            const cancelOrderWatcher = exchange.CancelOrder();
             return placeOrder(order)
                 .then(id => orderId = id)
                 .then(() => cancelOrder(orderId, order.from))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId}))
                 .then(() => checkOrder(orderId, undefined))
                 .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
-                .then(() => checkNewBestOrderEvent(newBidWatcher, {price: 0}))
+                .then(() => checkNewAskOrBidEvent(newBestBidWatcher, {price: 0}))
                 .then(() => checkBalance(baseToken.address, order.from, {available: tokenDepositAmount, reserved: 0}));
         });
 
         it("should cancel the last single sell order", () => {
             const order = sell(100, 5);
             let orderId;
-            const newAskWatcher = exchange.NewAsk();
+            const newBestAskWatcher = exchange.NewBestAsk();
+            const cancelOrderWatcher = exchange.CancelOrder();
             return placeOrder(order)
                 .then(id => orderId = id)
                 .then(() => cancelOrder(orderId, order.from))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId}))
                 .then(() => checkOrder(orderId, undefined))
                 .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
-                .then(() => checkNewBestOrderEvent(newAskWatcher, {price: 0}))
+                .then(() => checkNewAskOrBidEvent(newBestAskWatcher, {price: 0}))
                 .then(() => checkBalance(tradeToken.address, order.from, {available: tokenDepositAmount, reserved: 0}));
         });
 
@@ -238,28 +246,34 @@ describe.only("Exchange", () => {
             const order = sell(100, 5);
             const orderState = {prev: 0, next: 1};
             const orderbookState = {firstOrder: 2, bestBid: 0, bestAsk: 2, lastOrder: 1};
+            let newBestAskWatcher;
             let newAskWatcher;
             return placeOrder(sell(110, 5))
                 .then(() => {
+                    newBestAskWatcher = exchange.NewBestAsk();
                     newAskWatcher = exchange.NewAsk();
                 })
                 .then(() => testOrder(order, orderState, orderbookState))
                 .then(() => checkOrder(1, {prev: 2, next: 0}))
-                .then(() => checkNewBestOrderEvent(newAskWatcher, {price: order.price}));
+                .then(() => checkNewAskOrBidEvent(newBestAskWatcher, {price: order.price}))
+                .then(() => checkNewAskOrBidEvent(newAskWatcher, {price: order.price}));
         });
 
         it("should insert a new buy order, change the last order reference and update the best bid reference", () => {
             const order = buy(110, 5);
             const orderState = {prev: 1, next: 0};
             const orderbookState = {firstOrder: 1, bestBid: 2, bestAsk: 0, lastOrder: 2};
+            let newBestBidWatcher;
             let newBidWatcher;
             return placeOrder(buy(100, 5))
                 .then(() => {
+                    newBestBidWatcher = exchange.NewBestBid();
                     newBidWatcher = exchange.NewBid();
                 })
                 .then(() => testOrder(order, orderState, orderbookState))
                 .then(() => checkOrder(1, {prev: 0, next: 2}))
-                .then(() => checkNewBestOrderEvent(newBidWatcher, {price: order.price}));
+                .then(() => checkNewAskOrBidEvent(newBestBidWatcher, {price: order.price}))
+                .then(() => checkNewAskOrBidEvent(newBidWatcher, {price: order.price}));
         });
 
         it("should insert a new buy order as first of buy orders", () => {
@@ -323,10 +337,12 @@ describe.only("Exchange", () => {
         it("should cancel a sell order from the middle of sell orders", () => {
             const order = sell(110, 5);
             const orderState = {prev: 1, next: 0};
+            const cancelOrderWatcher = exchange.CancelOrder();
             return placeOrder(sell(100, 5))
                 .then(() => placeOrder(order))
                 .then(() => placeOrder(sell(120, 5)))
                 .then(() => cancelOrder(2, order.from))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2}))
                 .then(() => checkOrder(2, undefined))
                 .then(() => checkOrder(1, {prev: 0, next: 3}))
                 .then(() => checkOrder(3, {prev: 1, next: 0}))
@@ -336,10 +352,12 @@ describe.only("Exchange", () => {
         it("should cancel a buy order from the middle of buy orders", () => {
             const order = buy(110, 5);
             const orderState = {prev: 1, next: 0};
+            const cancelOrderWatcher = exchange.CancelOrder();
             return placeOrder(buy(100, 5))
                 .then(() => placeOrder(order))
                 .then(() => placeOrder(buy(120, 5)))
                 .then(() => cancelOrder(2, order.from))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2}))
                 .then(() => checkOrder(2, undefined))
                 .then(() => checkOrder(1, {prev: 0, next: 3}))
                 .then(() => checkOrder(3, {prev: 1, next: 0}))
@@ -639,7 +657,7 @@ describe.only("Exchange", () => {
         }
     }
 
-    function checkNewBestOrderEvent(watcher, expectedState) {
+    function checkNewAskOrBidEvent(watcher, expectedState) {
         let events = watcher.get();
         assert.equal(events.length, 1);
 
@@ -661,6 +679,14 @@ describe.only("Exchange", () => {
         assert.equal(event.side, expectedState.side);
         assert.equal(event.price.toString(), expectedState.price.toString());
         assert.equal(event.amount, expectedState.amount);
+    }
+
+    function checkCancelOrderEvent(watcher, expectedState) {
+        let events = watcher.get();
+        assert.equal(events.length, 1);
+
+        let event = events[0].args;
+        assert.equal(event.id, expectedState.id);
     }
 
     function placeOrder(order) {
