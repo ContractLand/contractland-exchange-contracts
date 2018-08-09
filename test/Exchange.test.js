@@ -10,10 +10,11 @@ require('chai')
 const Exchange = artifacts.require("./Exchange.sol");
 const ExchangeProxy = artifacts.require('AdminUpgradeabilityProxy')
 const Token = artifacts.require("./TestToken.sol");
+const FallbackTrap = artifacts.require("./FallbackTrap.sol");
 
 describe.only("Exchange", () => {
     const [deployer, buyer, seller, proxyOwner, exchangeOwner, notExchangeOwner] = web3.eth.accounts;
-    let exchange, exchangeProxy, baseToken, tradeToken, orderId;
+    let exchange, exchangeProxy, baseToken, tradeToken, orderId, fallbackTrap;
     const etherAddress = '0x0000000000000000000000000000000000000000'
     const invalidToken = '0x1111111111111111111111111111111111111111'
     const tokenDepositAmount = 10000;
@@ -21,6 +22,7 @@ describe.only("Exchange", () => {
     beforeEach(async () => {
         orderId = 1;
         await deployExchange()
+        await deployFallbackTrap()
         await initBalances()
     })
 
@@ -572,6 +574,51 @@ describe.only("Exchange", () => {
         })
     })
 
+    describe('Fallback trap', async() => {
+        const price = 5;
+        let order;
+
+        beforeEach(() => {
+            order = {
+                'baseToken': etherAddress,
+                'tradeToken': tradeToken.address,
+                'amount': 100,
+                'price': toWei(price),
+                'from': buyer
+            }
+        })
+
+        it('should be able to interact with the exchange via an intermediate contract', async () => {
+            const exchangeEtherBalanceBefore = await web3.eth.getBalance(exchange.address)
+    
+            const newOrderEventWatcher = exchange.NewOrder();
+            const cancelOrderEventWatcher = exchange.CancelOrder();
+            await fallbackTrap.buy(order.baseToken, order.tradeToken, fallbackTrap.address, order.amount, order.price, { from: order.from, value: order.amount * price, gasPrice: 0 })
+            const id = newOrderEventWatcher.get()[0].args.id;
+            await fallbackTrap.cancelOrder(id, { from: buyer, gasPrice:0, value: 0 });
+            checkCancelOrderEvent(cancelOrderEventWatcher, {id})
+
+            assert.equal(order.amount * price, (await web3.eth.getBalance(fallbackTrap.address)).toString())
+            assert.equal(exchangeEtherBalanceBefore.toString(), (await web3.eth.getBalance(exchange.address)).toString())
+        })
+
+        it('should not be vulnerable to the fallback trap', async () => {
+            const exchangeEtherBalanceBefore = await web3.eth.getBalance(exchange.address)
+
+            await fallbackTrap.arm();
+    
+            const newOrderEventWatcher = exchange.NewOrder();
+            const cancelOrderEventWatcher = exchange.CancelOrder();
+            await fallbackTrap.buy(order.baseToken, order.tradeToken, fallbackTrap.address, order.amount, order.price, { from: order.from, value: order.amount * price, gasPrice: 0 })
+            const id = newOrderEventWatcher.get()[0].args.id;
+            await fallbackTrap.cancelOrder(id, { from: buyer, gasPrice:0, value: 0 });
+            checkCancelOrderEvent(cancelOrderEventWatcher, {id})
+
+            assert.equal(order.amount * price, (await web3.eth.getBalance(fallbackTrap.address)).toString())
+            assert.equal(exchangeEtherBalanceBefore.toString(), (await web3.eth.getBalance(exchange.address)).toString())
+        })
+    });
+
     async function deployExchange() {
         baseToken = await Token.new()
         tradeToken = await Token.new()
@@ -579,6 +626,11 @@ describe.only("Exchange", () => {
         exchangeProxy = await ExchangeProxy.new(exchangeInstance.address, { from: proxyOwner })
         exchange = await Exchange.at(exchangeProxy.address)
         await exchange.initialize({ from: exchangeOwner })
+    }
+
+    async function deployFallbackTrap() {
+        fallbackTrap = await FallbackTrap.new();
+        await fallbackTrap.init(exchangeProxy.address, {})
     }
 
     async function initBalances() {
@@ -686,7 +738,7 @@ describe.only("Exchange", () => {
         assert.equal(events.length, 1);
 
         let event = events[0].args;
-        assert.equal(event.id, expectedState.id);
+        assert.equal(event.id.toString(), expectedState.id.toString());
     }
 
     function placeOrder(order) {
