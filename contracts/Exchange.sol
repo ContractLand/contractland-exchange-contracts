@@ -40,6 +40,8 @@ contract Exchange is Initializable, Pausable {
 
     event CancelOrder(uint64 id);
     event NewBestAsk(address indexed baseToken, address indexed tradeToken, uint price);
+    event NewAsk(address indexed baseToken, address indexed tradeToken, uint price);
+    event NewBid(address indexed baseToken, address indexed tradeToken, uint price);
     event NewBestBid(address indexed baseToken, address indexed tradeToken, uint price);
 
     event NewOrder(address indexed baseToken,
@@ -305,6 +307,7 @@ contract Exchange is Initializable, Pausable {
             pair.lastOrder = id;
         }
 
+        emit NewBid(order.baseToken, order.tradeToken, order.price);
         if (currentOrderId == pair.bestBid) {
             pair.bestBid = id;
             emit NewBestBid(order.baseToken, order.tradeToken, order.price);
@@ -342,6 +345,7 @@ contract Exchange is Initializable, Pausable {
             pair.firstOrder = id;
         }
 
+        emit NewAsk(order.baseToken, order.tradeToken, order.price);
         if (currentOrderId == pair.bestAsk) {
             pair.bestAsk = id;
             emit NewBestAsk(order.baseToken, order.tradeToken, order.price);
