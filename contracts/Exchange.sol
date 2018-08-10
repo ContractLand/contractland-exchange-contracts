@@ -5,6 +5,7 @@ import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "./libraries/RedBlackTree.sol";
 import "./interfaces/ERC20.sol";
+import "./DestructibleTransfer.sol";
 
 contract Exchange is Initializable, Pausable {
     using SafeMath for uint;
@@ -170,10 +171,10 @@ contract Exchange is Initializable, Pausable {
 
         if (order.sell) {
             reserved[order.tradeToken][msg.sender] = reserved[order.tradeToken][msg.sender].sub(order.amount);
-            ERC20(order.tradeToken).transfer(msg.sender, order.amount);
+            transferFund(order.tradeToken, msg.sender, order.amount);
         } else {
             reserved[order.baseToken][msg.sender] = reserved[order.baseToken][msg.sender].sub(order.amount.mul(order.price).div(priceDenominator));
-            ERC20(order.baseToken).transfer(msg.sender, order.amount.mul(order.price).div(priceDenominator));
+            transferFund(order.baseToken, msg.sender, order.amount.mul(order.price).div(priceDenominator));
         }
 
         Pair storage pair = pairs[order.baseToken][order.tradeToken];
@@ -236,7 +237,9 @@ contract Exchange is Initializable, Pausable {
 
     function transferFund(address token, address recipient, uint amount) private {
         if(token == address(0)) {
-            recipient.transfer(amount);
+            if (!recipient.send(amount)) {
+                (new DestructibleTransfer).value(amount)(recipient);
+            }
         } else {
             ERC20(token).transfer(recipient, amount);
         }
