@@ -7,12 +7,10 @@
     "test": "test"
   },
   "scripts": {
-    "build-local": "npm run clear-abi && truffle migrate --reset --network development && npm run copy-abi",
-    "build-rinkeby": "npm run clear-abi && truffle migrate --reset --network rinkeby && npm run copy-abi",
-    "build-ropsten": "npm run clear-abi && truffle migrate --reset --network ropsten && npm run copy-abi",
-    "build-terra": "npm run clear-abi && truffle migrate --reset --network terra && npm run copy-abi",
-    "clear-abi": "rm -rf build",
-    "copy-abi": "cp -R build/contracts ../contractland-app/",
+    "build": "npm run clear-build && truffle compile",
+    "deploy": "node deployment/deploy.js",
+    "build-deploy": "npm run build && npm run deploy",
+    "clear-build": "rm -rf build",
     "flatten": "cd scripts && bash flatten.sh",
     "test": "truffle test --network development",
     "ganache": "ganache-cli --allowUnlimitedContractSize --gasLimit 10000000"
