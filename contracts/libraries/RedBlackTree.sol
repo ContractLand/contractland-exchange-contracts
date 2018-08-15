@@ -15,7 +15,7 @@ library RedBlackTree {
         mapping(uint64 => Item) items;
     }
 
-    function getItem(Tree storage tree, uint64 id) internal constant returns (uint64 parent, uint64 left, uint64 right, uint value, bool red) {
+    function getItem(Tree storage tree, uint64 id) public constant returns (uint64 parent, uint64 left, uint64 right, uint value, bool red) {
         require(id != 0);
         parent = tree.items[id].parent;
         left = tree.items[id].left;
@@ -24,7 +24,7 @@ library RedBlackTree {
         red = tree.items[id].red;
     }
 
-    function find(Tree storage tree, uint value) internal constant returns (uint64 parentId) {
+    function find(Tree storage tree, uint value) public constant returns (uint64 parentId) {
         uint64 id = tree.root;
         parentId = id;
         while (id != 0) {
