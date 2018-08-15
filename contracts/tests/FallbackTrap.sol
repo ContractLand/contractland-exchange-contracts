@@ -1,5 +1,5 @@
 pragma solidity ^0.4.23;
-import './Exchange.sol';
+import '../Exchange.sol';
 
 contract FallbackTrap {
     Exchange public exchange;
