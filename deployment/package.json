@@ -1,0 +1,18 @@
+{
+  "name": "contractland-exchange-contract-deployment",
+  "version": "1.0.0",
+  "description": "Deployment scripts for the contractland-exchange contracts",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "node deploy.js"
+  },
+  "author": "Peter He",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^5.0.1",
+    "ethereumjs-tx": "^1.3.4",
+    "node-fetch": "^2.1.2",
+    "pkg": "^4.3.1",
+    "web3": "^1.0.0-beta.33"
+  }
+}
