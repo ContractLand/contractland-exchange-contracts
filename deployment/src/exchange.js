@@ -9,6 +9,7 @@ const {deployContract, sendRawTx, compareHex} = require('./deploymentUtils');
 const {web3Provider, deploymentPrivateKey, RPC_URL, PROXY_ADMIN_ADDRESS_SLOT} = require('./web3');
 
 const Proxy = require('../../build/contracts/AdminUpgradeabilityProxy.json');
+const RBTree = require('../../build/contracts/RedBlackTree.json')
 const Exchange = require('../../build/contracts/Exchange.json')
 
 const {
@@ -16,6 +17,12 @@ const {
   EXCHANGE_OWNER_MULTISIG,
   EXCHANGE_UPGRADEABLE_ADMIN
 } = process.env;
+
+function link(contractJson, library, libraryName) {
+  const address = library.options.address.replace('0x', '');
+  const pattern = new RegExp(`_+${libraryName}_+`, 'g');
+  return {...contractJson, bytecode: contractJson.bytecode.replace(pattern, address)};
+}
 
 async function deployExchange()
 {
@@ -25,8 +32,14 @@ async function deployExchange()
   console.log('deploying Exchange')
   console.log('========================================\n')
 
+  console.log('\ndeploying rbtree lib:')
+  let rbtLib = await deployContract(RBTree, [], {from: DEPLOYMENT_ACCOUNT_ADDRESS, nonce: nonce})
+  console.log('RBTRee Library: ', rbtLib.options.address)
+  nonce++;
+
   console.log('\ndeploying implementation for exchange:')
-  let exchangeImplementation = await deployContract(Exchange, [], {from: DEPLOYMENT_ACCOUNT_ADDRESS, nonce: nonce})
+  const linkedExchange = link(Exchange, rbtLib, 'RedBlackTree');
+  let exchangeImplementation = await deployContract(linkedExchange, [], {from: DEPLOYMENT_ACCOUNT_ADDRESS, nonce: nonce})
   console.log('Exchange Implementation: ', exchangeImplementation.options.address)
   nonce++;
 
@@ -67,6 +80,7 @@ async function deployExchange()
   nonce++;
 
   return {
+    redBlackTreeLib: rbtLib.options.address,
     exchangeImplementation: exchangeImplementationAddress,
     exchangeProxy: exchangeProxy.options.address
   }
