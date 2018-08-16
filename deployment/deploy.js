@@ -5,6 +5,7 @@ async function main() {
   console.log("\n**************************************************")
   console.log("          Deployment has been completed.          ")
   console.log("**************************************************\n\n")
+  console.log(`[ Library  ] RedBlackTree: ${exchange.redBlackTreeLib}`)
   console.log(`[ Exchange ] Proxy: ${exchange.exchangeProxy}`)
   console.log(`[ Exchange ] Implementation: ${exchange.exchangeImplementation}`)
 }

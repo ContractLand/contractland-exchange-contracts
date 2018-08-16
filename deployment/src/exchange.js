@@ -80,6 +80,7 @@ async function deployExchange()
   nonce++;
 
   return {
+    redBlackTreeLib: rbtLib.options.address,
     exchangeImplementation: exchangeImplementationAddress,
     exchangeProxy: exchangeProxy.options.address
   }
