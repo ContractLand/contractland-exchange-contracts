@@ -13,13 +13,17 @@ The orderbook is built with a combination of maps and tree (Red and Black Tree) 
 * Order insertion O(log n)
 * Order removal O(log n)
 
-## Install and Deploy
+## Install and Deploy via Truffle
 1. `npm install`
 2. In seperate window, run `ganache-cli --allowUnlimitedContractSize --gasLimit 10000000` (install ganache-cli globally if not installed). This allows deployment of contract of unlimited size. The gas cost of deploying NewExchange costs around 7000000 units of gas.
 3. run `truffle migrate --reset --network development`
 
 ## Run Tests
 1. run `npm run test`
+
+## Deploy to remote network
+1. Create `.env` file based on `.env.example` in `development` directory.
+2. run `npm run build-deploy`.
 
 ## Usage & Interfaces
 
