@@ -534,6 +534,38 @@ describe.only("Exchange", () => {
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
                 .then(() => checkOrderbook({firstOrder: 4, bestBid: 4, bestAsk: 1, lastOrder: 1}));
         });
+
+        it("a new buy order should match same priced sell orders in FIFO fashion", () => {
+            const sellOrderOne = sell(90, 5);
+            const sellOrderTwo = sell(90, 5);
+            const buyOrder = buy(90, 2);
+            const tradeEventsStates = [{bidId: 3, askId: 1, side: true, amount: 2, price: sellOrderOne.price}];
+            const newTradeWatcher = exchange.NewTrade();
+            return placeOrder(sellOrderOne)
+                .then(() => placeOrder(sellOrderTwo))
+                .then(() => placeOrder(buyOrder))
+                .then(() => checkOrder(3, undefined))
+                .then(() => checkOrder(2, sellOrderTwo.amount))
+                .then(() => checkOrder(1, {amount: sellOrderOne.amount - buyOrder.amount}))
+                .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
+                .then(() => checkOrderbook({firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 2}));
+        })
+
+        it("a new sell order should match same priced buy orders in FIFO fashion", () => {
+            const buyOrderOne = buy(90, 5);
+            const buyOrderTwo = buy(90, 5);
+            const sellOrder = sell(90, 2);
+            const tradeEventsStates = [{bidId: 1, askId: 3, side: false, amount: 2, price: buyOrderOne.price}];
+            const newTradeWatcher = exchange.NewTrade();
+            return placeOrder(buyOrderOne)
+                .then(() => placeOrder(buyOrderTwo))
+                .then(() => placeOrder(sellOrder))
+                .then(() => checkOrder(3, undefined))
+                .then(() => checkOrder(2, buyOrderTwo.amount))
+                .then(() => checkOrder(1, {amount: buyOrderOne.amount - sellOrder.amount}))
+                .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
+                .then(() => checkOrderbook({firstOrder: 2, bestBid: 1, bestAsk: 0, lastOrder: 1}));
+        })
     });
 
     describe("Pause", () => {
