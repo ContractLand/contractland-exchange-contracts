@@ -53,7 +53,7 @@ contract Exchange is Initializable, Pausable {
         uint amount,
         uint64 timestamp
     );
-    
+
     event NewTrade(address indexed baseToken,
         address indexed tradeToken,
         uint64 bidId, uint64 askId,
@@ -107,7 +107,7 @@ contract Exchange is Initializable, Pausable {
         order.tradeToken = tradeToken;
         order.price = price;
         order.amount = amount;
-        order.timestamp = uint64(now);
+        order.timestamp = uint64(block.timestamp);
 
         uint64 id = ++lastOrderId;
 
@@ -147,7 +147,7 @@ contract Exchange is Initializable, Pausable {
         order.tradeToken = tradeToken;
         order.price = price;
         order.amount = amount;
-        order.timestamp = uint64(now);
+        order.timestamp = uint64(block.timestamp);
 
         uint64 id = ++lastOrderId;
 
@@ -266,7 +266,7 @@ contract Exchange is Initializable, Pausable {
             transferFund(order.baseToken, matchingOrder.owner, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
             transferFund(order.tradeToken, order.owner, tradeAmount);
 
-            emit NewTrade(order.baseToken, order.tradeToken, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(now));
+            emit NewTrade(order.baseToken, order.tradeToken, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
                 orders[currentOrderId] = matchingOrder;
@@ -380,7 +380,7 @@ contract Exchange is Initializable, Pausable {
             transferFund(order.baseToken, order.owner, baseTokenAmount);
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
-            emit NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(now));
+            emit NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
                 orders[currentOrderId] = matchingOrder;
