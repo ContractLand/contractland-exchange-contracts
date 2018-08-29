@@ -218,7 +218,7 @@ describe("Exchange", () => {
             const order = buy(100, 5);
             let orderId;
             const newBestBidWatcher = exchange.NewBestBid();
-            const cancelOrderWatcher = exchange.CancelOrder();
+            const cancelOrderWatcher = exchange.NewCancelOrder();
             return placeOrder(order)
                 .then(id => orderId = id)
                 .then(() => cancelOrder(orderId, order.from))
@@ -233,7 +233,7 @@ describe("Exchange", () => {
             const order = sell(100, 5);
             let orderId;
             const newBestAskWatcher = exchange.NewBestAsk();
-            const cancelOrderWatcher = exchange.CancelOrder();
+            const cancelOrderWatcher = exchange.NewCancelOrder();
             return placeOrder(order)
                 .then(id => orderId = id)
                 .then(() => cancelOrder(orderId, order.from))
@@ -339,7 +339,7 @@ describe("Exchange", () => {
         it("should cancel a sell order from the middle of sell orders", () => {
             const order = sell(110, 5);
             const orderState = {prev: 1, next: 0};
-            const cancelOrderWatcher = exchange.CancelOrder();
+            const cancelOrderWatcher = exchange.NewCancelOrder();
             return placeOrder(sell(100, 5))
                 .then(() => placeOrder(order))
                 .then(() => placeOrder(sell(120, 5)))
@@ -354,7 +354,7 @@ describe("Exchange", () => {
         it("should cancel a buy order from the middle of buy orders", () => {
             const order = buy(110, 5);
             const orderState = {prev: 1, next: 0};
-            const cancelOrderWatcher = exchange.CancelOrder();
+            const cancelOrderWatcher = exchange.NewCancelOrder();
             return placeOrder(buy(100, 5))
                 .then(() => placeOrder(order))
                 .then(() => placeOrder(buy(120, 5)))
@@ -624,7 +624,7 @@ describe("Exchange", () => {
             const exchangeEtherBalanceBefore = await web3.eth.getBalance(exchange.address)
     
             const newOrderEventWatcher = exchange.NewOrder();
-            const cancelOrderEventWatcher = exchange.CancelOrder();
+            const cancelOrderEventWatcher = exchange.NewCancelOrder();
             await fallbackTrap.buy(order.baseToken, order.tradeToken, fallbackTrap.address, order.amount, order.price, { from: order.from, value: order.amount * price, gasPrice: 0 })
             const id = newOrderEventWatcher.get()[0].args.id;
             await fallbackTrap.cancelOrder(id, { from: buyer, gasPrice:0, value: 0 });
@@ -640,7 +640,7 @@ describe("Exchange", () => {
             await fallbackTrap.arm();
     
             const newOrderEventWatcher = exchange.NewOrder();
-            const cancelOrderEventWatcher = exchange.CancelOrder();
+            const cancelOrderEventWatcher = exchange.NewCancelOrder();
             await fallbackTrap.buy(order.baseToken, order.tradeToken, fallbackTrap.address, order.amount, order.price, { from: order.from, value: order.amount * price, gasPrice: 0 })
             const id = newOrderEventWatcher.get()[0].args.id;
             await fallbackTrap.cancelOrder(id, { from: buyer, gasPrice:0, value: 0 });
