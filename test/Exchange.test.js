@@ -773,14 +773,14 @@ describe("Exchange", () => {
         assert.equal(event.id.toString(), expectedState.id.toString());
     }
 
-    function placeOrder(order) {
+    async function placeOrder(order) {
         let placeOrderTestPromise;
         if (order.sell === true) {
-            const data = exchange.contract.sell.getData(baseToken.address, tradeToken.address, order.from, order.amount, order.price)
-            placeOrderTestPromise = tradeToken.approveAndCall(exchange.address, order.amount, data, { from: order.from })
+            await tradeToken.approve(exchange.address, order.amount, { from: order.from })
+            placeOrderTestPromise = exchange.sell(baseToken.address, tradeToken.address, order.from, order.amount, order.price, { from: order.from })
         } else {
-            const data = exchange.contract.buy.getData(baseToken.address, tradeToken.address, order.from, order.amount, order.price)
-            placeOrderTestPromise = baseToken.approveAndCall(exchange.address, order.total, data, { from: order.from })
+            await baseToken.approve(exchange.address, order.total, { from: order.from })
+            placeOrderTestPromise = exchange.buy(baseToken.address, tradeToken.address, order.from, order.amount, order.price, { from: order.from })
         }
         return placeOrderTestPromise.then(() => orderId++);
     }

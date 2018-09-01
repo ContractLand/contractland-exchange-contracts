@@ -1,8 +1,8 @@
 pragma solidity ^0.4.23;
 
-import "openzeppelin-solidity/contracts/token/ERC827/ERC827Token.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 
-contract TestToken is ERC827Token {
+contract TestToken is StandardToken {
   function setBalance(uint _value) {
       balances[msg.sender] = _value;
   }
