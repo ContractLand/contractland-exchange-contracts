@@ -365,6 +365,30 @@ describe("Exchange", () => {
                 .then(() => checkOrder(3, {prev: 1, next: 0}))
                 .then(() => checkOrderbook({firstOrder: 1, bestBid: 3, bestAsk: 0, lastOrder: 3}));
         });
+
+        it.only("should determine correct best bid after adding different orders", () => {
+            let bestBid;
+            let bestBidPrice
+            return placeOrder(buy(2, 1))
+                .then(() => placeOrder(buy(3, 1)))
+                .then(() => placeOrder(buy(4, 1)))
+                .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestBid = orderbook[1].toFixed()}))
+                .then(() => exchange.getOrder(bestBid).then(order => {bestBidPrice = order[0].toFixed()}))
+                .then(() => {console.log('best bid price is ' + bestBidPrice)})
+                .then(() => assert.equal(bestBidPrice, 4000000000000000000))
+        });
+
+        it.only("should determine correct best bid after adding identical orders", () => {
+            let bestBid;
+            let bestBidPrice
+            return placeOrder(buy(2, 1))
+                .then(() => placeOrder(buy(2, 1)))
+                .then(() => placeOrder(buy(4, 1)))
+                .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestBid = orderbook[1].toFixed()}))
+                .then(() => exchange.getOrder(bestBid).then(order => {bestBidPrice = order[0].toFixed()}))
+                .then(() => {console.log('best bid price is ' + bestBidPrice)})
+                .then(() => assert.equal(bestBidPrice, 4000000000000000000))
+        });
     });
 
     describe("Order Matching", function() {
