@@ -590,6 +590,36 @@ describe("Exchange", () => {
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
                 .then(() => checkOrderbook({firstOrder: 2, bestBid: 1, bestAsk: 0, lastOrder: 1}));
         })
+
+        it.only("should match the best price", () => {
+            const buyOrderOne = buy(90, 5);
+            const buyOrderTwo = buy(95, 5);
+            const buyOrderThree = buy(100, 5);
+            const sellOrder = sell(80, 2);
+            return placeOrder(buyOrderOne)
+                .then(() => placeOrder(buyOrderTwo))
+                .then(() => placeOrder(buyOrderThree))
+                .then(() => placeOrder(sellOrder))
+                .then(() => checkOrder(4, undefined))
+                .then(() => checkOrder(3, {amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}))
+                .then(() => checkOrder(2, {amount: buyOrderTwo.amount, price: buyOrderTwo.price}))
+                .then(() => checkOrder(1, {amount: buyOrderOne.amount, price: buyOrderOne.price}))
+        })
+
+        it.only("should match the best price after adding orders with the same price", () => {
+            const buyOrderOne = buy(90, 5);
+            const buyOrderTwo = buy(90, 5);
+            const buyOrderThree = buy(100, 5);
+            const sellOrder = sell(80, 2);
+            return placeOrder(buyOrderOne)
+                .then(() => placeOrder(buyOrderTwo))
+                .then(() => placeOrder(buyOrderThree))
+                .then(() => placeOrder(sellOrder))
+                .then(() => checkOrder(4, undefined))
+                .then(() => checkOrder(3, {amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}))
+                .then(() => checkOrder(2, {amount: buyOrderTwo.amount, price: buyOrderTwo.price}))
+                .then(() => checkOrder(1, {amount: buyOrderOne.amount, price: buyOrderOne.price}))
+        })
     });
 
     describe("Pause", () => {
