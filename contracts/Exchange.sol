@@ -31,6 +31,7 @@ contract Exchange is Initializable, Pausable {
     struct Pair {
         mapping (uint64 => ListItem) orderbook;
         RedBlackTree.Tree pricesTree;
+        // Pointers to orders in the book from lowest to highest price
         uint64 firstOrder;
         uint64 bestBid;
         uint64 bestAsk;
@@ -284,12 +285,26 @@ contract Exchange is Initializable, Pausable {
     }
 
     function addToBids(uint64 id, Pair storage pair, Order memory order) private {
-        uint64 currentOrderId;
         uint64 n = pair.pricesTree.find(order.price);
-        if (n != 0 && order.price <= orders[n].price) {
-            currentOrderId = pair.orderbook[n].prev;
-        } else {
-            currentOrderId = n;
+        uint64 currentOrderId = n;
+        if (n != 0) {
+            if (order.price <= orders[currentOrderId].price) {
+                // The order to insert is less or equal to the found order in the book.
+                // Iterate towards the start of bid orders to find a order with less price or the first order
+                // starting from the prev order
+                currentOrderId = pair.orderbook[currentOrderId].prev;
+                while (orders[currentOrderId].price !=0 &&
+                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].next].price) {
+                    currentOrderId = pair.orderbook[currentOrderId].prev;
+                }
+            } else {
+                // The order to insert is greater to the found order in the book.
+                // Iterate towards the end of bid orders to find a order with greater price or the last order
+                while (orders[currentOrderId].price !=0 &&
+                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].next].price) {
+                    currentOrderId = pair.orderbook[currentOrderId].next;
+                }
+            }
         }
 
         ListItem memory orderItem;
@@ -322,12 +337,26 @@ contract Exchange is Initializable, Pausable {
     }
 
     function addToAsks(Pair storage pair, Order memory order, uint64 id) private {
-        uint64 currentOrderId;
         uint64 n = pair.pricesTree.find(order.price);
-        if (n != 0 && order.price >= orders[n].price) {
-            currentOrderId = pair.orderbook[n].next;
-        } else {
-            currentOrderId = n;
+        uint64 currentOrderId = n;
+        if (n != 0) {
+            if (order.price >= orders[currentOrderId].price) {
+                // The order to insert is greater or equal to the found order in the book.
+                // Iterate towards the end of ask orders to find a order with greater price or the last order
+                // starting from the next order
+                currentOrderId = pair.orderbook[currentOrderId].next;
+                while (orders[currentOrderId].price !=0 &&
+                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].prev].price) {
+                    currentOrderId = pair.orderbook[currentOrderId].next;
+                }
+            } else {
+                // The order to insert is less to the found order in the book.
+                // Iterate towards the start of ask orders to find a order with less price or the first order
+                while (orders[currentOrderId].price !=0 &&
+                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].prev].price) {
+                    currentOrderId = pair.orderbook[currentOrderId].prev;
+                }
+            }
         }
 
         ListItem memory orderItem;
