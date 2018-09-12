@@ -11,7 +11,7 @@ contract Exchange is Initializable, Pausable {
     using SafeMath for uint;
     using RedBlackTree for RedBlackTree.Tree;
 
-    /* --- STRUCTS / CONSTANTS --- */
+    /* --- STRUCTS --- */
 
     struct ListItem {
         uint64 prev;
@@ -31,6 +31,7 @@ contract Exchange is Initializable, Pausable {
     struct Pair {
         mapping (uint64 => ListItem) orderbook;
         RedBlackTree.Tree pricesTree;
+        // Pointers to orders in the book from lowest to highest price
         uint64 firstOrder;
         uint64 bestBid;
         uint64 bestAsk;
@@ -63,8 +64,10 @@ contract Exchange is Initializable, Pausable {
         uint64 timestamp
     );
 
-    /* --- FIELDS --- */
+    /* --- FIELDS / CONSTANTS --- */
     // ***Start of V1.0.0 storage variables***
+
+    uint64 constant ORDERBOOK_MAX_ITEMS = 20;
 
     mapping (address => mapping (address => uint)) public reserved;
 
@@ -208,6 +211,54 @@ contract Exchange is Initializable, Pausable {
         prev = pairs[order.baseToken][order.tradeToken].orderbook[id].prev;
     }
 
+    function getOrderbookBids(address baseToken, address tradeToken)
+        external
+        view
+        returns (uint[ORDERBOOK_MAX_ITEMS] price, bool[ORDERBOOK_MAX_ITEMS] isSell, uint[ORDERBOOK_MAX_ITEMS] amount, uint[ORDERBOOK_MAX_ITEMS] id, uint64 items)
+    {
+        Pair memory pair = pairs[baseToken][tradeToken];
+        uint64 currentId = pair.bestBid;
+        items = 0;
+        uint previousPrice = 0;
+        while(currentId != 0 && items < ORDERBOOK_MAX_ITEMS) {
+            Order memory order = orders[currentId];
+            price[items] = order.price;
+            isSell[items] = order.sell;
+            amount[items] = amount[items] + order.amount;
+            id[items] = currentId;
+            previousPrice = order.price;
+            
+            currentId = pairs[baseToken][tradeToken].orderbook[currentId].prev;
+            if (orders[currentId].price != previousPrice) {
+                items = items + 1;
+            }
+        }
+    }
+
+    function getOrderbookAsks(address baseToken, address tradeToken)
+        external
+        view
+        returns (uint[ORDERBOOK_MAX_ITEMS] price, bool[ORDERBOOK_MAX_ITEMS] isSell, uint[ORDERBOOK_MAX_ITEMS] amount, uint[ORDERBOOK_MAX_ITEMS] id, uint64 items)
+    {
+        Pair memory pair = pairs[baseToken][tradeToken];
+        uint64 currentId = pair.bestAsk;
+        items = 0;
+        uint previousPrice = 0;
+        while(currentId != 0 && items < ORDERBOOK_MAX_ITEMS) {
+            Order memory order = orders[currentId];
+            price[items] = order.price;
+            isSell[items] = order.sell;
+            amount[items] = amount[items] + order.amount;
+            id[items] = currentId;
+            previousPrice = order.price;
+            
+            currentId = pairs[baseToken][tradeToken].orderbook[currentId].next;
+            if (orders[currentId].price != previousPrice) {
+                items = items + 1;
+            }
+        }
+    }
+
     /* --- INTERNAL / PRIVATE METHODS --- */
 
     function excludeItem(Pair storage pair, uint64 id) private returns (ListItem) {
@@ -284,12 +335,26 @@ contract Exchange is Initializable, Pausable {
     }
 
     function addToBids(uint64 id, Pair storage pair, Order memory order) private {
-        uint64 currentOrderId;
         uint64 n = pair.pricesTree.find(order.price);
-        if (n != 0 && order.price <= orders[n].price) {
-            currentOrderId = pair.orderbook[n].prev;
-        } else {
-            currentOrderId = n;
+        uint64 currentOrderId = n;
+        if (n != 0) {
+            if (order.price <= orders[currentOrderId].price) {
+                // The order to insert is less or equal to the found order in the book.
+                // Iterate towards the start of bid orders to find a order with less price or the first order
+                // starting from the prev order
+                currentOrderId = pair.orderbook[currentOrderId].prev;
+                while (orders[currentOrderId].price !=0 &&
+                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].next].price) {
+                    currentOrderId = pair.orderbook[currentOrderId].prev;
+                }
+            } else {
+                // The order to insert is greater to the found order in the book.
+                // Iterate towards the end of bid orders to find a order with greater price or the last order
+                while (orders[currentOrderId].price !=0 &&
+                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].next].price) {
+                    currentOrderId = pair.orderbook[currentOrderId].next;
+                }
+            }
         }
 
         ListItem memory orderItem;
@@ -322,12 +387,26 @@ contract Exchange is Initializable, Pausable {
     }
 
     function addToAsks(Pair storage pair, Order memory order, uint64 id) private {
-        uint64 currentOrderId;
         uint64 n = pair.pricesTree.find(order.price);
-        if (n != 0 && order.price >= orders[n].price) {
-            currentOrderId = pair.orderbook[n].next;
-        } else {
-            currentOrderId = n;
+        uint64 currentOrderId = n;
+        if (n != 0) {
+            if (order.price >= orders[currentOrderId].price) {
+                // The order to insert is greater or equal to the found order in the book.
+                // Iterate towards the end of ask orders to find a order with greater price or the last order
+                // starting from the next order
+                currentOrderId = pair.orderbook[currentOrderId].next;
+                while (orders[currentOrderId].price !=0 &&
+                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].prev].price) {
+                    currentOrderId = pair.orderbook[currentOrderId].next;
+                }
+            } else {
+                // The order to insert is less to the found order in the book.
+                // Iterate towards the start of ask orders to find a order with less price or the first order
+                while (orders[currentOrderId].price !=0 &&
+                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].prev].price) {
+                    currentOrderId = pair.orderbook[currentOrderId].prev;
+                }
+            }
         }
 
         ListItem memory orderItem;
