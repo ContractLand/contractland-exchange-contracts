@@ -644,6 +644,8 @@ describe("Exchange", () => {
                 .then(() => checkOrder(3, {amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}))
                 .then(() => checkOrder(2, {amount: buyOrderTwo.amount, price: buyOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: buyOrderOne.amount, price: buyOrderOne.price}))
+                .then(() => checkGetOrderbookAsks([]))
+                .then(() => checkGetOrderbookBids([{amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}, {amount: 5, price: buyOrderTwo.price}, {amount: 5, price: buyOrderOne.price}]))
         })
 
         it("sell order should match the best priced buy order after adding orders with the same price", () => {
@@ -659,6 +661,8 @@ describe("Exchange", () => {
                 .then(() => checkOrder(3, {amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}))
                 .then(() => checkOrder(2, {amount: buyOrderTwo.amount, price: buyOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: buyOrderOne.amount, price: buyOrderOne.price}))
+                .then(() => checkGetOrderbookAsks([]))
+                .then(() => checkGetOrderbookBids([{amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}, {amount: 10, price: buyOrderTwo.price}]))
         })
 
         it("buy order should match the best priced sell order", () => {
@@ -674,6 +678,8 @@ describe("Exchange", () => {
                 .then(() => checkOrder(3, {amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}))
                 .then(() => checkOrder(2, {amount: sellOrderTwo.amount, price: sellOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: sellOrderOne.amount, price: sellOrderOne.price}))
+                .then(() => checkGetOrderbookAsks([{amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}, {amount: 5, price: sellOrderTwo.price}, {amount: 5, price: sellOrderOne.price}]))
+                .then(() => checkGetOrderbookBids([]))
         })
 
         it("buy order should match the best priced sell order after adding orders with the same price", () => {
@@ -689,6 +695,8 @@ describe("Exchange", () => {
                 .then(() => checkOrder(3, {amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}))
                 .then(() => checkOrder(2, {amount: sellOrderTwo.amount, price: sellOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: sellOrderOne.amount, price: sellOrderOne.price}))
+                .then(() => checkGetOrderbookAsks([{amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}, {amount: 10, price: sellOrderTwo.price}]))
+                .then(() => checkGetOrderbookBids([]))
         })
     });
 
@@ -848,6 +856,30 @@ describe("Exchange", () => {
             });
     }
 
+    function checkGetOrderbookAsks(expectedAsks) {
+        return exchange.getOrderbookAsks(baseToken.address, tradeToken.address)
+        .then(result => {
+            const asks = parseGetOrderbookResult(result);
+            assert.equal(asks.items, expectedAsks.length);
+            for (let i = 0; i < asks.items; i++) {
+                assert.equal(asks.price[i], expectedAsks[i].price);
+                assert.equal(asks.amount[i], expectedAsks[i].amount);
+            }
+        });
+    }
+
+    function checkGetOrderbookBids(expectedBids) {
+        return exchange.getOrderbookBids(baseToken.address, tradeToken.address)
+        .then(result => {
+            const bids = parseGetOrderbookResult(result);
+            assert.equal(bids.items, expectedBids.length);
+            for (let i = 0; i < bids.items; i++) {
+                assert.equal(bids.price[i], expectedBids[i].price);
+                assert.equal(bids.amount[i], expectedBids[i].amount);
+            }
+        });
+    }
+
     function checkTradeEvents(watcher, eventsState) {
         let events = watcher.get();
         assert.equal(events.length, eventsState.length);
@@ -930,6 +962,16 @@ describe("Exchange", () => {
             }).then(() => {
                 return checkOrderbook(orderbookState);
             });
+    }
+
+    function parseGetOrderbookResult(result) {
+        return {
+            price: result[0].map(t => t.toNumber()),
+            isSell: result[1],
+            amount: result[2].map(t => t.toNumber()),
+            id: result[3].map(t => t.toNumber()),
+            items: result[4].toNumber()
+        }
     }
 
 });

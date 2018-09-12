@@ -11,7 +11,7 @@ contract Exchange is Initializable, Pausable {
     using SafeMath for uint;
     using RedBlackTree for RedBlackTree.Tree;
 
-    /* --- STRUCTS / CONSTANTS --- */
+    /* --- STRUCTS --- */
 
     struct ListItem {
         uint64 prev;
@@ -64,8 +64,10 @@ contract Exchange is Initializable, Pausable {
         uint64 timestamp
     );
 
-    /* --- FIELDS --- */
+    /* --- FIELDS / CONSTANTS --- */
     // ***Start of V1.0.0 storage variables***
+
+    uint64 constant ORDERBOOK_MAX_ITEMS = 20;
 
     mapping (address => mapping (address => uint)) public reserved;
 
@@ -207,6 +209,54 @@ contract Exchange is Initializable, Pausable {
         amount = order.amount;
         next = pairs[order.baseToken][order.tradeToken].orderbook[id].next;
         prev = pairs[order.baseToken][order.tradeToken].orderbook[id].prev;
+    }
+
+    function getOrderbookBids(address baseToken, address tradeToken)
+        external
+        view
+        returns (uint[ORDERBOOK_MAX_ITEMS] price, bool[ORDERBOOK_MAX_ITEMS] isSell, uint[ORDERBOOK_MAX_ITEMS] amount, uint[ORDERBOOK_MAX_ITEMS] id, uint64 items)
+    {
+        Pair memory pair = pairs[baseToken][tradeToken];
+        uint64 currentId = pair.bestBid;
+        items = 0;
+        uint previousPrice = 0;
+        while(currentId != 0 && items < ORDERBOOK_MAX_ITEMS) {
+            Order memory order = orders[currentId];
+            price[items] = order.price;
+            isSell[items] = order.sell;
+            amount[items] = amount[items] + order.amount;
+            id[items] = currentId;
+            previousPrice = order.price;
+            
+            currentId = pairs[baseToken][tradeToken].orderbook[currentId].prev;
+            if (orders[currentId].price != previousPrice) {
+                items = items + 1;
+            }
+        }
+    }
+
+    function getOrderbookAsks(address baseToken, address tradeToken)
+        external
+        view
+        returns (uint[ORDERBOOK_MAX_ITEMS] price, bool[ORDERBOOK_MAX_ITEMS] isSell, uint[ORDERBOOK_MAX_ITEMS] amount, uint[ORDERBOOK_MAX_ITEMS] id, uint64 items)
+    {
+        Pair memory pair = pairs[baseToken][tradeToken];
+        uint64 currentId = pair.bestAsk;
+        items = 0;
+        uint previousPrice = 0;
+        while(currentId != 0 && items < ORDERBOOK_MAX_ITEMS) {
+            Order memory order = orders[currentId];
+            price[items] = order.price;
+            isSell[items] = order.sell;
+            amount[items] = amount[items] + order.amount;
+            id[items] = currentId;
+            previousPrice = order.price;
+            
+            currentId = pairs[baseToken][tradeToken].orderbook[currentId].next;
+            if (orders[currentId].price != previousPrice) {
+                items = items + 1;
+            }
+        }
     }
 
     /* --- INTERNAL / PRIVATE METHODS --- */
