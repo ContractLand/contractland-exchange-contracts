@@ -382,17 +382,15 @@ contract Exchange is Initializable, Pausable {
         if (n != 0) {
             if (order.price <= orders[currentOrderId].price) {
                 // The order to insert is less or equal to the found order in the book.
-                // Iterate towards the start of bid orders to find a order with less price or the first order
-                // starting from the prev order
-                currentOrderId = pair.orderbook[currentOrderId].prev;
-                while (orders[currentOrderId].price !=0 &&
-                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].next].price) {
+                // Iterate towards the start of bid orders to find an order with lesser price or the first order
+                while (orders[currentOrderId].price != 0 &&
+                       order.price <= orders[currentOrderId].price) {
                     currentOrderId = pair.orderbook[currentOrderId].prev;
                 }
             } else {
                 // The order to insert is greater to the found order in the book.
-                // Iterate towards the end of bid orders to find a order with greater price or the last order
-                while (orders[currentOrderId].price !=0 &&
+                // Iterate towards the end of bid orders to find an order with greater price or the last order
+                while (orders[currentOrderId].price != 0 &&
                        orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].next].price) {
                     currentOrderId = pair.orderbook[currentOrderId].next;
                 }
@@ -436,17 +434,15 @@ contract Exchange is Initializable, Pausable {
         if (n != 0) {
             if (order.price >= orders[currentOrderId].price) {
                 // The order to insert is greater or equal to the found order in the book.
-                // Iterate towards the end of ask orders to find a order with greater price or the last order
-                // starting from the next order
-                currentOrderId = pair.orderbook[currentOrderId].next;
-                while (orders[currentOrderId].price !=0 &&
-                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].prev].price) {
+                // Iterate towards the end of ask orders to find a order greater price
+                while (orders[currentOrderId].price != 0 &&
+                       order.price >= orders[currentOrderId].price) {
                     currentOrderId = pair.orderbook[currentOrderId].next;
                 }
             } else {
                 // The order to insert is less than the found order in the book.
-                // Iterate towards the start of ask orders to find a order with less price or the first order
-                while (orders[currentOrderId].price !=0 &&
+                // Iterate towards the start of ask orders to find a order where it's prev order is less than insert order price or the first order
+                while (orders[currentOrderId].price != 0 &&
                        orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].prev].price) {
                     currentOrderId = pair.orderbook[currentOrderId].prev;
                 }
