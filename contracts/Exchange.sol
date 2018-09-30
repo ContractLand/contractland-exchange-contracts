@@ -296,6 +296,44 @@ contract Exchange is Initializable, Pausable {
         }
     }
 
+    function matchSell(Pair storage pair, Order order, uint64 id) private {
+        uint64 currentOrderId = pair.bestBid;
+        while (currentOrderId != 0 && order.amount != 0 && order.price <= orders[currentOrderId].price) {
+            Order memory matchingOrder = orders[currentOrderId];
+            uint tradeAmount;
+            if (matchingOrder.amount >= order.amount) {
+                tradeAmount = order.amount;
+                matchingOrder.amount = matchingOrder.amount.sub(order.amount);
+                order.amount = 0;
+            } else {
+                tradeAmount = matchingOrder.amount;
+                order.amount = order.amount.sub(matchingOrder.amount);
+                matchingOrder.amount = 0;
+            }
+
+            reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(tradeAmount);
+            transferFund(order.tradeToken, matchingOrder.owner, tradeAmount);
+            uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
+            transferFund(order.baseToken, order.owner, baseTokenAmount);
+            reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
+
+            emit NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
+
+            if (matchingOrder.amount != 0) {
+                orders[currentOrderId] = matchingOrder;
+                break;
+            }
+
+            ListItem memory item = excludeItem(pair, currentOrderId);
+            currentOrderId = item.prev;
+        }
+
+        if (pair.bestBid != currentOrderId) {
+            pair.bestBid = currentOrderId;
+            emit NewBestBid(order.baseToken, order.tradeToken, orders[currentOrderId].price);
+        }
+    }
+    
     function matchBuy(Pair storage pair, Order order, uint64 id) private {
         uint64 currentOrderId = pair.bestAsk;
         while (currentOrderId != 0 && order.amount > 0 && order.price >= orders[currentOrderId].price) {
@@ -335,6 +373,10 @@ contract Exchange is Initializable, Pausable {
     }
 
     function addToBids(uint64 id, Pair storage pair, Order memory order) private {
+        /**
+         * id: ID of order to be added, i.e lastOrderId + 1.
+         * currentOrderId: Position in the orderbook to insert new order into.
+        **/
         uint64 n = pair.pricesTree.find(order.price);
         uint64 currentOrderId = n;
         if (n != 0) {
@@ -357,24 +399,26 @@ contract Exchange is Initializable, Pausable {
             }
         }
 
+        // Insert new order between currentOrder and currentOrder.next (right side)
         ListItem memory orderItem;
         orderItem.prev = currentOrderId;
-        uint64 prevOrderId;
+        uint64 currentOrderNextId;
         if (currentOrderId != 0) {
-            prevOrderId = pair.orderbook[currentOrderId].next;
+            currentOrderNextId = pair.orderbook[currentOrderId].next;
             pair.orderbook[currentOrderId].next = id;
         } else {
-            prevOrderId = pair.firstOrder;
+            currentOrderNextId = pair.firstOrder;
             pair.firstOrder = id;
         }
 
-        orderItem.next = prevOrderId;
-        if (prevOrderId != 0) {
-            pair.orderbook[prevOrderId].prev = id;
+        orderItem.next = currentOrderNextId;
+        if (currentOrderNextId != 0) {
+            pair.orderbook[currentOrderNextId].prev = id;
         } else {
             pair.lastOrder = id;
         }
 
+        // Update best bid to new order if previous order at the insert position was the best bid
         emit NewBid(order.baseToken, order.tradeToken, order.price);
         if (currentOrderId == pair.bestBid) {
             pair.bestBid = id;
@@ -400,7 +444,7 @@ contract Exchange is Initializable, Pausable {
                     currentOrderId = pair.orderbook[currentOrderId].next;
                 }
             } else {
-                // The order to insert is less to the found order in the book.
+                // The order to insert is less than the found order in the book.
                 // Iterate towards the start of ask orders to find a order with less price or the first order
                 while (orders[currentOrderId].price !=0 &&
                        orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].prev].price) {
@@ -409,24 +453,26 @@ contract Exchange is Initializable, Pausable {
             }
         }
 
+        // Insert new order between currentOrder and currentOrder.prev (left side)
         ListItem memory orderItem;
         orderItem.next = currentOrderId;
-        uint64 prevOrderId;
+        uint64 currentOrderPrevId;
         if (currentOrderId != 0) {
-            prevOrderId = pair.orderbook[currentOrderId].prev;
+            currentOrderPrevId = pair.orderbook[currentOrderId].prev;
             pair.orderbook[currentOrderId].prev = id;
         } else {
-            prevOrderId = pair.lastOrder;
+            currentOrderPrevId = pair.lastOrder;
             pair.lastOrder = id;
         }
 
-        orderItem.prev = prevOrderId;
-        if (prevOrderId != 0) {
-            pair.orderbook[prevOrderId].next = id;
+        orderItem.prev = currentOrderPrevId;
+        if (currentOrderPrevId != 0) {
+            pair.orderbook[currentOrderPrevId].next = id;
         } else {
             pair.firstOrder = id;
         }
-
+        
+        // Update best ask to new order if previous order at the insert position was the best ask
         emit NewAsk(order.baseToken, order.tradeToken, order.price);
         if (currentOrderId == pair.bestAsk) {
             pair.bestAsk = id;
@@ -436,43 +482,5 @@ contract Exchange is Initializable, Pausable {
         orders[id] = order;
         pair.orderbook[id] = orderItem;
         pair.pricesTree.placeAfter(n, id, order.price);
-    }
-
-    function matchSell(Pair storage pair, Order order, uint64 id) private {
-        uint64 currentOrderId = pair.bestBid;
-        while (currentOrderId != 0 && order.amount != 0 && order.price <= orders[currentOrderId].price) {
-            Order memory matchingOrder = orders[currentOrderId];
-            uint tradeAmount;
-            if (matchingOrder.amount >= order.amount) {
-                tradeAmount = order.amount;
-                matchingOrder.amount = matchingOrder.amount.sub(order.amount);
-                order.amount = 0;
-            } else {
-                tradeAmount = matchingOrder.amount;
-                order.amount = order.amount.sub(matchingOrder.amount);
-                matchingOrder.amount = 0;
-            }
-
-            reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(tradeAmount);
-            transferFund(order.tradeToken, matchingOrder.owner, tradeAmount);
-            uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
-            transferFund(order.baseToken, order.owner, baseTokenAmount);
-            reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
-
-            emit NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
-
-            if (matchingOrder.amount != 0) {
-                orders[currentOrderId] = matchingOrder;
-                break;
-            }
-
-            ListItem memory item = excludeItem(pair, currentOrderId);
-            currentOrderId = item.prev;
-        }
-
-        if (pair.bestBid != currentOrderId) {
-            pair.bestBid = currentOrderId;
-            emit NewBestBid(order.baseToken, order.tradeToken, orders[currentOrderId].price);
-        }
     }
 }
