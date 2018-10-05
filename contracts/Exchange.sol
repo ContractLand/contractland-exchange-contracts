@@ -92,7 +92,8 @@ contract Exchange is Initializable, Pausable {
     function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
         require(amount != 0 &&
             price != 0 &&
-            baseToken != tradeToken
+            baseToken != tradeToken &&
+            amount.mul(price).div(priceDenominator) != 0
         );
 
         // Transfer funds from user
@@ -134,8 +135,10 @@ contract Exchange is Initializable, Pausable {
             baseToken != tradeToken
         );
 
-        // Transfer funds from user
         uint reservedAmount = amount.mul(price).div(priceDenominator);
+        require(reservedAmount != 0);
+        
+        // Transfer funds from user
         if(baseToken == address(0)) {
             require(msg.value == reservedAmount);
         } else {

@@ -173,6 +173,32 @@ describe("Exchange", () => {
             await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
             await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
+        
+        it("should not be able to create sell order where amount * price is zero in solidity", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': 1,
+              'price': 1,
+              'from': seller
+            }
+
+            await tradeToken.approve(exchange.address, order.amount, { from: order.from })
+            await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+        
+        it("should not be able to create buy order with zero price", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': 1,
+              'price': 1,
+              'from': buyer
+            }
+
+            await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
+            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
 
         it("should disallow cancelling of other people's orders", async function () {
             const buyOrder = buy(100, 5)
