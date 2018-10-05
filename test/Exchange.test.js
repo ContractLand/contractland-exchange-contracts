@@ -79,6 +79,7 @@ describe("Exchange", () => {
             'from': buyer
           }
 
+          await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
           await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
@@ -91,6 +92,7 @@ describe("Exchange", () => {
             'from': seller
           }
 
+          await tradeToken.approve(exchange.address, order.amount, { from: order.from })
           await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
@@ -103,6 +105,7 @@ describe("Exchange", () => {
               'from': buyer
             }
 
+            await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
             await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
@@ -115,6 +118,7 @@ describe("Exchange", () => {
               'from': seller
             }
 
+            await tradeToken.approve(exchange.address, order.amount, { from: order.from })
             await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
@@ -127,6 +131,7 @@ describe("Exchange", () => {
               'from': seller
             }
 
+            await tradeToken.approve(exchange.address, order.amount, { from: order.from })
             await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
@@ -139,6 +144,7 @@ describe("Exchange", () => {
               'from': buyer
             }
 
+            await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
             await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
@@ -151,6 +157,7 @@ describe("Exchange", () => {
               'from': seller
             }
 
+            await tradeToken.approve(exchange.address, order.amount, { from: order.from })
             await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
@@ -163,6 +170,7 @@ describe("Exchange", () => {
               'from': buyer
             }
 
+            await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
             await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 

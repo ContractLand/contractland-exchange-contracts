@@ -84,7 +84,7 @@ contract Exchange is Initializable, Pausable {
 
     function initialize() public isInitializer {
         owner = msg.sender; // initialize owner for Pausable
-        priceDenominator = 1000000000000000000;
+        priceDenominator = 1000000000000000000; // This assumes all tokens trading in exchange has 18 decimal places
     }
 
     /* --- EXTERNAL / PUBLIC  METHODS --- */
