@@ -84,7 +84,7 @@ contract Exchange is Initializable, Pausable {
 
     function initialize() public isInitializer {
         owner = msg.sender; // initialize owner for Pausable
-        priceDenominator = 1000000000000000000;
+        priceDenominator = 1000000000000000000; // This assumes all tokens trading in exchange has 18 decimal places
     }
 
     /* --- EXTERNAL / PUBLIC  METHODS --- */
@@ -92,7 +92,8 @@ contract Exchange is Initializable, Pausable {
     function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
         require(amount != 0 &&
             price != 0 &&
-            baseToken != tradeToken
+            baseToken != tradeToken &&
+            amount.mul(price).div(priceDenominator) != 0
         );
 
         // Transfer funds from user
@@ -134,8 +135,10 @@ contract Exchange is Initializable, Pausable {
             baseToken != tradeToken
         );
 
-        // Transfer funds from user
         uint reservedAmount = amount.mul(price).div(priceDenominator);
+        require(reservedAmount != 0);
+        
+        // Transfer funds from user
         if(baseToken == address(0)) {
             require(msg.value == reservedAmount);
         } else {
@@ -298,7 +301,9 @@ contract Exchange is Initializable, Pausable {
 
     function matchSell(Pair storage pair, Order order, uint64 id) private {
         uint64 currentOrderId = pair.bestBid;
-        while (currentOrderId != 0 && order.amount != 0 && order.price <= orders[currentOrderId].price) {
+        while (currentOrderId != 0 && order.amount != 0 && 
+               order.price <= orders[currentOrderId].price &&
+               orders[currentOrderId].sell == false) {
             Order memory matchingOrder = orders[currentOrderId];
             uint tradeAmount;
             if (matchingOrder.amount >= order.amount) {
@@ -336,7 +341,9 @@ contract Exchange is Initializable, Pausable {
     
     function matchBuy(Pair storage pair, Order order, uint64 id) private {
         uint64 currentOrderId = pair.bestAsk;
-        while (currentOrderId != 0 && order.amount > 0 && order.price >= orders[currentOrderId].price) {
+        while (currentOrderId != 0 && order.amount > 0 && 
+               order.price >= orders[currentOrderId].price &&
+               orders[currentOrderId].sell == true) {
             Order memory matchingOrder = orders[currentOrderId];
             uint tradeAmount;
             if (matchingOrder.amount >= order.amount) {
@@ -391,7 +398,8 @@ contract Exchange is Initializable, Pausable {
                 // The order to insert is greater to the found order in the book.
                 // Iterate towards the end of bid orders to find an order with greater price or the last order
                 while (orders[currentOrderId].price != 0 &&
-                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].next].price) {
+                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].next].price &&
+                       orders[pair.orderbook[currentOrderId].next].sell == false) {
                     currentOrderId = pair.orderbook[currentOrderId].next;
                 }
             }
@@ -443,7 +451,8 @@ contract Exchange is Initializable, Pausable {
                 // The order to insert is less than the found order in the book.
                 // Iterate towards the start of ask orders to find a order where it's prev order is less than insert order price or the first order
                 while (orders[currentOrderId].price != 0 &&
-                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].prev].price) {
+                       orders[currentOrderId].price == orders[pair.orderbook[currentOrderId].prev].price &&
+                       orders[pair.orderbook[currentOrderId].prev].sell == true) {
                     currentOrderId = pair.orderbook[currentOrderId].prev;
                 }
             }
