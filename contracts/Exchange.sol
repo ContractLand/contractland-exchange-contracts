@@ -67,7 +67,11 @@ contract Exchange is Initializable, Pausable {
     /* --- FIELDS / CONSTANTS --- */
     // ***Start of V1.0.0 storage variables***
 
-    uint64 constant ORDERBOOK_MAX_ITEMS = 20;
+    uint16 constant ORDERBOOK_MAX_ITEMS = 20;
+
+    uint128 constant MAX_ORDER_SIZE = 1000000000000000000000000000; // 1,000,000,000 units in ether
+
+    uint64 constant MIN_ORDER_SIZE = 10000000000000; // 0.00001 units in ether
 
     mapping (address => mapping (address => uint)) public reserved;
 
@@ -91,10 +95,16 @@ contract Exchange is Initializable, Pausable {
 
     function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
         require(amount != 0 &&
-            price != 0 &&
-            baseToken != tradeToken &&
-            amount.mul(price).div(priceDenominator) != 0
+                amount <= MAX_ORDER_SIZE &&
+                amount >= MIN_ORDER_SIZE &&
+                price != 0 &&
+                baseToken != tradeToken
         );
+
+        uint baseTokenAmount = amount.mul(price).div(priceDenominator);
+        require(baseTokenAmount != 0 &&
+                baseTokenAmount <= MAX_ORDER_SIZE &&
+                baseTokenAmount >= MIN_ORDER_SIZE);
 
         // Transfer funds from user
         if (tradeToken == address(0)) {
@@ -131,20 +141,24 @@ contract Exchange is Initializable, Pausable {
 
     function buy(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
         require(amount != 0 &&
-            price != 0 &&
-            baseToken != tradeToken
+                amount <= MAX_ORDER_SIZE &&
+                amount >= MIN_ORDER_SIZE &&
+                price != 0 &&
+                baseToken != tradeToken
         );
 
-        uint reservedAmount = amount.mul(price).div(priceDenominator);
-        require(reservedAmount != 0);
-        
+        uint baseTokenAmount = amount.mul(price).div(priceDenominator);
+        require(baseTokenAmount != 0 &&
+                baseTokenAmount <= MAX_ORDER_SIZE &&
+                baseTokenAmount >= MIN_ORDER_SIZE);
+
         // Transfer funds from user
         if(baseToken == address(0)) {
-            require(msg.value == reservedAmount);
+            require(msg.value == baseTokenAmount);
         } else {
-            ERC20(baseToken).transferFrom(owner, this, reservedAmount);
+            ERC20(baseToken).transferFrom(owner, this, baseTokenAmount);
         }
-        reserved[baseToken][owner] = reserved[baseToken][owner].add(reservedAmount);
+        reserved[baseToken][owner] = reserved[baseToken][owner].add(baseTokenAmount);
 
         Order memory order;
         order.sell = false;
