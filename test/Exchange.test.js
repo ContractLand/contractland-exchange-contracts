@@ -17,7 +17,9 @@ describe("Exchange", () => {
     let exchange, exchangeProxy, baseToken, tradeToken, orderId, fallbackTrap;
     const etherAddress = '0x0000000000000000000000000000000000000000'
     const invalidToken = '0x1111111111111111111111111111111111111111'
-    const tokenDepositAmount = 10000;
+    const MAX_ORDER_SIZE = toWei(1000000000)
+    const MIN_ORDER_SIZE = toWei(0.00001)
+    const tokenDepositAmount = MAX_ORDER_SIZE.times(2);
 
     beforeEach(async () => {
         orderId = 1;
@@ -34,7 +36,7 @@ describe("Exchange", () => {
           const order = {
             'baseToken': baseToken.address,
             'tradeToken': etherAddress,
-            'amount': 100,
+            'amount': toWei(1),
             'price': toWei(5),
             'from': seller
           }
@@ -56,7 +58,7 @@ describe("Exchange", () => {
           const order = {
             'baseToken': etherAddress,
             'tradeToken': tradeToken.address,
-            'amount': 100,
+            'amount': toWei(1),
             'price': toWei(price),
             'from': buyer
           }
@@ -74,7 +76,7 @@ describe("Exchange", () => {
           const order = {
             'baseToken': baseToken.address,
             'tradeToken': baseToken.address,
-            'amount': 100,
+            'amount': toWei(1),
             'price': toWei(5),
             'from': buyer
           }
@@ -87,7 +89,7 @@ describe("Exchange", () => {
           const order = {
             'baseToken': tradeToken.address,
             'tradeToken': tradeToken.address,
-            'amount': 100,
+            'amount': toWei(1),
             'price': toWei(5),
             'from': seller
           }
@@ -100,7 +102,7 @@ describe("Exchange", () => {
             const order = {
               'baseToken': invalidToken,
               'tradeToken': tradeToken.address,
-              'amount': 100,
+              'amount': toWei(1),
               'price': toWei(5),
               'from': buyer
             }
@@ -113,13 +115,117 @@ describe("Exchange", () => {
             const order = {
               'baseToken': baseToken.address,
               'tradeToken': invalidToken,
-              'amount': 100,
+              'amount': toWei(1),
               'price': toWei(5),
               'from': seller
             }
 
             await tradeToken.approve(exchange.address, order.amount, { from: order.from })
             await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create sell order with tradeToken amount greater than MAX_ORDER_SIZE", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': MAX_ORDER_SIZE.plus(1),
+              'price': 1,
+              'from': seller
+            }
+
+            await tradeToken.approve(exchange.address, order.amount, { from: order.from })
+            await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create sell order with baseToken amount greater than MAX_ORDER_SIZE", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': toWei(1),
+              'price': MAX_ORDER_SIZE.plus(1),
+              'from': seller
+            }
+
+            await tradeToken.approve(exchange.address, order.amount, { from: order.from })
+            await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create buy order with tradeToken amount greater than MAX_ORDER_SIZE", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': MAX_ORDER_SIZE.plus(1),
+              'price': 1,
+              'from': buyer
+            }
+
+            await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
+            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create buy order with baseToken amount greater than MAX_ORDER_SIZE", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': toWei(1),
+              'price': MAX_ORDER_SIZE.plus(1),
+              'from': buyer
+            }
+
+            await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
+            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create sell order with tradeToken amount less than MIN_ORDER_SIZE", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': MIN_ORDER_SIZE.minus(1),
+              'price': toWei(1),
+              'from': seller
+            }
+
+            await tradeToken.approve(exchange.address, order.amount, { from: order.from })
+            await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create sell order with baseToken amount less than MIN_ORDER_SIZE", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': toWei(1),
+              'price': MIN_ORDER_SIZE.minus(1),
+              'from': seller
+            }
+
+            await tradeToken.approve(exchange.address, order.amount, { from: order.from })
+            await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create buy order with tradeToken amount less than MIN_ORDER_SIZE", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': MIN_ORDER_SIZE.minus(1),
+              'price': toWei(1),
+              'from': buyer
+            }
+
+            await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
+            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
+        })
+
+        it("should not be able to create buy order with baseToken amount less than MIN_ORDER_SIZE", async () => {
+            const order = {
+              'baseToken': baseToken.address,
+              'tradeToken': tradeToken.address,
+              'amount': toWei(1),
+              'price': MIN_ORDER_SIZE.minus(1),
+              'from': buyer
+            }
+
+            await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
+            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
         it("should not be able to create sell order with zero amount", async () => {
@@ -186,8 +292,8 @@ describe("Exchange", () => {
             await tradeToken.approve(exchange.address, order.amount, { from: order.from })
             await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
-        
-        it("should not be able to create buy order with zero price", async () => {
+
+        it("should not be able to create buy order where amount * price is zero in solidity", async () => {
             const order = {
               'baseToken': baseToken.address,
               'tradeToken': tradeToken.address,
@@ -449,7 +555,7 @@ describe("Exchange", () => {
         it("the best buy order should be partially filled by a new sell order", () => {
             const buyOrder = buy(100, 5);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: 2, price: buyOrder.price}];
+            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: sellOrder.amount, price: buyOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrder)
                 .then(() => placeOrder(sellOrder))
@@ -469,7 +575,7 @@ describe("Exchange", () => {
         it("the best sell order should be partially filled by a new buy order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 5);
-            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: 2, price: sellOrder.price}];
+            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: buyOrder.amount, price: sellOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrder)
                 .then(() => placeOrder(buyOrder))
@@ -492,7 +598,7 @@ describe("Exchange", () => {
         it("a new sell order should be partially filled by the best buy order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 5);
-            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: 2, price: buyOrder.price}];
+            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: buyOrder.amount, price: buyOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrder)
                 .then(() => placeOrder(sellOrder))
@@ -509,7 +615,7 @@ describe("Exchange", () => {
         it("a new buy order should be partially filled by the best sell order", () => {
             const buyOrder = buy(100, 5);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: 2, price: sellOrder.price}];
+            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: sellOrder.amount, price: sellOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrder)
                 .then(() => placeOrder(buyOrder))
@@ -529,7 +635,7 @@ describe("Exchange", () => {
         it("a new sell order should be completely filled and completely fill the best buy order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: 2, price: buyOrder.price}];
+            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: sellOrder.amount, price: buyOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrder)
                 .then(() => placeOrder(sellOrder))
@@ -546,7 +652,7 @@ describe("Exchange", () => {
         it("a new buy order should be completely filled and completely fill the best sell order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: 2, price: sellOrder.price}];
+            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: sellOrder.amount, price: sellOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrder)
                 .then(() => placeOrder(buyOrder))
@@ -568,7 +674,7 @@ describe("Exchange", () => {
                 {bidId: 2, askId: 4, side: false, amount: buy2.amount, price: buy2.price}
             ];
             const newTradeWatcher = exchange.NewTrade();
-            const expectedTokenSoldAmount = buy3.amount + buy2.amount;
+            const expectedTokenSoldAmount = buy3.amount.plus(buy2.amount);
             return placeOrder(buy1)
                 .then(() => placeOrder(buy2))
                 .then(() => placeOrder(buy3))
@@ -576,11 +682,11 @@ describe("Exchange", () => {
                 .then(() => checkOrder(1, {amount: buy1.amount}))
                 .then(() => checkOrder(2, undefined))
                 .then(() => checkOrder(3, undefined))
-                .then(() => checkOrder(4, {amount: sellOrder.amount - expectedTokenSoldAmount}))
-                .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount - sellOrder.amount, reserved: sellOrder.amount - expectedTokenSoldAmount}))
-                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: buy3.total + buy2.total, reserved: 0}))
+                .then(() => checkOrder(4, {amount: sellOrder.amount.minus(expectedTokenSoldAmount)}))
+                .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount.minus(sellOrder.amount), reserved: sellOrder.amount.minus(expectedTokenSoldAmount)}))
+                .then(() => checkBalance(baseToken.address, sellOrder.from, {available: buy3.total.plus(buy2.total), reserved: 0}))
                 .then(() => checkBalance(tradeToken.address, buy1.from, {available: expectedTokenSoldAmount, reserved: 0}))
-                .then(() => checkBalance(baseToken.address, buy1.from, {available: tokenDepositAmount - (buy3.total + buy2.total + buy1.total), reserved: buy1.total}))
+                .then(() => checkBalance(baseToken.address, buy1.from, {available: tokenDepositAmount.minus(buy3.total.plus(buy2.total.plus(buy1.total))), reserved: buy1.total}))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
                 .then(() => checkOrderbook({firstOrder: 1, bestBid: 1, bestAsk: 4, lastOrder: 4}));
         });
@@ -593,7 +699,7 @@ describe("Exchange", () => {
                 {bidId: 4, askId: 2, side: true, amount: sell2.amount, price: sell2.price}
             ];
             const newTradeWatcher = exchange.NewTrade();
-            const expectedTokenBoughtAmount = sell3.amount + sell2.amount;
+            const expectedTokenBoughtAmount = sell3.amount.plus(sell2.amount);
             return placeOrder(sell1)
                 .then(() => placeOrder(sell2))
                 .then(() => placeOrder(sell3))
@@ -601,13 +707,13 @@ describe("Exchange", () => {
                 .then(() => checkOrder(1, {amount: sell1.amount}))
                 .then(() => checkOrder(2, undefined))
                 .then(() => checkOrder(3, undefined))
-                .then(() => checkOrder(4, {amount: buyOrder.amount - expectedTokenBoughtAmount}))
-                .then(() => checkBalance(tradeToken.address, sell1.from, {available: tokenDepositAmount - (sell3.amount + sell2.amount + sell1.amount), reserved: sell1.amount}))
-                .then(() => checkBalance(baseToken.address, sell1.from, {available: sell3.total + sell2.total, reserved: 0}))
+                .then(() => checkOrder(4, {amount: buyOrder.amount.minus(expectedTokenBoughtAmount)}))
+                .then(() => checkBalance(tradeToken.address, sell1.from, {available: tokenDepositAmount.minus(sell3.amount.plus(sell2.amount.plus(sell1.amount))), reserved: sell1.amount}))
+                .then(() => checkBalance(baseToken.address, sell1.from, {available: sell3.total.plus(sell2.total), reserved: 0}))
                 .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedTokenBoughtAmount, reserved: 0}))
                 .then(() => checkBalance(baseToken.address, buyOrder.from, {
-                        available: tokenDepositAmount - (sell3.total + sell2.total + fromWei(buyOrder.price) * (buyOrder.amount - expectedTokenBoughtAmount)),
-                        reserved: fromWei(buyOrder.price) * (buyOrder.amount - expectedTokenBoughtAmount)
+                        available: tokenDepositAmount.minus(sell3.total.plus(sell2.total.plus(fromWei(buyOrder.price).times(buyOrder.amount.minus(expectedTokenBoughtAmount))))),
+                        reserved: fromWei(buyOrder.price).times(buyOrder.amount.minus(expectedTokenBoughtAmount))
                     }))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
                 .then(() => checkOrderbook({firstOrder: 4, bestBid: 4, bestAsk: 1, lastOrder: 1}));
@@ -620,9 +726,9 @@ describe("Exchange", () => {
             const sellOrderOne = sell(90, 5);
             const sellOrderTwo = sell(90, 5);
             const sellOrderThree = sell(90, 5);
-            const tradeEventsOne = [{bidId: 1, askId: 4, side: false, amount: 5, price: buyOrderOne.price}];
-            const tradeEventsTwo = [{bidId: 2, askId: 5, side: false, amount: 5, price: buyOrderTwo.price}];
-            const tradeEventsThree = [{bidId: 3, askId: 6, side: false, amount: 5, price: buyOrderThree.price}];
+            const tradeEventsOne = [{bidId: 1, askId: 4, side: false, amount: buyOrderOne.amount, price: buyOrderOne.price}];
+            const tradeEventsTwo = [{bidId: 2, askId: 5, side: false, amount: buyOrderTwo.amount, price: buyOrderTwo.price}];
+            const tradeEventsThree = [{bidId: 3, askId: 6, side: false, amount: buyOrderThree.amount, price: buyOrderThree.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrderOne)
                 .then(() => placeOrder(buyOrderTwo))
@@ -646,9 +752,9 @@ describe("Exchange", () => {
             const buyOrderOne = buy(90, 5);
             const buyOrderTwo = buy(90, 5);
             const buyOrderThree = buy(90, 5);
-            const tradeEventsOne = [{bidId: 4, askId: 1, side: true, amount: 5, price: sellOrderOne.price}];
-            const tradeEventsTwo = [{bidId: 5, askId: 2, side: true, amount: 5, price: sellOrderTwo.price}];
-            const tradeEventsThree = [{bidId: 6, askId: 3, side: true, amount: 5, price: sellOrderThree.price}];
+            const tradeEventsOne = [{bidId: 4, askId: 1, side: true, amount: sellOrderOne.amount, price: sellOrderOne.price}];
+            const tradeEventsTwo = [{bidId: 5, askId: 2, side: true, amount: sellOrderTwo.amount, price: sellOrderTwo.price}];
+            const tradeEventsThree = [{bidId: 6, askId: 3, side: true, amount: sellOrderThree.amount, price: sellOrderThree.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrderOne)
                 .then(() => placeOrder(sellOrderTwo))
@@ -679,7 +785,7 @@ describe("Exchange", () => {
                 .then(() => checkOrder(2, {amount: buyOrderTwo.amount, price: buyOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: buyOrderOne.amount, price: buyOrderOne.price}))
                 .then(() => checkGetOrderbookAsks([]))
-                .then(() => checkGetOrderbookBids([{amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}, {amount: 5, price: buyOrderTwo.price}, {amount: 5, price: buyOrderOne.price}]))
+                .then(() => checkGetOrderbookBids([{amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}, {amount: buyOrderTwo.amount, price: buyOrderTwo.price}, {amount: buyOrderOne.amount, price: buyOrderOne.price}]))
         })
 
         it("sell order should match the best priced buy order after adding orders with the same price", () => {
@@ -696,7 +802,7 @@ describe("Exchange", () => {
                 .then(() => checkOrder(2, {amount: buyOrderTwo.amount, price: buyOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: buyOrderOne.amount, price: buyOrderOne.price}))
                 .then(() => checkGetOrderbookAsks([]))
-                .then(() => checkGetOrderbookBids([{amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}, {amount: 10, price: buyOrderTwo.price}]))
+                .then(() => checkGetOrderbookBids([{amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}, {amount: buyOrderTwo.amount.plus(buyOrderOne.amount), price: buyOrderTwo.price}]))
         })
 
         it("buy order should match the best priced sell order", () => {
@@ -712,7 +818,7 @@ describe("Exchange", () => {
                 .then(() => checkOrder(3, {amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}))
                 .then(() => checkOrder(2, {amount: sellOrderTwo.amount, price: sellOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: sellOrderOne.amount, price: sellOrderOne.price}))
-                .then(() => checkGetOrderbookAsks([{amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}, {amount: 5, price: sellOrderTwo.price}, {amount: 5, price: sellOrderOne.price}]))
+                .then(() => checkGetOrderbookAsks([{amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}, {amount: sellOrderTwo.amount, price: sellOrderTwo.price}, {amount: sellOrderOne.amount, price: sellOrderOne.price}]))
                 .then(() => checkGetOrderbookBids([]))
         })
 
@@ -729,7 +835,7 @@ describe("Exchange", () => {
                 .then(() => checkOrder(3, {amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}))
                 .then(() => checkOrder(2, {amount: sellOrderTwo.amount, price: sellOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: sellOrderOne.amount, price: sellOrderOne.price}))
-                .then(() => checkGetOrderbookAsks([{amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}, {amount: 10, price: sellOrderTwo.price}]))
+                .then(() => checkGetOrderbookAsks([{amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}, {amount: sellOrderTwo.amount.plus(sellOrderOne.amount), price: sellOrderTwo.price}]))
                 .then(() => checkGetOrderbookBids([]))
         })
     });
@@ -780,7 +886,7 @@ describe("Exchange", () => {
             order = {
                 'baseToken': etherAddress,
                 'tradeToken': tradeToken.address,
-                'amount': 100,
+                'amount': toWei(0.0001),
                 'price': toWei(price),
                 'from': buyer
             }
@@ -839,7 +945,7 @@ describe("Exchange", () => {
     function checkBalance(token, trader, expectedBalance) {
         return exchange.reserved(token, trader)
             .then(reservedBalance => {
-                assert.equal(reservedBalance.toFixed(), expectedBalance.reserved, "reserved balance");
+                assert.equal(reservedBalance.toExponential(10), expectedBalance.reserved.toExponential(10), "reserved balance");
             })
             .then(() => {
                 return Token.at(token)
@@ -848,16 +954,16 @@ describe("Exchange", () => {
                 return tokenInstance.balanceOf(trader)
             })
             .then((availableBalance) => {
-                assert.equal(availableBalance.toFixed(), expectedBalance.available, "available balance");
+                assert.equal(availableBalance.toExponential(10), expectedBalance.available.toExponential(10), "available balance");
             });
     }
 
     function sell(price, amount) {
-        return {sell: true, price: toWei(price), amount: amount, from: seller, total: price * amount};
+        return {sell: true, price: toWei(price), amount: toWei(amount), from: seller, total: toWei(price * amount)};
     }
 
     function buy(price, amount) {
-        return {sell: false, price: toWei(price), amount: amount, from: buyer, total: price * amount};
+        return {sell: false, price: toWei(price), amount: toWei(amount), from: buyer, total: toWei(price * amount)};
     }
 
     function checkOrder(id, orderState) {
@@ -926,7 +1032,7 @@ describe("Exchange", () => {
             assert.equal(event.bidId, state.bidId);
             assert.equal(event.askId, state.askId);
             assert.equal(event.side, state.side);
-            assert.equal(event.amount, state.amount);
+            assert.equal(event.amount.toString(), state.amount.toString());
             assert.equal(event.price.toString(), state.price.toString());
         }
     }
@@ -952,7 +1058,7 @@ describe("Exchange", () => {
         assert.equal(event.id, expectedState.id);
         assert.equal(event.side, expectedState.side);
         assert.equal(event.price.toString(), expectedState.price.toString());
-        assert.equal(event.amount, expectedState.amount);
+        assert.equal(event.amount.toString(), expectedState.amount.toString());
     }
 
     function checkCancelOrderEvent(watcher, expectedState) {
