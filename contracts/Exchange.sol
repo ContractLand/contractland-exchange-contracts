@@ -94,25 +94,10 @@ contract Exchange is Initializable, Pausable {
     /* --- EXTERNAL / PUBLIC  METHODS --- */
 
     function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
-        require(amount != 0 &&
-                amount <= MAX_ORDER_SIZE &&
-                amount >= MIN_ORDER_SIZE &&
-                price != 0 &&
-                baseToken != tradeToken
-        );
-
-        uint baseTokenAmount = amount.mul(price).div(priceDenominator);
-        require(baseTokenAmount != 0 &&
-                baseTokenAmount <= MAX_ORDER_SIZE &&
-                baseTokenAmount >= MIN_ORDER_SIZE);
+        require(isValidOrder(baseToken, tradeToken, amount, price));
 
         // Transfer funds from user
-        if (tradeToken == address(0)) {
-            require(amount == msg.value);
-        } else {
-            ERC20(tradeToken).transferFrom(owner, this, amount);
-        }
-        reserved[tradeToken][owner] = reserved[tradeToken][owner].add(amount);
+        transferFundFromUser(owner, tradeToken, amount);
 
         Order memory order;
         order.sell = true;
@@ -140,25 +125,11 @@ contract Exchange is Initializable, Pausable {
     }
 
     function buy(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
-        require(amount != 0 &&
-                amount <= MAX_ORDER_SIZE &&
-                amount >= MIN_ORDER_SIZE &&
-                price != 0 &&
-                baseToken != tradeToken
-        );
-
-        uint baseTokenAmount = amount.mul(price).div(priceDenominator);
-        require(baseTokenAmount != 0 &&
-                baseTokenAmount <= MAX_ORDER_SIZE &&
-                baseTokenAmount >= MIN_ORDER_SIZE);
+        require(isValidOrder(baseToken, tradeToken, amount, price));
 
         // Transfer funds from user
-        if(baseToken == address(0)) {
-            require(msg.value == baseTokenAmount);
-        } else {
-            ERC20(baseToken).transferFrom(owner, this, baseTokenAmount);
-        }
-        reserved[baseToken][owner] = reserved[baseToken][owner].add(baseTokenAmount);
+        uint baseTokenAmount = amount.mul(price).div(priceDenominator);
+        transferFundFromUser(owner, baseToken, baseTokenAmount);
 
         Order memory order;
         order.sell = false;
@@ -191,10 +162,10 @@ contract Exchange is Initializable, Pausable {
 
         if (order.sell) {
             reserved[order.tradeToken][msg.sender] = reserved[order.tradeToken][msg.sender].sub(order.amount);
-            transferFund(order.tradeToken, msg.sender, order.amount);
+            transferFundToUser(msg.sender, order.tradeToken, order.amount);
         } else {
             reserved[order.baseToken][msg.sender] = reserved[order.baseToken][msg.sender].sub(order.amount.mul(order.price).div(priceDenominator));
-            transferFund(order.baseToken, msg.sender, order.amount.mul(order.price).div(priceDenominator));
+            transferFundToUser(msg.sender, order.baseToken, order.amount.mul(order.price).div(priceDenominator));
         }
 
         Pair storage pair = pairs[order.baseToken][order.tradeToken];
@@ -278,32 +249,27 @@ contract Exchange is Initializable, Pausable {
 
     /* --- INTERNAL / PRIVATE METHODS --- */
 
-    function excludeItem(Pair storage pair, uint64 id) private returns (ListItem) {
-        ListItem memory matchingOrderItem = pair.orderbook[id];
-        if (matchingOrderItem.next != 0) {
-            pair.orderbook[matchingOrderItem.next].prev = matchingOrderItem.prev;
-        }
-
-        if (matchingOrderItem.prev != 0) {
-            pair.orderbook[matchingOrderItem.prev].next = matchingOrderItem.next;
-        }
-
-        if (pair.lastOrder == id) {
-            pair.lastOrder = matchingOrderItem.prev;
-        }
-
-        if (pair.firstOrder == id) {
-            pair.firstOrder = matchingOrderItem.next;
-        }
-
-        pair.pricesTree.remove(id);
-        delete pair.orderbook[id];
-        delete orders[id];
-
-        return matchingOrderItem;
+    function isValidOrder(address baseToken, address tradeToken, uint tradeTokenAmount, uint price) private returns (bool) {
+        return tradeTokenAmount != 0 &&
+               tradeTokenAmount <= MAX_ORDER_SIZE &&
+               tradeTokenAmount >= MIN_ORDER_SIZE &&
+               price != 0 &&
+               baseToken != tradeToken &&
+               tradeTokenAmount.mul(price).div(priceDenominator) != 0 &&
+               tradeTokenAmount.mul(price).div(priceDenominator) <= MAX_ORDER_SIZE &&
+               tradeTokenAmount.mul(price).div(priceDenominator) >= MIN_ORDER_SIZE;
     }
 
-    function transferFund(address token, address recipient, uint amount) private {
+    function transferFundFromUser(address sender, address token, uint amount) private {
+        if(token == address(0)) {
+            require(msg.value == amount);
+        } else {
+            ERC20(token).transferFrom(sender, this, amount);
+        }
+        reserved[token][sender] = reserved[token][sender].add(amount);
+    }
+
+    function transferFundToUser(address recipient, address token, uint amount) private {
         if(token == address(0)) {
             if (!recipient.send(amount)) {
                 (new DestructibleTransfer).value(amount)(recipient);
@@ -331,9 +297,9 @@ contract Exchange is Initializable, Pausable {
             }
 
             reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(tradeAmount);
-            transferFund(order.tradeToken, matchingOrder.owner, tradeAmount);
+            transferFundToUser( matchingOrder.owner, order.tradeToken,tradeAmount);
             uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
-            transferFund(order.baseToken, order.owner, baseTokenAmount);
+            transferFundToUser(order.owner, order.baseToken, baseTokenAmount);
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
             emit NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
@@ -371,10 +337,10 @@ contract Exchange is Initializable, Pausable {
             }
 
             reserved[order.baseToken][order.owner] = reserved[order.baseToken][order.owner].sub(tradeAmount.mul(order.price).div(priceDenominator));
-            transferFund(order.baseToken, order.owner, tradeAmount.mul(order.price.sub(matchingOrder.price)).div(priceDenominator));
+            transferFundToUser(order.owner, order.baseToken, tradeAmount.mul(order.price.sub(matchingOrder.price)).div(priceDenominator));
             reserved[order.tradeToken][matchingOrder.owner] = reserved[order.tradeToken][matchingOrder.owner].sub(tradeAmount);
-            transferFund(order.baseToken, matchingOrder.owner, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
-            transferFund(order.tradeToken, order.owner, tradeAmount);
+            transferFundToUser(matchingOrder.owner, order.baseToken, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
+            transferFundToUser(order.owner, order.tradeToken, tradeAmount);
 
             emit NewTrade(order.baseToken, order.tradeToken, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
@@ -501,5 +467,30 @@ contract Exchange is Initializable, Pausable {
         orders[id] = order;
         pair.orderbook[id] = orderItem;
         pair.pricesTree.placeAfter(n, id, order.price);
+    }
+
+    function excludeItem(Pair storage pair, uint64 id) private returns (ListItem) {
+        ListItem memory matchingOrderItem = pair.orderbook[id];
+        if (matchingOrderItem.next != 0) {
+            pair.orderbook[matchingOrderItem.next].prev = matchingOrderItem.prev;
+        }
+
+        if (matchingOrderItem.prev != 0) {
+            pair.orderbook[matchingOrderItem.prev].next = matchingOrderItem.next;
+        }
+
+        if (pair.lastOrder == id) {
+            pair.lastOrder = matchingOrderItem.prev;
+        }
+
+        if (pair.firstOrder == id) {
+            pair.firstOrder = matchingOrderItem.next;
+        }
+
+        pair.pricesTree.remove(id);
+        delete pair.orderbook[id];
+        delete orders[id];
+
+        return matchingOrderItem;
     }
 }
