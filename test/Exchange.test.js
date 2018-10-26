@@ -840,25 +840,36 @@ describe("Exchange", () => {
         })
     });
 
-    describe("Pause", () => {
-        it("should not allow non-owner to pause exchange", async () => {
-            await exchange.pause({ from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+    describe("Admin", () => {
+        describe("Pause", () => {
+            it("should not allow non-owner to pause exchange", async () => {
+                await exchange.pause({ from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+            })
+
+            it("should not be able to create buy orders when paused", async () => {
+                const buyOrder = buy(105, 10)
+
+                await exchange.pause({ from: exchangeOwner }).should.be.fulfilled
+
+                await placeOrder(buyOrder).should.be.rejectedWith(EVMRevert)
+            })
+
+            it("should not be able to create sell orders when paused", async function () {
+                const sellOrder = sell(105, 10)
+
+                await exchange.pause({ from: exchangeOwner }).should.be.fulfilled
+
+                await placeOrder(sellOrder).should.be.rejectedWith(EVMRevert)
+            })
         })
 
-        it("should not be able to create buy orders when paused", async () => {
-            const buyOrder = buy(105, 10)
+        describe("Cancel Order", () => {
+            it("should allow owner to cancel any order", async () => {
+                const buyOrder = buy(100, 5)
+                await placeOrder(buyOrder).should.be.fulfilled
 
-            await exchange.pause({ from: exchangeOwner }).should.be.fulfilled
-
-            await placeOrder(buyOrder).should.be.rejectedWith(EVMRevert)
-        })
-
-        it("should not be able to create sell orders when paused", async function () {
-            const sellOrder = sell(105, 10)
-
-            await exchange.pause({ from: exchangeOwner }).should.be.fulfilled
-
-            await placeOrder(sellOrder).should.be.rejectedWith(EVMRevert)
+                await cancelOrder(1, exchangeOwner).should.be.fulfilled
+            })
         })
     })
 

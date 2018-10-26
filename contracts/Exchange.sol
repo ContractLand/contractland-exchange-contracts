@@ -87,7 +87,7 @@ contract Exchange is Initializable, Pausable {
     /* --- CONSTRUCTOR / INITIALIZATION --- */
 
     function initialize() public isInitializer {
-        owner = msg.sender; // initialize owner for Pausable
+        owner = msg.sender; // initialize owner for admin functionalities
         priceDenominator = 1000000000000000000; // This assumes all tokens trading in exchange has 18 decimal places
     }
 
@@ -158,14 +158,14 @@ contract Exchange is Initializable, Pausable {
 
     function cancelOrder(uint64 id) public {
         Order memory order = orders[id];
-        require(order.owner == msg.sender);
+        require(order.owner == msg.sender || msg.sender == owner);
 
         if (order.sell) {
-            reserved[order.tradeToken][msg.sender] = reserved[order.tradeToken][msg.sender].sub(order.amount);
-            transferFundToUser(msg.sender, order.tradeToken, order.amount);
+            reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(order.amount);
+            transferFundToUser(order.owner, order.tradeToken, order.amount);
         } else {
-            reserved[order.baseToken][msg.sender] = reserved[order.baseToken][msg.sender].sub(order.amount.mul(order.price).div(priceDenominator));
-            transferFundToUser(msg.sender, order.baseToken, order.amount.mul(order.price).div(priceDenominator));
+            reserved[order.baseToken][order.owner] = reserved[order.baseToken][order.owner].sub(order.amount.mul(order.price).div(priceDenominator));
+            transferFundToUser(order.owner, order.baseToken, order.amount.mul(order.price).div(priceDenominator));
         }
 
         Pair storage pair = pairs[order.baseToken][order.tradeToken];
