@@ -93,15 +93,15 @@ contract Exchange is Initializable, Pausable {
 
     /* --- EXTERNAL / PUBLIC  METHODS --- */
 
-    function sell(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
+    function sell(address baseToken, address tradeToken, address orderOwner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
         require(isValidOrder(baseToken, tradeToken, amount, price));
 
         // Transfer funds from user
-        transferFundFromUser(owner, tradeToken, amount);
+        transferFundFromUser(orderOwner, tradeToken, amount);
 
         Order memory order;
         order.sell = true;
-        order.owner = owner;
+        order.owner = orderOwner;
         order.baseToken = baseToken;
         order.tradeToken = tradeToken;
         order.price = price;
@@ -110,7 +110,7 @@ contract Exchange is Initializable, Pausable {
 
         uint64 id = ++lastOrderId;
 
-        emit NewOrder(baseToken, tradeToken, owner, id, true, price, amount, order.timestamp);
+        emit NewOrder(baseToken, tradeToken, orderOwner, id, true, price, amount, order.timestamp);
 
         // Match trade
         Pair storage pair = pairs[baseToken][tradeToken];
@@ -124,16 +124,16 @@ contract Exchange is Initializable, Pausable {
         return id;
     }
 
-    function buy(address baseToken, address tradeToken, address owner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
+    function buy(address baseToken, address tradeToken, address orderOwner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
         require(isValidOrder(baseToken, tradeToken, amount, price));
 
         // Transfer funds from user
         uint baseTokenAmount = amount.mul(price).div(priceDenominator);
-        transferFundFromUser(owner, baseToken, baseTokenAmount);
+        transferFundFromUser(orderOwner, baseToken, baseTokenAmount);
 
         Order memory order;
         order.sell = false;
-        order.owner = owner;
+        order.owner = orderOwner;
         order.baseToken = baseToken;
         order.tradeToken = tradeToken;
         order.price = price;
@@ -142,7 +142,7 @@ contract Exchange is Initializable, Pausable {
 
         uint64 id = ++lastOrderId;
 
-        emit NewOrder(baseToken, tradeToken, owner, id, false, price, amount, order.timestamp);
+        emit NewOrder(baseToken, tradeToken, orderOwner, id, false, price, amount, order.timestamp);
 
         // Match trade
         Pair storage pair = pairs[baseToken][tradeToken];
