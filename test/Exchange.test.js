@@ -838,6 +838,42 @@ describe("Exchange", () => {
                 .then(() => checkGetOrderbookAsks([{amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}, {amount: sellOrderTwo.amount.plus(sellOrderOne.amount), price: sellOrderTwo.price}]))
                 .then(() => checkGetOrderbookBids([]))
         })
+
+      it("should properly insert different bids with same prices", () => {
+        let [buy10, buy11, buy12] = [buy(10, 1), buy(11, 1), buy(12, 1)]
+        return placeOrder(buy10)
+            .then(() => placeOrder(buy10))
+            .then(() => placeOrder(buy11))
+            .then(() => placeOrder(buy12))
+            .then(() => placeOrder(buy12))
+            .then(() => placeOrder(buy10))
+            .then(() => placeOrder(buy12))
+            .then(() => checkGetOrderbookBids([
+              {amount: buy12.amount * 3, price: buy12.price},
+              {amount: buy11.amount, price: buy11.price},
+              {amount: buy10.amount * 3, price: buy10.price},
+            ]))
+      })
+
+      it("should properly insert different asks with same prices", () => {
+        let [ask15, ask14, ask13, ask12] = [sell(15, 1), sell(14, 1), sell(13, 1), sell(12, 1)]
+        return placeOrder(ask15)
+            .then(() => placeOrder(ask15))
+            .then(() => placeOrder(ask14))
+            .then(() => placeOrder(ask14))
+            .then(() => placeOrder(ask13))
+            .then(() => placeOrder(ask13))
+            .then(() => placeOrder(ask12))
+            .then(() => placeOrder(ask12))
+            .then(() => placeOrder(ask15))
+            .then(() => placeOrder(ask13))
+            .then(() => checkGetOrderbookAsks([
+              {amount: ask12.amount * 2, price: ask12.price},
+              {amount: ask13.amount * 3, price: ask13.price},
+              {amount: ask14.amount * 2, price: ask14.price},
+              {amount: ask15.amount * 3, price: ask15.price},
+            ]))
+      })
     });
 
     describe("Admin", () => {

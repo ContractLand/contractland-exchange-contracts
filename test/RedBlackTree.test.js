@@ -121,6 +121,34 @@ contract("RedBlackTree", () => {
             });
         });
 
+        describe('when the prices are duplicated', async() => {
+            it("3-2-4-3", async () => {
+                const initialValues = [3, 2, 4];
+                const keyValue = 3;
+                const finalStates = [
+                    {value: 3, parent: 0, left: 2, right: 3, red: false},
+                    {value: 2, parent: 1, left: 0, right: 0, red: false},
+                    {value: 4, parent: 1, left: 4, right: 0, red: false},
+                    {value: 3, parent: 3, left: 0, right: 0, red: true}
+                ];
+  
+                return testInsert(initialValues, keyValue, finalStates);
+            });
+
+            it("10-5-7-7", async () => {
+                const initialValues = [10, 5, 7];
+                const keyValue = 7;
+                const finalStates = [
+                    {value: 10, parent: 3, left: 4, right: 0, red: false},
+                    {value: 5, parent: 3, left: 0, right: 0, red: false},
+                    {value: 7, parent: 0, left: 2, right: 1, red: false},
+                    {value: 7, parent: 1, left: 0, right: 0, red: true}
+                ];
+  
+                return testInsert(initialValues, keyValue, finalStates);
+            });
+        });
+
         function testInsert(initialValues, keyValue, finalStates) {
             let ids;
             return insertValues(initialValues)

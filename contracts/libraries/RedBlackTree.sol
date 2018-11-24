@@ -28,10 +28,6 @@ library RedBlackTree {
         uint64 id = tree.root;
         parentId = id;
         while (id != 0) {
-            if (value == tree.items[id].value) {
-                return;
-            }
-
             parentId = id;
             if (value < tree.items[id].value) {
                 id = tree.items[id].left;
