@@ -1,0 +1,30 @@
+@startuml
+
+User -> Exchange: buy()
+activate Exchange #FFBBBB
+Exchange -> Exchange: matchBuy()
+activate Exchange #DarkSalmon
+Exchange -> RedBlackTree: remove()
+activate RedBlackTree
+RedBlackTree -> Exchange
+deactivate RedBlackTree
+deactivate Exchange
+|||
+Exchange -> Exchange: addToBids()
+activate Exchange #DarkSalmon
+Exchange -> RedBlackTree: find()
+activate RedBlackTree
+RedBlackTree -> Exchange
+deactivate RedBlackTree
+
+Exchange -> RedBlackTree: placeAfter()
+activate RedBlackTree
+RedBlackTree -> Exchange
+deactivate RedBlackTree
+
+deactivate Exchange
+|||
+Exchange -> User
+deactivate Exchange
+
+@enduml

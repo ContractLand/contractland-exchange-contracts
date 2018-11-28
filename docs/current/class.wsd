@@ -1,0 +1,52 @@
+@startuml
+
+class Order {
+  owner
+  amount
+  price
+  sell: bool
+  timestamp
+}
+
+class Exchange {
+  orders: mapping<Id => Order>
+  sell(): Id
+  buy(): Id
+  getOrder(Id)
+  cancelOrder(Id)
+  getOrderBookInfo()
+  getOrderbookBids()
+  getOrderbookAsks()
+}
+
+note left of Exchange::getOrderBookInfo
+  Allows to get info about orderbook,
+  and iterate over the **whole** orderbook
+  using getOrder()
+end note
+
+note left of Exchange::getOrderbookBids
+  Allows to get top N orders in the orderbook
+end note
+
+class Item {
+  red: bool
+  parent: Id
+  left: Id
+  right: Id
+  value
+}
+
+class RedBlackTree {
+  root: Id
+  items: mapping<id => Item>
+  remove()
+  find()
+  placeAfter()
+}
+
+Order *-- Exchange
+Item *-- RedBlackTree
+Exchange --- RedBlackTree
+
+@enduml
