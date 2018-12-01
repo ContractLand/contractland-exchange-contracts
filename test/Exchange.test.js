@@ -318,7 +318,7 @@ describe("Exchange", () => {
             await cancelOrder(1, seller).should.be.rejectedWith(EVMRevert)
         })
 
-        it.only("should insert a new buy order as first", () => {
+        it("should insert a new buy order as first", () => {
             const order = buy(100, 5);
             const orderState = {prev: 0, next: 0};
             const orderbookState = {firstOrder: 1, bestBid: 1, bestAsk: 0, lastOrder: 1};
@@ -1037,8 +1037,8 @@ describe("Exchange", () => {
         return exchange.getOrderBookInfo(baseToken.address, tradeToken.address)
             .then(orderbook => {
                 // assert.equal(orderbook[0].toFixed(), orderbookState.firstOrder, "first order");
-                assert.equal(orderbook[1].toFixed(), orderbookState.bestBid, "best bid");
-                assert.equal(orderbook[2].toFixed(), orderbookState.bestAsk, "best ask");
+                assert.equal(orderbook[0].toFixed(), orderbookState.bestBid, "best bid");
+                assert.equal(orderbook[1].toFixed(), orderbookState.bestAsk, "best ask");
                 // assert.equal(orderbook[3].toFixed(), orderbookState.lastOrder, "last order");
             });
     }

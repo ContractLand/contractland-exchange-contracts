@@ -1,21 +1,24 @@
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "./libraries/OrderBookHeap.sol";
+import "./libraries/AskHeap.sol";
+import "./libraries/BidHeap.sol";
 import "./interfaces/ERC20.sol";
 import "./DestructibleTransfer.sol";
 
 contract NewExchange is Initializable, Pausable {
     using SafeMath for uint;
-    using OrderBookHeap for OrderBookHeap.Tree;
+    using AskHeap for AskHeap.Asks;
+    using BidHeap for BidHeap.Bids;
 
     /* --- STRUCTS --- */
 
     struct Pair {
-        OrderBookHeap.Tree asks;
-        OrderBookHeap.Tree bids;
+        AskHeap.Asks asks;
+        BidHeap.Bids bids;
     }
 
     /* --- EVENTS --- */
@@ -145,8 +148,8 @@ contract NewExchange is Initializable, Pausable {
     }
 
     function getOrderBookInfo(address baseToken, address tradeToken) public view returns (uint64 bestAsk, uint64 bestBid) {
-        bestAsk = pairs[baseToken][tradeToken].asks.getMax();
-        bestBid = pairs[baseToken][tradeToken].bids.getMax();
+        bestAsk = pairs[baseToken][tradeToken].asks.getMin().id;
+        bestBid = pairs[baseToken][tradeToken].bids.getMax().id;
     }
 
     /* function getOrderbookBids(address baseToken, address tradeToken)
@@ -230,7 +233,7 @@ contract NewExchange is Initializable, Pausable {
     }
 
     function matchSell(OrderBookHeap.Node memory order) private {
-        OrderBookHeap.Tree storage bids = pairs[order.baseToken][order.tradeToken].bids;
+        BidHeap.Bids storage bids = pairs[order.baseToken][order.tradeToken].bids;
 
         while (OrderBookHeap.isNode(bids.getMax()) && order.price <= bids.getMax().price) {
 
@@ -265,11 +268,11 @@ contract NewExchange is Initializable, Pausable {
     }
 
     function matchBuy(OrderBookHeap.Node memory order) private {
-        OrderBookHeap.Tree storage asks = pairs[order.baseToken][order.tradeToken].asks;
+        AskHeap.Asks storage asks = pairs[order.baseToken][order.tradeToken].asks;
 
-        while (OrderBookHeap.isNode(asks.getMax()) && order.price >= asks.getMax().price) {
+        while (OrderBookHeap.isNode(asks.getMin()) && order.price >= asks.getMin().price) {
 
-            OrderBookHeap.Node memory matchingOrder = asks.getMax();
+            OrderBookHeap.Node memory matchingOrder = asks.getMin();
             uint tradeAmount;
 
             if (matchingOrder.amount >= order.amount) {
@@ -295,7 +298,7 @@ contract NewExchange is Initializable, Pausable {
                 break;
             }
 
-            asks.extractMax();
+            asks.extractMin();
         }
     }
 }
