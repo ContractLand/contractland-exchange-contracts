@@ -125,7 +125,7 @@ contract NewExchange is Initializable, Pausable {
         OrderBookHeap.Node memory order = orders[id];
         require(order.owner == msg.sender || msg.sender == owner);
 
-        if (OrderBookHeap.isNode(pairs[order.baseToken][order.tradeToken].asks.peakById(id))) {
+        if (OrderBookHeap.isValid(pairs[order.baseToken][order.tradeToken].asks.getById(id))) {
             reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(order.amount);
             transferFundToUser(order.owner, order.tradeToken, order.amount);
             pairs[order.baseToken][order.tradeToken].asks.removeById(id);
@@ -235,7 +235,7 @@ contract NewExchange is Initializable, Pausable {
     function matchSell(OrderBookHeap.Node memory order) private {
         BidHeap.Bids storage bids = pairs[order.baseToken][order.tradeToken].bids;
 
-        while (OrderBookHeap.isNode(bids.peak()) && order.price <= bids.peak().price) {
+        while (OrderBookHeap.isValid(bids.peak()) && order.price <= bids.peak().price) {
 
             OrderBookHeap.Node memory matchingOrder = bids.peak();
             uint tradeAmount;
@@ -270,7 +270,7 @@ contract NewExchange is Initializable, Pausable {
     function matchBuy(OrderBookHeap.Node memory order) private {
         AskHeap.Asks storage asks = pairs[order.baseToken][order.tradeToken].asks;
 
-        while (OrderBookHeap.isNode(asks.getMin()) && order.price >= asks.getMin().price) {
+        while (OrderBookHeap.isValid(asks.getMin()) && order.price >= asks.getMin().price) {
 
             OrderBookHeap.Node memory matchingOrder = asks.getMin();
             uint tradeAmount;

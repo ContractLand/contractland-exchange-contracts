@@ -26,12 +26,12 @@ library BidHeap {
     }
 
     //view
-    function peakById(Bids storage self, uint64 id) internal view returns (OrderBookHeap.Node) {
-      return self.bids.peakById(id);
+    function getById(Bids storage self, uint64 id) internal view returns (OrderBookHeap.Node) {
+      return self.bids.getById(id);
     }
 
-    function peakByIndex(Bids storage self, uint i) internal view returns (OrderBookHeap.Node) {
-      return self.bids.peakByIndex(i);
+    function getByIndex(Bids storage self, uint i) internal view returns (OrderBookHeap.Node) {
+      return self.bids.getByIndex(i);
     }
 
     function peak(Bids storage self) internal view returns (OrderBookHeap.Node) {

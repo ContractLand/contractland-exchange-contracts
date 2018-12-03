@@ -16,7 +16,7 @@ contract.only('BidHeap',  async(accounts) => {
 
       await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
 
-      const result = await heap.peakByIndex.call(0)
+      const result = await heap.getByIndex.call(0)
       assertNodeEqual(result, EMPTY_NODE)
     })
 
@@ -31,13 +31,13 @@ contract.only('BidHeap',  async(accounts) => {
       await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
       await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
 
-      const root = await heap.peakByIndex.call(1)
+      const root = await heap.getByIndex.call(1)
       assertNodeEqual(root, nodes[2])
 
-      const leftChild = await heap.peakByIndex.call(2)
+      const leftChild = await heap.getByIndex.call(2)
       assertNodeEqual(leftChild, nodes[0])
 
-      const rightChild = await heap.peakByIndex.call(3)
+      const rightChild = await heap.getByIndex.call(3)
       assertNodeEqual(rightChild, nodes[1])
     })
 
@@ -52,13 +52,13 @@ contract.only('BidHeap',  async(accounts) => {
       await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
       await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
 
-      const root = await heap.peakByIndex.call(1)
+      const root = await heap.getByIndex.call(1)
       assertNodeEqual(root, nodes[2])
 
-      const leftChild = await heap.peakByIndex.call(2)
+      const leftChild = await heap.getByIndex.call(2)
       assertNodeEqual(leftChild, nodes[1])
 
-      const rightChild = await heap.peakByIndex.call(3)
+      const rightChild = await heap.getByIndex.call(3)
       assertNodeEqual(rightChild, nodes[0])
     })
   })
@@ -116,7 +116,7 @@ contract.only('BidHeap',  async(accounts) => {
     })
   })
 
-  describe.only("updatePrice", async() => {
+  describe("updatePrice", async() => {
     it("should maintain heap order after price increase update", async() => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0},
@@ -131,13 +131,13 @@ contract.only('BidHeap',  async(accounts) => {
       nodes[0].price = 101
       await heap.updatePriceById(1, nodes[0].price)
 
-      const root = await heap.peakByIndex.call(1)
+      const root = await heap.getByIndex.call(1)
       assertNodeEqual(root, nodes[0])
 
-      const leftChild = await heap.peakByIndex.call(2)
+      const leftChild = await heap.getByIndex.call(2)
       assertNodeEqual(leftChild, nodes[2])
 
-      const rightChild = await heap.peakByIndex.call(3)
+      const rightChild = await heap.getByIndex.call(3)
       assertNodeEqual(rightChild, nodes[1])
     })
 
@@ -155,13 +155,13 @@ contract.only('BidHeap',  async(accounts) => {
       nodes[2].price = 5
       await heap.updatePriceById(3, nodes[2].price)
 
-      const root = await heap.peakByIndex.call(1)
+      const root = await heap.getByIndex.call(1)
       assertNodeEqual(root, nodes[1])
 
-      const leftChild = await heap.peakByIndex.call(2)
+      const leftChild = await heap.getByIndex.call(2)
       assertNodeEqual(leftChild, nodes[0])
 
-      const rightChild = await heap.peakByIndex.call(3)
+      const rightChild = await heap.getByIndex.call(3)
       assertNodeEqual(rightChild, nodes[2])
     })
 
@@ -180,13 +180,13 @@ contract.only('BidHeap',  async(accounts) => {
       await heap.updatePriceById(2, nodes[1].price)
       await heap.updatePriceById(3, nodes[2].price)
 
-      const root = await heap.peakByIndex.call(1)
+      const root = await heap.getByIndex.call(1)
       assertNodeEqual(root, nodes[2])
 
-      const leftChild = await heap.peakByIndex.call(2)
+      const leftChild = await heap.getByIndex.call(2)
       assertNodeEqual(leftChild, nodes[0])
 
-      const rightChild = await heap.peakByIndex.call(3)
+      const rightChild = await heap.getByIndex.call(3)
       assertNodeEqual(rightChild, nodes[1])
     })
   })
@@ -205,7 +205,7 @@ contract.only('BidHeap',  async(accounts) => {
 
       await heap.removeById(2)
 
-      const result = await heap.peakById.call(2)
+      const result = await heap.getById.call(2)
       assertNodeEqual(result, EMPTY_NODE)
     })
   })
@@ -227,7 +227,7 @@ contract.only('BidHeap',  async(accounts) => {
     })
   })
 
-  describe("peakById", async() => {
+  describe("getById", async() => {
     it("should find node by unique id", async () => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 2, timestamp: 3},
@@ -239,7 +239,7 @@ contract.only('BidHeap',  async(accounts) => {
       await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
       await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
 
-      const result = await heap.peakById.call(2)
+      const result = await heap.getById.call(2)
       assertNodeEqual(result, nodes[1])
     })
   })

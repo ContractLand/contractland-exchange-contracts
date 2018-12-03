@@ -9,7 +9,6 @@ library OrderBookHeap {
 
   uint256 constant ROOT_INDEX = 1;
   uint256 constant UINT256_MAX = ~uint256(0);
-
   /* uint256 constant UINT256_MIN = 0; */
 
   /* --- STRUCTS --- */
@@ -29,7 +28,7 @@ library OrderBookHeap {
     uint64 timestamp;
   }
 
-  /* --- LIBRARY PUBLIC --- */
+  /* --- PUBLIC --- */
 
   function add(Tree storage self, Node memory n) internal {
     if (self.nodes.length == 0) { _init(self); }
@@ -85,46 +84,34 @@ library OrderBookHeap {
     return pop(self);
   }
 
-  function peakById(Tree storage self, uint64 id) internal view returns(Node){
-    return peakByIndex(self, self.idToIndex[id]);//test that all these return the emptyNode
+  function peak(Tree storage self) internal view returns(Node){
+    return getByIndex(self, ROOT_INDEX);
   }
 
-  function peakByIndex(Tree storage self, uint i) internal view returns(Node){
+  function getById(Tree storage self, uint64 id) internal view returns(Node){
+    return getByIndex(self, self.idToIndex[id]);//test that all these return the emptyNode
+  }
+
+  function getByIndex(Tree storage self, uint i) internal view returns(Node){
     return self.nodes.length > i ? self.nodes[i] : Node(0,0,0,0,0,0,0);
   }
 
-  function peak(Tree storage self) internal view returns(Node){
-    return peakByIndex(self, ROOT_INDEX);
+  function getTopK(Tree storage self, uint k) public view returns (uint[] topK) {
+    //TODO
   }
 
   function size(Tree storage self) internal view returns(uint){
     return self.nodes.length > 0 ? self.nodes.length - 1 : 0;
   }
 
-  function isNode(Node n) internal pure returns(bool){ return n.id > 0; }
+  function isValid(Node n) internal pure returns (bool) { return n.id > 0; }
 
-  function getTopK(Tree storage self, uint k) public view returns (uint[] topK) {
-    //TODO
-  }
-
-  /* --- LIBRARY PRIVATE --- */
+  /* --- PRIVATE --- */
 
   // Initialize node at index 0 with empty node because mapping values in Solidity defaults to 0.
   // Therefore, in order to maintain proper mapping in idToIndex, we treat index 0 as invalid.
-  function _init(Tree storage self) internal {
+  function _init(Tree storage self) private {
     if (self.nodes.length == 0) self.nodes.push(Node(0,0,0,0,0,0,0));
-  }
-
-  function _parent(uint i) private pure returns (uint) {
-    return i.div(2);
-  }
-
-  function _left(uint i) private pure returns (uint) {
-    return i.mul(2);
-  }
-
-  function _right(uint i) private pure returns (uint) {
-    return i.mul(2).add(1);
   }
 
   function _insert(Tree storage self, Node memory n, uint i) private {
@@ -164,5 +151,17 @@ library OrderBookHeap {
        _swap(self, i, _parent(i));
        i = _parent(i);
     }
+  }
+
+  function _parent(uint i) private pure returns (uint) {
+    return i.div(2);
+  }
+
+  function _left(uint i) private pure returns (uint) {
+    return i.mul(2);
+  }
+
+  function _right(uint i) private pure returns (uint) {
+    return i.mul(2).add(1);
   }
 }

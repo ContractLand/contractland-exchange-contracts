@@ -42,8 +42,8 @@ contract TestBidHeap {
     timestamp = n.timestamp;
   }
 
-  function peakById(uint64 _id) public view returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) {
-    OrderBookHeap.Node memory n = data.peakById(_id);
+  function getById(uint64 _id) public view returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) {
+    OrderBookHeap.Node memory n = data.getById(_id);
     id = n.id;
     owner = n.owner;
     tradeToken = n.tradeToken;
@@ -53,8 +53,8 @@ contract TestBidHeap {
     timestamp = n.timestamp;
   }
 
-  function peakByIndex(uint64 i) public view returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) {
-    OrderBookHeap.Node memory n = data.peakByIndex(i);
+  function getByIndex(uint64 i) public view returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) {
+    OrderBookHeap.Node memory n = data.getByIndex(i);
     id = n.id;
     owner = n.owner;
     tradeToken = n.tradeToken;

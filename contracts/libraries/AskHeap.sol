@@ -28,12 +28,12 @@ library AskHeap {
     }
 
     //view
-    function peakById(Asks storage self, uint64 id) internal view returns (OrderBookHeap.Node) {
-      return reversePriceSign(self.asks.peakById(id));
+    function getById(Asks storage self, uint64 id) internal view returns (OrderBookHeap.Node) {
+      return reversePriceSign(self.asks.getById(id));
     }
 
-    function peakByIndex(Asks storage self, uint i) internal view returns (OrderBookHeap.Node) {
-      return reversePriceSign(self.asks.peakByIndex(i));
+    function getByIndex(Asks storage self, uint i) internal view returns (OrderBookHeap.Node) {
+      return reversePriceSign(self.asks.getByIndex(i));
     }
 
     function getMin(Asks storage self) internal view returns (OrderBookHeap.Node) {
