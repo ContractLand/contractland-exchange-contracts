@@ -15,8 +15,8 @@ library AskHeap {
       self.asks.add(reversePriceSign(n));
     }
 
-    function update(Asks storage self, OrderBookHeap.Node memory n) internal {
-      self.asks.update(reversePriceSign(n));
+    function updatePriceById(Asks storage self, uint64 id, uint newPrice) internal {
+      self.asks.updatePriceById(id, newPrice);
     }
 
     function extractMin(Asks storage self) internal returns (OrderBookHeap.Node) {

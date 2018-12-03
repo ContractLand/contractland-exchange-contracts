@@ -27,7 +27,10 @@ contract TestBidHeap {
     data.removeById(id);
   }
 
-  //view
+  function updatePriceById(uint64 id, uint newPrice) public {
+    data.updatePriceById(id, newPrice);
+  }
+
   function peak() public returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) {
     OrderBookHeap.Node memory n = data.peak();
     id = n.id;

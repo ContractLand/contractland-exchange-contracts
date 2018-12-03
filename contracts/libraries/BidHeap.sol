@@ -13,8 +13,8 @@ library BidHeap {
       self.bids.add(n);
     }
 
-    function update(Bids storage self, OrderBookHeap.Node memory n) internal {
-      self.bids.update(n);
+    function updatePriceById(Bids storage self, uint64 id, uint newPrice) internal {
+      self.bids.updatePriceById(id, newPrice);
     }
 
     function pop(Bids storage self) internal returns (OrderBookHeap.Node) {

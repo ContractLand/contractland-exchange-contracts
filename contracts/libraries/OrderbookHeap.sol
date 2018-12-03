@@ -31,7 +31,7 @@ library OrderBookHeap {
 
   /* --- LIBRARY PUBLIC --- */
 
-  function add(Tree storage self, Node memory n) internal {//√
+  function add(Tree storage self, Node memory n) internal {
     if (self.nodes.length == 0) { _init(self); }
     self.nodes.length++;
     uint i = self.nodes.length - 1;
@@ -39,9 +39,20 @@ library OrderBookHeap {
     _bubbleUp(self, i);
   }
 
-  // TODO: this is a temp work around
-  function update(Tree storage self, Node memory n) internal {//√
+  function updatePriceById(Tree storage self, uint64 id, uint newPrice) internal {
+    uint i = self.idToIndex[id];
 
+    if (newPrice == self.nodes[i].price) {
+      return;
+    }
+
+    if (newPrice > self.nodes[i].price) {
+      self.nodes[i].price = newPrice;
+      _bubbleUp(self, i);
+    } else {
+      self.nodes[i].price = newPrice;
+      _bubbleDown(self, i);
+    }
   }
 
   function pop(Tree storage self) internal returns (Node) {
@@ -93,7 +104,7 @@ library OrderBookHeap {
   function isNode(Node n) internal pure returns(bool){ return n.id > 0; }
 
   function getTopK(Tree storage self, uint k) public view returns (uint[] topK) {
-
+    //TODO
   }
 
   /* --- LIBRARY PRIVATE --- */
@@ -116,7 +127,7 @@ library OrderBookHeap {
     return i.mul(2).add(1);
   }
 
-  function _insert(Tree storage self, Node memory n, uint i) private {//√
+  function _insert(Tree storage self, Node memory n, uint i) private {
     self.nodes[i] = n;
     self.idToIndex[n.id] = i;
   }

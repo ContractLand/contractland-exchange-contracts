@@ -259,7 +259,7 @@ contract NewExchange is Initializable, Pausable {
             emit NewTrade(order.baseToken, order.tradeToken, matchingOrder.id, order.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
-                bids.update(matchingOrder);
+                bids.updatePriceById(matchingOrder.id, matchingOrder.price);
                 break;
             }
 
@@ -294,7 +294,7 @@ contract NewExchange is Initializable, Pausable {
             emit NewTrade(order.baseToken, order.tradeToken, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
-                asks.update(matchingOrder);
+                asks.updatePriceById(matchingOrder.id, matchingOrder.price);
                 break;
             }
 
