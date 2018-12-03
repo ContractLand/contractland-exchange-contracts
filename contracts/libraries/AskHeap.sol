@@ -11,12 +11,8 @@ library AskHeap {
         OrderBookHeap.Tree asks;
     }
 
-    function init(Asks storage self) internal{
-        self.asks.init();
-    }
-
-    function insert(Asks storage self, OrderBookHeap.Node memory n) internal returns (OrderBookHeap.Node) {
-      return self.asks.insert(reversePriceSign(n));
+    function add(Asks storage self, OrderBookHeap.Node memory n) internal {
+      self.asks.add(reversePriceSign(n));
     }
 
     function update(Asks storage self, OrderBookHeap.Node memory n) internal {
@@ -24,28 +20,24 @@ library AskHeap {
     }
 
     function extractMin(Asks storage self) internal returns (OrderBookHeap.Node) {
-      return reversePriceSign(self.asks.extractMax());
+      return reversePriceSign(self.asks.pop());
     }
 
-    function extractById(Asks storage self, uint64 id) internal returns (OrderBookHeap.Node) {
-      return reversePriceSign(self.asks.extractById(id));
+    function removeById(Asks storage self, uint64 id) internal returns (OrderBookHeap.Node) {
+      return reversePriceSign(self.asks.removeById(id));
     }
 
     //view
-    /* function dump(Asks storage self) internal view returns (OrderBookHeap.Node[]) {
-      return self.asks.dump();
-    } */
-
-    function getById(Asks storage self, uint64 id) internal view returns (OrderBookHeap.Node) {
-      return reversePriceSign(self.asks.getById(id));
+    function peakById(Asks storage self, uint64 id) internal view returns (OrderBookHeap.Node) {
+      return reversePriceSign(self.asks.peakById(id));
     }
 
-    function getByIndex(Asks storage self, uint i) internal view returns (OrderBookHeap.Node) {
-      return reversePriceSign(self.asks.getByIndex(i));
+    function peakByIndex(Asks storage self, uint i) internal view returns (OrderBookHeap.Node) {
+      return reversePriceSign(self.asks.peakByIndex(i));
     }
 
     function getMin(Asks storage self) internal view returns (OrderBookHeap.Node) {
-      return reversePriceSign(self.asks.getMax());
+      return reversePriceSign(self.asks.peak());
     }
 
     function size(Asks storage self) internal view returns (uint) {

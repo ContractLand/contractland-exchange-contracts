@@ -9,41 +9,33 @@ library BidHeap {
         OrderBookHeap.Tree bids;
     }
 
-    function init(Bids storage self) internal{
-        self.bids.init();
-    }
-
-    function insert(Bids storage self, OrderBookHeap.Node memory n) internal returns (OrderBookHeap.Node) {
-      return self.bids.insert(n);
+    function add(Bids storage self, OrderBookHeap.Node memory n) internal {
+      self.bids.add(n);
     }
 
     function update(Bids storage self, OrderBookHeap.Node memory n) internal {
       self.bids.update(n);
     }
 
-    function extractMax(Bids storage self) internal returns (OrderBookHeap.Node) {
-      return self.bids.extractMax();
+    function pop(Bids storage self) internal returns (OrderBookHeap.Node) {
+      return self.bids.pop();
     }
 
-    function extractById(Bids storage self, uint64 id) internal returns (OrderBookHeap.Node) {
-      return self.bids.extractById(id);
+    function removeById(Bids storage self, uint64 id) internal returns (OrderBookHeap.Node) {
+      return self.bids.removeById(id);
     }
 
     //view
-    function dump(Bids storage self) internal view returns (OrderBookHeap.Node[]) {
-      return self.bids.dump();
+    function peakById(Bids storage self, uint64 id) internal view returns (OrderBookHeap.Node) {
+      return self.bids.peakById(id);
     }
 
-    function getById(Bids storage self, uint64 id) internal view returns (OrderBookHeap.Node) {
-      return self.bids.getById(id);
+    function peakByIndex(Bids storage self, uint i) internal view returns (OrderBookHeap.Node) {
+      return self.bids.peakByIndex(i);
     }
 
-    function getByIndex(Bids storage self, uint i) internal view returns (OrderBookHeap.Node) {
-      return self.bids.getByIndex(i);
-    }
-
-    function getMax(Bids storage self) internal view returns (OrderBookHeap.Node) {
-      return self.bids.getMax();
+    function peak(Bids storage self) internal view returns (OrderBookHeap.Node) {
+      return self.bids.peak();
     }
 
     function size(Bids storage self) internal view returns (uint) {

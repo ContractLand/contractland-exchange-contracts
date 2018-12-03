@@ -93,7 +93,7 @@ contract NewExchange is Initializable, Pausable {
         matchSell(order);
 
         if (order.amount != 0) {
-            pairs[baseToken][tradeToken].asks.insert(order);
+            pairs[baseToken][tradeToken].asks.add(order);
             orders[id] = order;
         }
 
@@ -114,7 +114,7 @@ contract NewExchange is Initializable, Pausable {
         matchBuy(order);
 
         if (order.amount != 0) {
-            pairs[baseToken][tradeToken].bids.insert(order);
+            pairs[baseToken][tradeToken].bids.add(order);
             orders[id] = order;
         }
 
@@ -125,14 +125,14 @@ contract NewExchange is Initializable, Pausable {
         OrderBookHeap.Node memory order = orders[id];
         require(order.owner == msg.sender || msg.sender == owner);
 
-        if (OrderBookHeap.isNode(pairs[order.baseToken][order.tradeToken].asks.getById(id))) {
+        if (OrderBookHeap.isNode(pairs[order.baseToken][order.tradeToken].asks.peakById(id))) {
             reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(order.amount);
             transferFundToUser(order.owner, order.tradeToken, order.amount);
-            pairs[order.baseToken][order.tradeToken].asks.extractById(id);
+            pairs[order.baseToken][order.tradeToken].asks.removeById(id);
         } else {
             reserved[order.baseToken][order.owner] = reserved[order.baseToken][order.owner].sub(order.amount.mul(order.price).div(priceDenominator));
             transferFundToUser(order.owner, order.baseToken, order.amount.mul(order.price).div(priceDenominator));
-            pairs[order.baseToken][order.tradeToken].bids.extractById(id);
+            pairs[order.baseToken][order.tradeToken].bids.removeById(id);
         }
 
         delete orders[id];
@@ -149,7 +149,7 @@ contract NewExchange is Initializable, Pausable {
 
     function getOrderBookInfo(address baseToken, address tradeToken) public view returns (uint64 bestAsk, uint64 bestBid) {
         bestAsk = pairs[baseToken][tradeToken].asks.getMin().id;
-        bestBid = pairs[baseToken][tradeToken].bids.getMax().id;
+        bestBid = pairs[baseToken][tradeToken].bids.peak().id;
     }
 
     /* function getOrderbookBids(address baseToken, address tradeToken)
@@ -235,9 +235,9 @@ contract NewExchange is Initializable, Pausable {
     function matchSell(OrderBookHeap.Node memory order) private {
         BidHeap.Bids storage bids = pairs[order.baseToken][order.tradeToken].bids;
 
-        while (OrderBookHeap.isNode(bids.getMax()) && order.price <= bids.getMax().price) {
+        while (OrderBookHeap.isNode(bids.peak()) && order.price <= bids.peak().price) {
 
-            OrderBookHeap.Node memory matchingOrder = bids.getMax();
+            OrderBookHeap.Node memory matchingOrder = bids.peak();
             uint tradeAmount;
 
             if (matchingOrder.amount >= order.amount) {
@@ -263,7 +263,7 @@ contract NewExchange is Initializable, Pausable {
                 break;
             }
 
-            bids.extractMax();
+            bids.pop();
         }
     }
 
