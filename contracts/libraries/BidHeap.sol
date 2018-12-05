@@ -87,10 +87,6 @@ library BidHeap {
     return self.nodes.length > i ? self.nodes[i] : OrderNode.Node(0,0,0,0,0,0,0);
   }
 
-  function getTopK(Tree storage self, uint k) public view returns (uint[] topK) {
-    //TODO
-  }
-
   function size(Tree storage self) internal view returns(uint){
     return self.nodes.length > 0 ? self.nodes.length - 1 : 0;
   }
