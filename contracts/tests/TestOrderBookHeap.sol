@@ -1,6 +1,7 @@
 pragma solidity ^0.4.24;
 
 import "../libraries/OrderBookHeap.sol";
+import "../libraries/OrderNode.sol";
 
 contract TestOrderBookHeap {
   using OrderBookHeap for OrderBookHeap.Tree;
@@ -8,11 +9,11 @@ contract TestOrderBookHeap {
   OrderBookHeap.Tree data;
 
   function add(uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) public {
-    data.add(OrderBookHeap.Node(id, owner, baseToken, tradeToken, price, amount, timestamp));
+    data.add(OrderNode.Node(id, owner, baseToken, tradeToken, price, amount, timestamp));
   }
 
   function pop() public returns(uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp){
-    OrderBookHeap.Node memory n = data.pop();
+    OrderNode.Node memory n = data.pop();
     id = n.id;
     owner = n.owner;
     tradeToken = n.tradeToken;
@@ -23,7 +24,7 @@ contract TestOrderBookHeap {
   }
 
   function peak() public returns(uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp){
-    OrderBookHeap.Node memory n = data.peak();
+    OrderNode.Node memory n = data.peak();
     id = n.id;
     owner = n.owner;
     tradeToken = n.tradeToken;

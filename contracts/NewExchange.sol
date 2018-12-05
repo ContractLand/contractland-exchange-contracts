@@ -4,6 +4,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import "zos-lib/contracts/migrations/Initializable.sol";
 import "./libraries/OrderBookHeap.sol";
+import "./libraries/OrderNode.sol";
 import "./libraries/AskHeap.sol";
 import "./libraries/BidHeap.sol";
 import "./interfaces/ERC20.sol";
@@ -59,7 +60,7 @@ contract NewExchange is Initializable, Pausable {
 
     uint64 lastOrderId;
 
-    mapping(uint64 => OrderBookHeap.Node) orders;
+    mapping(uint64 => OrderNode.Node) orders;
 
     // Mapping of base token to trade token to Pair
     mapping(address => mapping(address => Pair)) pairs;
@@ -86,7 +87,7 @@ contract NewExchange is Initializable, Pausable {
         transferFundFromUser(orderOwner, tradeToken, amount);
 
         uint64 id = ++lastOrderId;
-        OrderBookHeap.Node memory order = OrderBookHeap.Node(id, orderOwner, baseToken, tradeToken, price, amount, uint64(block.timestamp));
+        OrderNode.Node memory order = OrderNode.Node(id, orderOwner, baseToken, tradeToken, price, amount, uint64(block.timestamp));
 
         emit NewOrder(baseToken, tradeToken, orderOwner, id, true, price, amount, order.timestamp);
 
@@ -107,7 +108,7 @@ contract NewExchange is Initializable, Pausable {
         transferFundFromUser(orderOwner, baseToken, baseTokenAmount);
 
         uint64 id = ++lastOrderId;
-        OrderBookHeap.Node memory order = OrderBookHeap.Node(id, orderOwner, baseToken, tradeToken, price, amount, uint64(block.timestamp));
+        OrderNode.Node memory order = OrderNode.Node(id, orderOwner, baseToken, tradeToken, price, amount, uint64(block.timestamp));
 
         emit NewOrder(baseToken, tradeToken, orderOwner, id, false, price, amount, order.timestamp);
 
@@ -122,7 +123,7 @@ contract NewExchange is Initializable, Pausable {
     }
 
     function cancelOrder(uint64 id) public {
-        OrderBookHeap.Node memory order = orders[id];
+        OrderNode.Node memory order = orders[id];
         require(order.owner == msg.sender || msg.sender == owner);
 
         if (OrderBookHeap.isValid(pairs[order.baseToken][order.tradeToken].asks.getById(id))) {
@@ -141,7 +142,7 @@ contract NewExchange is Initializable, Pausable {
     }
 
     function getOrder(uint64 id) public view returns (uint price, bool isSell, uint amount) {
-        OrderBookHeap.Node memory order = orders[id];
+        OrderNode.Node memory order = orders[id];
         price = order.price;
         /* isSell = order.sell; */
         amount = order.amount;
@@ -232,12 +233,12 @@ contract NewExchange is Initializable, Pausable {
         }
     }
 
-    function matchSell(OrderBookHeap.Node memory order) private {
+    function matchSell(OrderNode.Node memory order) private {
         BidHeap.Bids storage bids = pairs[order.baseToken][order.tradeToken].bids;
 
         while (OrderBookHeap.isValid(bids.peak()) && order.price <= bids.peak().price) {
 
-            OrderBookHeap.Node memory matchingOrder = bids.peak();
+            OrderNode.Node memory matchingOrder = bids.peak();
             uint tradeAmount;
 
             if (matchingOrder.amount >= order.amount) {
@@ -267,12 +268,12 @@ contract NewExchange is Initializable, Pausable {
         }
     }
 
-    function matchBuy(OrderBookHeap.Node memory order) private {
+    function matchBuy(OrderNode.Node memory order) private {
         AskHeap.Asks storage asks = pairs[order.baseToken][order.tradeToken].asks;
 
         while (OrderBookHeap.isValid(asks.getMin()) && order.price >= asks.getMin().price) {
 
-            OrderBookHeap.Node memory matchingOrder = asks.getMin();
+            OrderNode.Node memory matchingOrder = asks.getMin();
             uint tradeAmount;
 
             if (matchingOrder.amount >= order.amount) {

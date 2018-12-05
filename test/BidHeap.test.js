@@ -20,7 +20,7 @@ contract.only('BidHeap',  async(accounts) => {
       assertNodeEqual(result, EMPTY_NODE)
     })
 
-    it("should insert keys in heap-like fashion", async () => {
+    it("should insert keys in max-heap-like fashion", async () => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0},
         {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 10, amount: 0, timestamp: 0},
@@ -41,7 +41,7 @@ contract.only('BidHeap',  async(accounts) => {
       assertNodeEqual(rightChild, nodes[1])
     })
 
-    it("should handle equal key values", async () => {
+    it("should handle equal price values", async () => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0},
         {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 1, amount: 0, timestamp: 0},
@@ -60,6 +60,27 @@ contract.only('BidHeap',  async(accounts) => {
 
       const rightChild = await heap.getByIndex.call(3)
       assertNodeEqual(rightChild, nodes[0])
+    })
+    
+    it("should order nodes by timestamp (FIFO) when price values are equal", async () => {
+      const nodes = [
+        {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 3},
+        {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 1, amount: 0, timestamp: 2},
+        {id: 3, owner: accounts[6], baseToken: accounts[7], tradeToken: accounts[8], price: 1, amount: 0, timestamp: 1}
+      ]
+
+      await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
+      await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
+      await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
+
+      const root = await heap.getByIndex.call(1)
+      assertNodeEqual(root, nodes[2])
+
+      const leftChild = await heap.getByIndex.call(2)
+      assertNodeEqual(leftChild, nodes[0])
+
+      const rightChild = await heap.getByIndex.call(3)
+      assertNodeEqual(rightChild, nodes[1])
     })
   })
 
@@ -87,20 +108,53 @@ contract.only('BidHeap',  async(accounts) => {
 
     it("should remove max key nodes from heap", async() => {
       const nodes = [
-        {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0},
-        {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 10, amount: 0, timestamp: 0},
-        {id: 3, owner: accounts[6], baseToken: accounts[7], tradeToken: accounts[8], price: 100, amount: 0, timestamp: 0}
+        {id: 1, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 1, amount: 0, timestamp: 1},
+        {id: 2, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 10, amount: 0, timestamp: 1},
+        {id: 3, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 100, amount: 0, timestamp: 0},
+        {id: 4, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 100, amount: 0, timestamp: 1}
+      ]
+
+      await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
+      await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
+      await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
+      await heap.add(nodes[3].id, nodes[3].owner, nodes[3].baseToken, nodes[3].tradeToken, nodes[3].price, nodes[3].amount, nodes[3].timestamp)
+
+      const sizeAfterAdd = await heap.size.call()
+      assert.equal(sizeAfterAdd.toNumber(), 4)
+
+      let result = await heap.pop.call()
+      assertNodeEqual(result, nodes[2])
+      await heap.pop()
+
+      result = await heap.pop.call()
+      assertNodeEqual(result, nodes[3])
+      await heap.pop()
+
+      result = await heap.pop.call()
+      assertNodeEqual(result, nodes[1])
+      await heap.pop()
+      
+      result = await heap.pop.call()
+      assertNodeEqual(result, nodes[0])
+      await heap.pop()
+
+      const sizeAfterPop = await heap.size.call()
+      assert.equal(sizeAfterPop.toNumber(), 0)
+    })
+    
+    it("should remove max key nodes from heap with equal prices", async() => {
+      const nodes = [
+        {id: 1, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 1, amount: 0, timestamp: 1},
+        {id: 2, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 1, amount: 0, timestamp: 2},
+        {id: 3, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 1, amount: 0, timestamp: 3},
       ]
 
       await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
       await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
       await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
 
-      const sizeAfterAdd = await heap.size.call()
-      assert.equal(sizeAfterAdd.toNumber(), 3)
-
       let result = await heap.pop.call()
-      assertNodeEqual(result, nodes[2])
+      assertNodeEqual(result, nodes[0])
       await heap.pop()
 
       result = await heap.pop.call()
@@ -108,11 +162,8 @@ contract.only('BidHeap',  async(accounts) => {
       await heap.pop()
 
       result = await heap.pop.call()
-      assertNodeEqual(result, nodes[0])
+      assertNodeEqual(result, nodes[2])
       await heap.pop()
-
-      const sizeAfterPop = await heap.size.call()
-      assert.equal(sizeAfterPop.toNumber(), 0)
     })
   })
 
