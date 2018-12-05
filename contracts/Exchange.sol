@@ -3,10 +3,13 @@ pragma solidity ^0.4.24;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import "zos-lib/contracts/migrations/Initializable.sol";
+
+import "./interfaces/ERC20.sol";
+
 import "./libraries/OrderNode.sol";
 import "./libraries/AskHeap.sol";
 import "./libraries/BidHeap.sol";
-import "./interfaces/ERC20.sol";
+
 import "./DestructibleTransfer.sol";
 
 contract Exchange is Initializable, Pausable {
@@ -143,7 +146,7 @@ contract Exchange is Initializable, Pausable {
     function getOrder(uint64 id) public view returns (uint price, bool isSell, uint amount) {
         OrderNode.Node memory order = orders[id];
         price = order.price;
-        /* isSell = order.sell; */
+        isSell = AskHeap.isValid(pairs[order.baseToken][order.tradeToken].asks.getById(id)) ? true : false;
         amount = order.amount;
     }
 
@@ -251,7 +254,7 @@ contract Exchange is Initializable, Pausable {
             }
 
             reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(tradeAmount);
-            transferFundToUser( matchingOrder.owner, order.tradeToken,tradeAmount);
+            transferFundToUser(matchingOrder.owner, order.tradeToken, tradeAmount);
             uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
             transferFundToUser(order.owner, order.baseToken, baseTokenAmount);
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
@@ -260,10 +263,10 @@ contract Exchange is Initializable, Pausable {
 
             if (matchingOrder.amount != 0) {
                 bids.updatePriceById(matchingOrder.id, matchingOrder.price);
-                break;
+            } else {
+                bids.pop();
+                delete orders[matchingOrder.id];
             }
-
-            bids.pop();
         }
     }
 
@@ -295,10 +298,10 @@ contract Exchange is Initializable, Pausable {
 
             if (matchingOrder.amount != 0) {
                 asks.updatePriceById(matchingOrder.id, matchingOrder.price);
-                break;
+            } else {
+                asks.pop();
+                delete orders[matchingOrder.id];
             }
-
-            asks.pop();
         }
     }
 }
