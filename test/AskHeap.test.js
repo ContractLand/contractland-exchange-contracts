@@ -1,6 +1,6 @@
 const TestAskHeap = artifacts.require("TestAskHeap")
 
-contract.only('AskHeap',  async(accounts) => {
+contract('AskHeap',  async(accounts) => {
   let heap;
   const EMPTY_NODE = {id: 0, owner: 0, baseToken: 0, tradeToken: 0, price: 0, amount: 0, timestamp: 0}
 

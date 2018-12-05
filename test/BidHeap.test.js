@@ -1,6 +1,6 @@
 const TestBidHeap = artifacts.require("TestBidHeap")
 
-contract.only('BidHeap',  async(accounts) => {
+contract('BidHeap',  async(accounts) => {
   let heap;
   const EMPTY_NODE = {id: 0, owner: 0, baseToken: 0, tradeToken: 0, price: 0, amount: 0, timestamp: 0}
 
@@ -293,36 +293,6 @@ contract.only('BidHeap',  async(accounts) => {
       const result = await heap.getById.call(2)
       assertNodeEqual(result, nodes[1])
     })
-  })
-
-  it.skip("fuzzy test", async() => {
-    const testSize = 100
-    let max, oldMax, size
-
-    let vals = Array.from({length: testSize}, () => Math.floor(Math.random() * 100000))
-
-    size = await heap.size.call()
-    assert.equal(size.toNumber(), 0)
-
-    for (let i = 0; i < vals.length; i++) {
-      await heap.add(0, 0, 0, 0, vals[i], 0, 0)
-    }
-
-    size = await heap.size.call()
-    assert.equal(size.toNumber(), testSize)
-
-    max = await heap.peak.call()
-    assert.equal(max[4].toNumber(), Math.max(...vals.slice(0,testSize-1)))
-
-    for (let i = 0; i < vals.length; i++) {
-      await heap.pop()
-      oldMax = max
-      max = await heap.peak.call()
-      assert.isTrue(oldMax[4].toNumber() >= (max[4]).toNumber())
-    }
-
-    size = await heap.size.call()
-    assert.equal(size.toNumber(), 0)
   })
 
   function assertNodeEqual(actualNode, expectedNode) {
