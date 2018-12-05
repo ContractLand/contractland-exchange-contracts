@@ -7,7 +7,7 @@ require('chai')
   .use(require('chai-as-promised'))
   .should()
 
-const Exchange = artifacts.require("./NewExchange.sol");
+const Exchange = artifacts.require("./Exchange.sol");
 const ExchangeProxy = artifacts.require('AdminUpgradeabilityProxy')
 const Token = artifacts.require("./TestToken.sol");
 const FallbackTrap = artifacts.require("./FallbackTrap.sol");
