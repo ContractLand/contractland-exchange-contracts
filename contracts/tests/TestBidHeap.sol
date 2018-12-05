@@ -1,13 +1,12 @@
 pragma solidity ^0.4.24;
 
-import "../libraries/OrderBookHeap.sol";
-import "../libraries/OrderNode.sol";
 import "../libraries/BidHeap.sol";
+import "../libraries/OrderNode.sol";
 
 contract TestBidHeap {
-  using BidHeap for BidHeap.Bids;
+  using BidHeap for BidHeap.Tree;
 
-  BidHeap.Bids data;
+  BidHeap.Tree data;
 
   function add(uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) public {
     data.add(OrderNode.Node(id, owner, baseToken, tradeToken, price, amount, timestamp));

@@ -168,7 +168,7 @@ contract.only('BidHeap',  async(accounts) => {
   })
 
   describe("updatePrice", async() => {
-    it("should maintain heap order after price increase update", async() => {
+    it("should maintain max heap order after price increase update", async() => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0},
         {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 10, amount: 0, timestamp: 0},
@@ -192,7 +192,7 @@ contract.only('BidHeap',  async(accounts) => {
       assertNodeEqual(rightChild, nodes[1])
     })
 
-    it("should maintain heap order after price decrease update", async() => {
+    it("should maintain max heap order after price decrease update", async() => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0},
         {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 10, amount: 0, timestamp: 0},

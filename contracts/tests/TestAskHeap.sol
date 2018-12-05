@@ -1,20 +1,19 @@
 pragma solidity ^0.4.24;
 
-import "../libraries/OrderBookHeap.sol";
-import "../libraries/OrderNode.sol";
 import "../libraries/AskHeap.sol";
+import "../libraries/OrderNode.sol";
 
 contract TestAskHeap {
-  using AskHeap for AskHeap.Asks;
+  using AskHeap for AskHeap.Tree;
 
-  AskHeap.Asks data;
+  AskHeap.Tree data;
 
   function add(uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) public {
     data.add(OrderNode.Node(id, owner, baseToken, tradeToken, price, amount, timestamp));
   }
 
-  function extractMin() public returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp){
-    OrderNode.Node memory n = data.extractMin();
+  function pop() public returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp){
+    OrderNode.Node memory n = data.pop();
     id = n.id;
     owner = n.owner;
     tradeToken = n.tradeToken;
@@ -28,9 +27,12 @@ contract TestAskHeap {
     data.removeById(id);
   }
 
-  //view
-  function getMin() public returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) {
-    OrderNode.Node memory n = data.getMin();
+  function updatePriceById(uint64 id, uint newPrice) public {
+    data.updatePriceById(id, newPrice);
+  }
+
+  function peak() public returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) {
+    OrderNode.Node memory n = data.peak();
     id = n.id;
     owner = n.owner;
     tradeToken = n.tradeToken;
@@ -42,6 +44,17 @@ contract TestAskHeap {
 
   function getById(uint64 _id) public view returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) {
     OrderNode.Node memory n = data.getById(_id);
+    id = n.id;
+    owner = n.owner;
+    tradeToken = n.tradeToken;
+    baseToken = n.baseToken;
+    price = n.price;
+    amount = n.amount;
+    timestamp = n.timestamp;
+  }
+
+  function getByIndex(uint64 i) public view returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) {
+    OrderNode.Node memory n = data.getByIndex(i);
     id = n.id;
     owner = n.owner;
     tradeToken = n.tradeToken;
