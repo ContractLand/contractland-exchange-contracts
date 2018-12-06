@@ -2,12 +2,13 @@ const TestAskHeap = artifacts.require("TestAskHeap")
 const TestBidHeap = artifacts.require("TestBidHeap")
 
 contract('Heap Fuzzy Test',  async(accounts) => {
+  const TEST_SIZE = 100
+
   it("AskHeap", async() => {
     const askHeap = await TestAskHeap.new()
-    const testSize = 100
     let min, oldMin, size
 
-    let vals = Array.from({length: testSize}, () => Math.floor(Math.random() * 100000))
+    let vals = Array.from({length: TEST_SIZE}, () => Math.floor(Math.random() * 100000))
 
     size = await askHeap.size.call()
     assert.equal(size.toNumber(), 0)
@@ -17,10 +18,10 @@ contract('Heap Fuzzy Test',  async(accounts) => {
     }
 
     size = await askHeap.size.call()
-    assert.equal(size.toNumber(), testSize)
+    assert.equal(size.toNumber(), TEST_SIZE)
 
     min = await askHeap.peak.call()
-    assert.equal(min[4].toNumber(), Math.min(...vals.slice(0,testSize-1)))
+    assert.equal(min[4].toNumber(), Math.min(...vals.slice(0,TEST_SIZE-1)))
 
     for (let i = 1; i < vals.length; i++) {
       await askHeap.pop()
@@ -32,13 +33,12 @@ contract('Heap Fuzzy Test',  async(accounts) => {
     size = await askHeap.size.call()
     assert.equal(size.toNumber(), 1)
   })
-  
+
   it("BidHeap", async() => {
     const bidHeap = await TestBidHeap.new()
-    const testSize = 100
     let max, oldMax, size
 
-    let vals = Array.from({length: testSize}, () => Math.floor(Math.random() * 100000))
+    let vals = Array.from({length: TEST_SIZE}, () => Math.floor(Math.random() * 100000))
 
     size = await bidHeap.size.call()
     assert.equal(size.toNumber(), 0)
@@ -48,10 +48,10 @@ contract('Heap Fuzzy Test',  async(accounts) => {
     }
 
     size = await bidHeap.size.call()
-    assert.equal(size.toNumber(), testSize)
+    assert.equal(size.toNumber(), TEST_SIZE)
 
     max = await bidHeap.peak.call()
-    assert.equal(max[4].toNumber(), Math.max(...vals.slice(0,testSize-1)))
+    assert.equal(max[4].toNumber(), Math.max(...vals.slice(0,TEST_SIZE-1)))
 
     for (let i = 0; i < vals.length; i++) {
       await bidHeap.pop()
