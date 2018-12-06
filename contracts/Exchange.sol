@@ -40,7 +40,7 @@ contract Exchange is Initializable, Pausable {
 
     /* --- EVENTS --- */
 
-    event NewCancelOrder(uint64 id);
+    event NewCancelOrder(address indexed baseToken, address indexed tradeToken, address indexed owner, uint64 id);
     event NewBestAsk(address indexed baseToken, address indexed tradeToken, uint price);
     event NewAsk(address indexed baseToken, address indexed tradeToken, uint price);
     event NewBid(address indexed baseToken, address indexed tradeToken, uint price);
@@ -58,6 +58,7 @@ contract Exchange is Initializable, Pausable {
     event NewTrade(address indexed baseToken,
         address indexed tradeToken,
         uint64 bidId, uint64 askId,
+        address bidOwner, address askOwner,
         bool side,
         uint amount,
         uint price,
@@ -170,7 +171,7 @@ contract Exchange is Initializable, Pausable {
 
         Pair storage pair = pairs[order.baseToken][order.tradeToken];
         ListItem memory orderItem = excludeItem(pair, id);
-        emit NewCancelOrder(id);
+        emit NewCancelOrder(order.baseToken, order.tradeToken, order.owner, id);
 
         if (pair.bestBid == id) {
             pair.bestBid = orderItem.prev;
@@ -302,7 +303,7 @@ contract Exchange is Initializable, Pausable {
             transferFundToUser(order.owner, order.baseToken, baseTokenAmount);
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
-            emit NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
+            emit NewTrade(order.baseToken, order.tradeToken, currentOrderId, id, matchingOrder.owner, order.owner, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
                 orders[currentOrderId] = matchingOrder;
@@ -342,7 +343,7 @@ contract Exchange is Initializable, Pausable {
             transferFundToUser(matchingOrder.owner, order.baseToken, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
             transferFundToUser(order.owner, order.tradeToken, tradeAmount);
 
-            emit NewTrade(order.baseToken, order.tradeToken, id, currentOrderId, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
+            emit NewTrade(order.baseToken, order.tradeToken, id, currentOrderId, order.owner, matchingOrder.owner, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
                 orders[currentOrderId] = matchingOrder;

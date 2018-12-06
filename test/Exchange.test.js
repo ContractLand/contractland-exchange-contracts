@@ -362,7 +362,7 @@ describe("Exchange", () => {
             return placeOrder(order)
                 .then(id => orderId = id)
                 .then(() => cancelOrder(orderId, order.from))
-                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId}))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: buyer}))
                 .then(() => checkOrder(orderId, undefined))
                 .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
                 .then(() => checkNewAskOrBidEvent(newBestBidWatcher, {price: 0}))
@@ -377,7 +377,7 @@ describe("Exchange", () => {
             return placeOrder(order)
                 .then(id => orderId = id)
                 .then(() => cancelOrder(orderId, order.from))
-                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId}))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: seller}))
                 .then(() => checkOrder(orderId, undefined))
                 .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
                 .then(() => checkNewAskOrBidEvent(newBestAskWatcher, {price: 0}))
@@ -484,7 +484,7 @@ describe("Exchange", () => {
                 .then(() => placeOrder(order))
                 .then(() => placeOrder(sell(120, 5)))
                 .then(() => cancelOrder(2, order.from))
-                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2}))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: seller}))
                 .then(() => checkOrder(2, undefined))
                 .then(() => checkOrder(1, {prev: 0, next: 3}))
                 .then(() => checkOrder(3, {prev: 1, next: 0}))
@@ -499,7 +499,7 @@ describe("Exchange", () => {
                 .then(() => placeOrder(order))
                 .then(() => placeOrder(buy(120, 5)))
                 .then(() => cancelOrder(2, order.from))
-                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2}))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: buyer}))
                 .then(() => checkOrder(2, undefined))
                 .then(() => checkOrder(1, {prev: 0, next: 3}))
                 .then(() => checkOrder(3, {prev: 1, next: 0}))
@@ -555,7 +555,7 @@ describe("Exchange", () => {
         it("the best buy order should be partially filled by a new sell order", () => {
             const buyOrder = buy(100, 5);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: sellOrder.amount, price: buyOrder.price}];
+            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: sellOrder.amount, price: buyOrder.price, askOwner: seller, bidOwner: buyer}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrder)
                 .then(() => placeOrder(sellOrder))
@@ -575,7 +575,7 @@ describe("Exchange", () => {
         it("the best sell order should be partially filled by a new buy order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 5);
-            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: buyOrder.amount, price: sellOrder.price}];
+            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: buyOrder.amount, price: sellOrder.price, askOwner: seller, bidOwner: buyer}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrder)
                 .then(() => placeOrder(buyOrder))
@@ -598,7 +598,7 @@ describe("Exchange", () => {
         it("a new sell order should be partially filled by the best buy order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 5);
-            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: buyOrder.amount, price: buyOrder.price}];
+            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: buyOrder.amount, price: buyOrder.price, askOwner: seller, bidOwner: buyer}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrder)
                 .then(() => placeOrder(sellOrder))
@@ -615,7 +615,7 @@ describe("Exchange", () => {
         it("a new buy order should be partially filled by the best sell order", () => {
             const buyOrder = buy(100, 5);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: sellOrder.amount, price: sellOrder.price}];
+            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: sellOrder.amount, price: sellOrder.price, askOwner: seller, bidOwner: buyer}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrder)
                 .then(() => placeOrder(buyOrder))
@@ -635,7 +635,7 @@ describe("Exchange", () => {
         it("a new sell order should be completely filled and completely fill the best buy order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: sellOrder.amount, price: buyOrder.price}];
+            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: sellOrder.amount, price: buyOrder.price, askOwner: seller, bidOwner: buyer}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrder)
                 .then(() => placeOrder(sellOrder))
@@ -652,7 +652,7 @@ describe("Exchange", () => {
         it("a new buy order should be completely filled and completely fill the best sell order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: sellOrder.amount, price: sellOrder.price}];
+            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: sellOrder.amount, price: sellOrder.price, askOwner: seller, bidOwner: buyer}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrder)
                 .then(() => placeOrder(buyOrder))
@@ -670,8 +670,8 @@ describe("Exchange", () => {
             let [buy1, buy2, buy3] = [buy(100, 2), buy(110, 3), buy(120, 4)]
             const sellOrder = sell(105, 10);
             const tradeEventsStates = [
-                {bidId: 3, askId: 4, side: false, amount: buy3.amount, price: buy3.price},
-                {bidId: 2, askId: 4, side: false, amount: buy2.amount, price: buy2.price}
+                {bidId: 3, askId: 4, side: false, amount: buy3.amount, price: buy3.price, askOwner: seller, bidOwner: buyer},
+                {bidId: 2, askId: 4, side: false, amount: buy2.amount, price: buy2.price, askOwner: seller, bidOwner: buyer}
             ];
             const newTradeWatcher = exchange.NewTrade();
             const expectedTokenSoldAmount = buy3.amount.plus(buy2.amount);
@@ -695,8 +695,8 @@ describe("Exchange", () => {
             let [sell1, sell2, sell3] = [sell(120, 4), sell(110, 3), sell(100, 2)]
             const buyOrder = buy(115, 10);
             const tradeEventsStates = [
-                {bidId: 4, askId: 3, side: true, amount: sell3.amount, price: sell3.price},
-                {bidId: 4, askId: 2, side: true, amount: sell2.amount, price: sell2.price}
+                {bidId: 4, askId: 3, side: true, amount: sell3.amount, price: sell3.price, askOwner: seller, bidOwner: buyer},
+                {bidId: 4, askId: 2, side: true, amount: sell2.amount, price: sell2.price, askOwner: seller, bidOwner: buyer}
             ];
             const newTradeWatcher = exchange.NewTrade();
             const expectedTokenBoughtAmount = sell3.amount.plus(sell2.amount);
@@ -726,9 +726,9 @@ describe("Exchange", () => {
             const sellOrderOne = sell(90, 5);
             const sellOrderTwo = sell(90, 5);
             const sellOrderThree = sell(90, 5);
-            const tradeEventsOne = [{bidId: 1, askId: 4, side: false, amount: buyOrderOne.amount, price: buyOrderOne.price}];
-            const tradeEventsTwo = [{bidId: 2, askId: 5, side: false, amount: buyOrderTwo.amount, price: buyOrderTwo.price}];
-            const tradeEventsThree = [{bidId: 3, askId: 6, side: false, amount: buyOrderThree.amount, price: buyOrderThree.price}];
+            const tradeEventsOne = [{bidId: 1, askId: 4, side: false, amount: buyOrderOne.amount, price: buyOrderOne.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsTwo = [{bidId: 2, askId: 5, side: false, amount: buyOrderTwo.amount, price: buyOrderTwo.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsThree = [{bidId: 3, askId: 6, side: false, amount: buyOrderThree.amount, price: buyOrderThree.price, askOwner: seller, bidOwner: buyer}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrderOne)
                 .then(() => placeOrder(buyOrderTwo))
@@ -752,9 +752,9 @@ describe("Exchange", () => {
             const buyOrderOne = buy(90, 5);
             const buyOrderTwo = buy(90, 5);
             const buyOrderThree = buy(90, 5);
-            const tradeEventsOne = [{bidId: 4, askId: 1, side: true, amount: sellOrderOne.amount, price: sellOrderOne.price}];
-            const tradeEventsTwo = [{bidId: 5, askId: 2, side: true, amount: sellOrderTwo.amount, price: sellOrderTwo.price}];
-            const tradeEventsThree = [{bidId: 6, askId: 3, side: true, amount: sellOrderThree.amount, price: sellOrderThree.price}];
+            const tradeEventsOne = [{bidId: 4, askId: 1, side: true, amount: sellOrderOne.amount, price: sellOrderOne.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsTwo = [{bidId: 5, askId: 2, side: true, amount: sellOrderTwo.amount, price: sellOrderTwo.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsThree = [{bidId: 6, askId: 3, side: true, amount: sellOrderThree.amount, price: sellOrderThree.price, askOwner: seller, bidOwner: buyer}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrderOne)
                 .then(() => placeOrder(sellOrderTwo))
@@ -947,7 +947,7 @@ describe("Exchange", () => {
             await fallbackTrap.buy(order.baseToken, order.tradeToken, fallbackTrap.address, order.amount, order.price, { from: order.from, value: order.amount * price, gasPrice: 0 })
             const id = newOrderEventWatcher.get()[0].args.id;
             await fallbackTrap.cancelOrder(id, { from: buyer, gasPrice:0, value: 0 });
-            checkCancelOrderEvent(cancelOrderEventWatcher, {id})
+            checkCancelOrderEvent(cancelOrderEventWatcher, {id, baseToken: order.baseToken, tradeToken: order.tradeToken, owner: fallbackTrap.address})
 
             assert.equal(order.amount * price, (await web3.eth.getBalance(fallbackTrap.address)).toString())
             assert.equal(exchangeEtherBalanceBefore.toString(), (await web3.eth.getBalance(exchange.address)).toString())
@@ -963,7 +963,7 @@ describe("Exchange", () => {
             await fallbackTrap.buy(order.baseToken, order.tradeToken, fallbackTrap.address, order.amount, order.price, { from: order.from, value: order.amount * price, gasPrice: 0 })
             const id = newOrderEventWatcher.get()[0].args.id;
             await fallbackTrap.cancelOrder(id, { from: buyer, gasPrice:0, value: 0 });
-            checkCancelOrderEvent(cancelOrderEventWatcher, {id})
+            checkCancelOrderEvent(cancelOrderEventWatcher, {id, baseToken: order.baseToken, tradeToken: order.tradeToken, owner: fallbackTrap.address})
 
             assert.equal(order.amount * price, (await web3.eth.getBalance(fallbackTrap.address)).toString())
             assert.equal(exchangeEtherBalanceBefore.toString(), (await web3.eth.getBalance(exchange.address)).toString())
@@ -1078,6 +1078,8 @@ describe("Exchange", () => {
             assert.equal(event.tradeToken, tradeToken.address);
             assert.equal(event.bidId, state.bidId);
             assert.equal(event.askId, state.askId);
+            assert.equal(event.bidOwner, state.bidOwner);
+            assert.equal(event.askOwner, state.askOwner);
             assert.equal(event.side, state.side);
             assert.equal(event.amount.toString(), state.amount.toString());
             assert.equal(event.price.toString(), state.price.toString());
@@ -1113,6 +1115,9 @@ describe("Exchange", () => {
         assert.equal(events.length, 1);
 
         let event = events[0].args;
+        assert.equal(event.baseToken, expectedState.baseToken);
+        assert.equal(event.tradeToken, expectedState.tradeToken);
+        assert.equal(event.owner, expectedState.owner);
         assert.equal(event.id.toString(), expectedState.id.toString());
     }
 
