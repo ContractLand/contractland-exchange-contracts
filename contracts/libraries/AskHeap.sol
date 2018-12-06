@@ -98,6 +98,11 @@ library AskHeap {
 
   function isValid(OrderNode.Node n) internal pure returns (bool) { return n.id > 0; }
 
+  function dump(Tree storage self) internal view returns(OrderNode.Node[]){
+    //note: Empty set will return `[Node(0,0,0,0)]`. uninitialized will return `[]`.
+    return self.nodes;
+  }
+
   /* --- PRIVATE --- */
 
   // Initialize node at index 0 with empty node because mapping values in Solidity defaults to 0.
