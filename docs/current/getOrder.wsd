@@ -1,0 +1,9 @@
+@startuml
+
+User -> Exchange: getOrder()
+activate Exchange #FFBBBB
+|||
+Exchange -> User
+deactivate Exchange
+
+@enduml

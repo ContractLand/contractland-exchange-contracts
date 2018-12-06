@@ -1,0 +1,13 @@
+@startuml
+
+User -> Exchange: cancelOrder()
+activate Exchange #FFBBBB
+Exchange -> RedBlackTree: remove()
+activate RedBlackTree
+RedBlackTree -> Exchange
+deactivate RedBlackTree
+|||
+Exchange -> User
+deactivate Exchange
+
+@enduml
