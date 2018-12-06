@@ -44,6 +44,11 @@ library AskHeap {
       _bubbleDown(self, i);
     }
   }
+  
+  function updateAmountById(Tree storage self, uint64 id, uint newAmount) internal {
+    uint i = self.idToIndex[id];
+    self.nodes[i].amount = newAmount;
+  }
 
   function pop(Tree storage self) internal returns (OrderNode.Node) {
     if (self.nodes.length <= 1) {

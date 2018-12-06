@@ -62,11 +62,11 @@ contract('BidHeap',  async(accounts) => {
       assertNodeEqual(rightChild, nodes[0])
     })
     
-    it("should order nodes by timestamp (FIFO) when price values are equal", async () => {
+    it("should order nodes by id (FIFO) when price values are equal", async () => {
       const nodes = [
-        {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 3},
-        {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 1, amount: 0, timestamp: 2},
-        {id: 3, owner: accounts[6], baseToken: accounts[7], tradeToken: accounts[8], price: 1, amount: 0, timestamp: 1}
+        {id: 3, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0},
+        {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 1, amount: 0, timestamp: 0},
+        {id: 1, owner: accounts[6], baseToken: accounts[7], tradeToken: accounts[8], price: 1, amount: 0, timestamp: 0}
       ]
 
       await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
@@ -144,9 +144,9 @@ contract('BidHeap',  async(accounts) => {
     
     it("should remove max key nodes from heap with equal prices", async() => {
       const nodes = [
-        {id: 1, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 1, amount: 0, timestamp: 1},
-        {id: 2, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 1, amount: 0, timestamp: 2},
-        {id: 3, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 1, amount: 0, timestamp: 3},
+        {id: 1, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 1, amount: 0, timestamp: 0},
+        {id: 2, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 1, amount: 0, timestamp: 0},
+        {id: 3, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 1, amount: 0, timestamp: 0},
       ]
 
       await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
@@ -167,7 +167,7 @@ contract('BidHeap',  async(accounts) => {
     })
   })
 
-  describe("updatePrice", async() => {
+  describe("updateOrder", async() => {
     it("should maintain max heap order after price increase update", async() => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0},
@@ -239,6 +239,20 @@ contract('BidHeap',  async(accounts) => {
 
       const rightChild = await heap.getByIndex.call(3)
       assertNodeEqual(rightChild, nodes[1])
+    })
+    
+    it("should update amount", async() => {
+      const nodes = [
+        {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0}
+      ]
+
+      await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
+      
+      const newAmount = 10
+      await heap.updateAmountById(1, newAmount)
+
+      const updatedNode = await heap.getById.call(1)
+      assert.equal(updatedNode[5], newAmount)
     })
   })
 

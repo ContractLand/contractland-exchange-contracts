@@ -8,14 +8,14 @@ contract TestOrderNode {
   OrderNode.Node a;
   OrderNode.Node b;
 
-  function setNodeA(uint price, uint64 timestamp) public {
+  function setNodeA(uint price, uint64 id) public {
     a.price = price;
-    a.timestamp = timestamp;
+    a.id = id;
   }
   
-  function setNodeB(uint price, uint64 timestamp) public {
+  function setNodeB(uint price, uint64 id) public {
     b.price = price;
-    b.timestamp = timestamp;
+    b.id = id;
   }
   
   function AGreaterThanB() public view returns (bool) {

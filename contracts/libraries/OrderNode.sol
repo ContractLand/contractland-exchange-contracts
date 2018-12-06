@@ -21,7 +21,7 @@ library OrderNode {
       return false;
     }
     
-    if (self.timestamp < b.timestamp) {
+    if (self.id < b.id) {
       return true;
     }
     
@@ -37,7 +37,7 @@ library OrderNode {
       return false;
     }
     
-    if (self.timestamp < b.timestamp) {
+    if (self.id < b.id) {
       return true;
     }
     

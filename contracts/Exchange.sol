@@ -19,9 +19,16 @@ contract Exchange is Initializable, Pausable {
 
     /* --- STRUCTS --- */
 
-    struct Pair {
+    struct OrderBook {
         AskHeap.Tree asks;
         BidHeap.Tree bids;
+    }
+    
+    struct OrderInfo {
+        address owner;
+        address baseToken;
+        address tradeToken;
+        bool isSell;
     }
 
     /* --- EVENTS --- */
@@ -62,10 +69,11 @@ contract Exchange is Initializable, Pausable {
 
     uint64 lastOrderId;
 
-    mapping(uint64 => OrderNode.Node) orders;
+    // Mapping of order id to order meta data that helps to identify the order in the book
+    mapping(uint64 => OrderInfo) orderInfoMap;
 
-    // Mapping of base token to trade token to Pair
-    mapping(address => mapping(address => Pair)) pairs;
+    // Mapping of base token to trade token to OrderBook
+    mapping(address => mapping(address => OrderBook)) orderbooks;
 
     // Mapping of user address to mapping of token address to reserved balance in orderbook
     mapping (address => mapping (address => uint)) public reserved;
@@ -96,8 +104,8 @@ contract Exchange is Initializable, Pausable {
         matchSell(order);
 
         if (order.amount != 0) {
-            pairs[baseToken][tradeToken].asks.add(order);
-            orders[id] = order;
+            orderbooks[baseToken][tradeToken].asks.add(order);
+            orderInfoMap[id] = OrderInfo(orderOwner, baseToken, tradeToken, true);
         }
 
         return id;
@@ -117,42 +125,53 @@ contract Exchange is Initializable, Pausable {
         matchBuy(order);
 
         if (order.amount != 0) {
-            pairs[baseToken][tradeToken].bids.add(order);
-            orders[id] = order;
+            orderbooks[baseToken][tradeToken].bids.add(order);
+            orderInfoMap[id] = OrderInfo(orderOwner, baseToken, tradeToken, false);
         }
 
         return id;
     }
 
     function cancelOrder(uint64 id) public {
-        OrderNode.Node memory order = orders[id];
-        require(order.owner == msg.sender || msg.sender == owner);
+        OrderInfo memory orderInfo = orderInfoMap[id];
+        require(orderInfo.owner == msg.sender || msg.sender == owner);
 
-        if (BidHeap.isValid(pairs[order.baseToken][order.tradeToken].asks.getById(id))) {
-            reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(order.amount);
-            transferFundToUser(order.owner, order.tradeToken, order.amount);
-            pairs[order.baseToken][order.tradeToken].asks.removeById(id);
+        if (orderInfo.isSell) {
+            OrderNode.Node memory askOrder = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].asks.getById(id);
+            reserved[askOrder.tradeToken][askOrder.owner] = reserved[askOrder.tradeToken][askOrder.owner].sub(askOrder.amount);
+            transferFundToUser(askOrder.owner, askOrder.tradeToken, askOrder.amount);
+            orderbooks[askOrder.baseToken][askOrder.tradeToken].asks.removeById(id);
         } else {
-            reserved[order.baseToken][order.owner] = reserved[order.baseToken][order.owner].sub(order.amount.mul(order.price).div(priceDenominator));
-            transferFundToUser(order.owner, order.baseToken, order.amount.mul(order.price).div(priceDenominator));
-            pairs[order.baseToken][order.tradeToken].bids.removeById(id);
+            OrderNode.Node memory bidOrder = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].bids.getById(id);
+            reserved[bidOrder.baseToken][bidOrder.owner] = reserved[bidOrder.baseToken][bidOrder.owner].sub(bidOrder.amount.mul(bidOrder.price).div(priceDenominator));
+            transferFundToUser(bidOrder.owner, bidOrder.baseToken, bidOrder.amount.mul(bidOrder.price).div(priceDenominator));
+            orderbooks[bidOrder.baseToken][bidOrder.tradeToken].bids.removeById(id);
         }
 
-        delete orders[id];
+        delete orderInfoMap[id];
 
         emit NewCancelOrder(id);
     }
 
     function getOrder(uint64 id) public view returns (uint price, bool isSell, uint amount) {
-        OrderNode.Node memory order = orders[id];
-        price = order.price;
-        isSell = AskHeap.isValid(pairs[order.baseToken][order.tradeToken].asks.getById(id)) ? true : false;
-        amount = order.amount;
+        OrderInfo memory orderInfo = orderInfoMap[id];
+        
+        if (orderInfo.isSell) {
+          OrderNode.Node memory askOrder = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].asks.getById(id);
+          price = askOrder.price;
+          isSell = true;
+          amount = askOrder.amount;
+        } else {
+          OrderNode.Node memory bidOrder = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].bids.getById(id);
+          price = bidOrder.price;
+          isSell = false;
+          amount = bidOrder.amount;
+        }
     }
 
     function getOrderBookInfo(address baseToken, address tradeToken) public view returns (uint64 bestAsk, uint64 bestBid) {
-        bestAsk = pairs[baseToken][tradeToken].asks.peak().id;
-        bestBid = pairs[baseToken][tradeToken].bids.peak().id;
+        bestAsk = orderbooks[baseToken][tradeToken].asks.peak().id;
+        bestBid = orderbooks[baseToken][tradeToken].bids.peak().id;
     }
 
     /* function getOrderbookBids(address baseToken, address tradeToken)
@@ -160,20 +179,20 @@ contract Exchange is Initializable, Pausable {
         view
         returns (uint[ORDERBOOK_MAX_ITEMS] price, bool[ORDERBOOK_MAX_ITEMS] isSell, uint[ORDERBOOK_MAX_ITEMS] amount, uint[ORDERBOOK_MAX_ITEMS] id, uint64 items)
     {
-        Pair memory pair = pairs[baseToken][tradeToken];
+        OrderBook memory pair = orderbooks[baseToken][tradeToken];
         uint64 currentId = pair.bestBid;
         items = 0;
         uint previousPrice = 0;
         while(currentId != 0 && items < ORDERBOOK_MAX_ITEMS) {
-            Order memory order = orders[currentId];
+            Order memory order = orderInfoMap[currentId];
             price[items] = order.price;
             isSell[items] = order.sell;
             amount[items] = amount[items] + order.amount;
             id[items] = currentId;
             previousPrice = order.price;
 
-            currentId = pairs[baseToken][tradeToken].orderbook[currentId].prev;
-            if (orders[currentId].price != previousPrice) {
+            currentId = orderbooks[baseToken][tradeToken].orderbook[currentId].prev;
+            if (orderInfoMap[currentId].price != previousPrice) {
                 items = items + 1;
             }
         }
@@ -184,20 +203,20 @@ contract Exchange is Initializable, Pausable {
         view
         returns (uint[ORDERBOOK_MAX_ITEMS] price, bool[ORDERBOOK_MAX_ITEMS] isSell, uint[ORDERBOOK_MAX_ITEMS] amount, uint[ORDERBOOK_MAX_ITEMS] id, uint64 items)
     {
-        Pair memory pair = pairs[baseToken][tradeToken];
+        OrderBook memory pair = orderbooks[baseToken][tradeToken];
         uint64 currentId = pair.bestAsk;
         items = 0;
         uint previousPrice = 0;
         while(currentId != 0 && items < ORDERBOOK_MAX_ITEMS) {
-            Order memory order = orders[currentId];
+            Order memory order = orderInfoMap[currentId];
             price[items] = order.price;
             isSell[items] = order.sell;
             amount[items] = amount[items] + order.amount;
             id[items] = currentId;
             previousPrice = order.price;
 
-            currentId = pairs[baseToken][tradeToken].orderbook[currentId].next;
-            if (orders[currentId].price != previousPrice) {
+            currentId = orderbooks[baseToken][tradeToken].orderbook[currentId].next;
+            if (orderInfoMap[currentId].price != previousPrice) {
                 items = items + 1;
             }
         }
@@ -236,10 +255,11 @@ contract Exchange is Initializable, Pausable {
     }
 
     function matchSell(OrderNode.Node memory order) private {
-        BidHeap.Tree storage bids = pairs[order.baseToken][order.tradeToken].bids;
+        BidHeap.Tree storage bids = orderbooks[order.baseToken][order.tradeToken].bids;
 
-        while (BidHeap.isValid(bids.peak()) && order.price <= bids.peak().price) {
-
+        while (order.amount != 0 &&
+               BidHeap.isValid(bids.peak()) && 
+               order.price <= bids.peak().price) {
             OrderNode.Node memory matchingOrder = bids.peak();
             uint tradeAmount;
 
@@ -262,19 +282,21 @@ contract Exchange is Initializable, Pausable {
             emit NewTrade(order.baseToken, order.tradeToken, matchingOrder.id, order.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
-                bids.updatePriceById(matchingOrder.id, matchingOrder.price);
-            } else {
-                bids.pop();
-                delete orders[matchingOrder.id];
-            }
+                bids.updateAmountById(matchingOrder.id, matchingOrder.amount);
+                break;
+            } 
+            
+            bids.pop();
+            delete orderInfoMap[matchingOrder.id];
         }
     }
 
     function matchBuy(OrderNode.Node memory order) private {
-        AskHeap.Tree storage asks = pairs[order.baseToken][order.tradeToken].asks;
+        AskHeap.Tree storage asks = orderbooks[order.baseToken][order.tradeToken].asks;
 
-        while (BidHeap.isValid(asks.peak()) && order.price >= asks.peak().price) {
-
+        while (order.amount != 0 &&
+               BidHeap.isValid(asks.peak()) && 
+               order.price >= asks.peak().price) {
             OrderNode.Node memory matchingOrder = asks.peak();
             uint tradeAmount;
 
@@ -297,11 +319,12 @@ contract Exchange is Initializable, Pausable {
             emit NewTrade(order.baseToken, order.tradeToken, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
-                asks.updatePriceById(matchingOrder.id, matchingOrder.price);
-            } else {
-                asks.pop();
-                delete orders[matchingOrder.id];
-            }
+                asks.updateAmountById(matchingOrder.id, matchingOrder.amount);
+                break;
+            } 
+            
+            asks.pop();
+            delete orderInfoMap[matchingOrder.id];
         }
     }
 }

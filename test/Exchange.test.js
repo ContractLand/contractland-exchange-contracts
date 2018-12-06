@@ -475,8 +475,8 @@ contract("Exchange", () => {
         });
     });
 
-    describe.only("Order Matching", function() {
-        it.only("the best buy order should be partially filled by a new sell order", () => {
+    describe("Order Matching", function() {
+        it("the best buy order should be partially filled by a new sell order", () => {
             const buyOrder = buy(100, 5);
             const sellOrder = sell(90, 2);
             const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: sellOrder.amount, price: buyOrder.price}];
