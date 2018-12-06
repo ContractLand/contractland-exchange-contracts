@@ -4,7 +4,7 @@ import fromWei from './helpers/fromWei'
 const Exchange = artifacts.require("Exchange")
 const Token = artifacts.require("./TestToken.sol");
 
-contract.only('Exchange Load Test',  async(accounts) => {
+contract('Exchange Load Test',  async(accounts) => {
   const [deployer, buyer, seller] = web3.eth.accounts;
   let exchange, baseToken, tradeToken, orderId
   const tokenDepositAmount = toWei(100);
@@ -17,7 +17,7 @@ contract.only('Exchange Load Test',  async(accounts) => {
       await initBalances()
   })
 
-  it.skip("Test gas usage increment based on matching order increment", async() => {
+  it("Test gas usage increment based on matching order increment", async() => {
     const testSize = 10
     const tradeTokenAmount = 0.01
     const price = 1
