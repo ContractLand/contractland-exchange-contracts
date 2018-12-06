@@ -362,7 +362,7 @@ describe("Exchange", () => {
             return placeOrder(order)
                 .then(id => orderId = id)
                 .then(() => cancelOrder(orderId, order.from))
-                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId}))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: buyer}))
                 .then(() => checkOrder(orderId, undefined))
                 .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
                 .then(() => checkNewAskOrBidEvent(newBestBidWatcher, {price: 0}))
@@ -377,7 +377,7 @@ describe("Exchange", () => {
             return placeOrder(order)
                 .then(id => orderId = id)
                 .then(() => cancelOrder(orderId, order.from))
-                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId}))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: seller}))
                 .then(() => checkOrder(orderId, undefined))
                 .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
                 .then(() => checkNewAskOrBidEvent(newBestAskWatcher, {price: 0}))
@@ -484,7 +484,7 @@ describe("Exchange", () => {
                 .then(() => placeOrder(order))
                 .then(() => placeOrder(sell(120, 5)))
                 .then(() => cancelOrder(2, order.from))
-                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2}))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: seller}))
                 .then(() => checkOrder(2, undefined))
                 .then(() => checkOrder(1, {prev: 0, next: 3}))
                 .then(() => checkOrder(3, {prev: 1, next: 0}))
@@ -499,7 +499,7 @@ describe("Exchange", () => {
                 .then(() => placeOrder(order))
                 .then(() => placeOrder(buy(120, 5)))
                 .then(() => cancelOrder(2, order.from))
-                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2}))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: buyer}))
                 .then(() => checkOrder(2, undefined))
                 .then(() => checkOrder(1, {prev: 0, next: 3}))
                 .then(() => checkOrder(3, {prev: 1, next: 0}))
@@ -947,7 +947,7 @@ describe("Exchange", () => {
             await fallbackTrap.buy(order.baseToken, order.tradeToken, fallbackTrap.address, order.amount, order.price, { from: order.from, value: order.amount * price, gasPrice: 0 })
             const id = newOrderEventWatcher.get()[0].args.id;
             await fallbackTrap.cancelOrder(id, { from: buyer, gasPrice:0, value: 0 });
-            checkCancelOrderEvent(cancelOrderEventWatcher, {id})
+            checkCancelOrderEvent(cancelOrderEventWatcher, {id, baseToken: order.baseToken, tradeToken: order.tradeToken, owner: fallbackTrap.address})
 
             assert.equal(order.amount * price, (await web3.eth.getBalance(fallbackTrap.address)).toString())
             assert.equal(exchangeEtherBalanceBefore.toString(), (await web3.eth.getBalance(exchange.address)).toString())
@@ -963,7 +963,7 @@ describe("Exchange", () => {
             await fallbackTrap.buy(order.baseToken, order.tradeToken, fallbackTrap.address, order.amount, order.price, { from: order.from, value: order.amount * price, gasPrice: 0 })
             const id = newOrderEventWatcher.get()[0].args.id;
             await fallbackTrap.cancelOrder(id, { from: buyer, gasPrice:0, value: 0 });
-            checkCancelOrderEvent(cancelOrderEventWatcher, {id})
+            checkCancelOrderEvent(cancelOrderEventWatcher, {id, baseToken: order.baseToken, tradeToken: order.tradeToken, owner: fallbackTrap.address})
 
             assert.equal(order.amount * price, (await web3.eth.getBalance(fallbackTrap.address)).toString())
             assert.equal(exchangeEtherBalanceBefore.toString(), (await web3.eth.getBalance(exchange.address)).toString())
@@ -1115,6 +1115,9 @@ describe("Exchange", () => {
         assert.equal(events.length, 1);
 
         let event = events[0].args;
+        assert.equal(event.baseToken, expectedState.baseToken);
+        assert.equal(event.tradeToken, expectedState.tradeToken);
+        assert.equal(event.owner, expectedState.owner);
         assert.equal(event.id.toString(), expectedState.id.toString());
     }
 
