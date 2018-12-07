@@ -45,7 +45,8 @@ contract Exchange is Initializable, Pausable {
         address indexed owner,
         uint64 id, bool sell,
         uint price,
-        uint amount
+        uint amount,
+        uint64 timestamp
     );
 
     event NewBestAsk(address indexed baseToken, address indexed tradeToken, uint price);
@@ -178,7 +179,7 @@ contract Exchange is Initializable, Pausable {
 
         Pair storage pair = pairs[order.baseToken][order.tradeToken];
         ListItem memory orderItem = excludeItem(pair, id);
-        emit NewCancelOrder(order.baseToken, order.tradeToken, order.owner, id, order.sell, order.price, order.amount);
+        emit NewCancelOrder(order.baseToken, order.tradeToken, order.owner, id, order.sell, order.price, order.amount, uint64(block.timestamp));
 
         if (pair.bestBid == id) {
             pair.bestBid = orderItem.prev;
