@@ -695,7 +695,7 @@ contract("Exchange", () => {
                 .then(() => checkOrderbook({bestBid: 0, bestAsk: 0}))
         })
 
-        it.skip("sell order should match the best priced buy order", () => {
+        it.only("sell order should match the best priced buy order", () => {
             const buyOrderOne = buy(90, 5);
             const buyOrderTwo = buy(95, 5);
             const buyOrderThree = buy(100, 5);
@@ -977,6 +977,7 @@ contract("Exchange", () => {
         return exchange.getOrderbookBids(baseToken.address, tradeToken.address)
         .then(result => {
             const bids = parseGetOrderbookResult(result);
+            console.log(bids)
             assert.equal(bids.items, expectedBids.length);
             for (let i = 0; i < bids.items; i++) {
                 assert.equal(bids.price[i], expectedBids[i].price);

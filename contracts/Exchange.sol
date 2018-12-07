@@ -174,53 +174,51 @@ contract Exchange is Initializable, Pausable {
         bestBid = orderbooks[baseToken][tradeToken].bids.peak().id;
     }
 
-    /* function getOrderbookBids(address baseToken, address tradeToken)
-        external
-        view
-        returns (uint[ORDERBOOK_MAX_ITEMS] price, bool[ORDERBOOK_MAX_ITEMS] isSell, uint[ORDERBOOK_MAX_ITEMS] amount, uint[ORDERBOOK_MAX_ITEMS] id, uint64 items)
-    {
-        OrderBook memory pair = orderbooks[baseToken][tradeToken];
-        uint64 currentId = pair.bestBid;
-        items = 0;
-        uint previousPrice = 0;
-        while(currentId != 0 && items < ORDERBOOK_MAX_ITEMS) {
-            Order memory order = orderInfoMap[currentId];
-            price[items] = order.price;
-            isSell[items] = order.sell;
-            amount[items] = amount[items] + order.amount;
-            id[items] = currentId;
-            previousPrice = order.price;
-
-            currentId = orderbooks[baseToken][tradeToken].orderbook[currentId].prev;
-            if (orderInfoMap[currentId].price != previousPrice) {
-                items = items + 1;
-            }
-        }
-    }
-
     function getOrderbookAsks(address baseToken, address tradeToken)
         external
         view
         returns (uint[ORDERBOOK_MAX_ITEMS] price, bool[ORDERBOOK_MAX_ITEMS] isSell, uint[ORDERBOOK_MAX_ITEMS] amount, uint[ORDERBOOK_MAX_ITEMS] id, uint64 items)
     {
-        OrderBook memory pair = orderbooks[baseToken][tradeToken];
-        uint64 currentId = pair.bestAsk;
+        AskHeap.Tree memory asks = orderbooks[baseToken][tradeToken].asks;
+
         items = 0;
         uint previousPrice = 0;
-        while(currentId != 0 && items < ORDERBOOK_MAX_ITEMS) {
-            Order memory order = orderInfoMap[currentId];
+        while(AskHeap.isValid(asks.peak()) && items < ORDERBOOK_MAX_ITEMS) {
+            OrderNode.Node memory order = asks.pop();
+            id[items] = order.id;
             price[items] = order.price;
-            isSell[items] = order.sell;
+            isSell[items] = orderInfoMap[order.id].isSell;
             amount[items] = amount[items] + order.amount;
-            id[items] = currentId;
             previousPrice = order.price;
 
-            currentId = orderbooks[baseToken][tradeToken].orderbook[currentId].next;
-            if (orderInfoMap[currentId].price != previousPrice) {
+            if (order.price != previousPrice) {
                 items = items + 1;
             }
         }
-    } */
+    }
+
+    function getOrderbookBids(address baseToken, address tradeToken)
+        external
+        view
+        returns (uint[ORDERBOOK_MAX_ITEMS] price, bool[ORDERBOOK_MAX_ITEMS] isSell, uint[ORDERBOOK_MAX_ITEMS] amount, uint[ORDERBOOK_MAX_ITEMS] id, uint64 items)
+    {
+        BidHeap.Tree memory bids = orderbooks[baseToken][tradeToken].bids;
+
+        items = 0;
+        uint previousPrice = 0;
+        while(BidHeap.isValid(bids.peak()) && items < ORDERBOOK_MAX_ITEMS) {
+            OrderNode.Node memory order = bids.pop();
+            id[items] = order.id;
+            price[items] = order.price;
+            isSell[items] = orderInfoMap[order.id].isSell;
+            amount[items] = amount[items] + order.amount;
+            previousPrice = order.price;
+
+            if (order.price != previousPrice) {
+                items = items + 1;
+            }
+        }
+    }
 
     /* --- INTERNAL / PRIVATE METHODS --- */
 
