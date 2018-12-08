@@ -9,7 +9,8 @@ const {deployContract, sendRawTx, compareHex} = require('./deploymentUtils');
 const {web3Provider, deploymentPrivateKey, RPC_URL, PROXY_ADMIN_ADDRESS_SLOT} = require('./web3');
 
 const Proxy = require('../../build/contracts/AdminUpgradeabilityProxy.json');
-const RBTree = require('../../build/contracts/RedBlackTree.json')
+const AskHeap = require('../../build/contracts/AskHeap.json')
+const BidHeap = require('../../build/contracts/BidHeap.json')
 const Exchange = require('../../build/contracts/Exchange.json')
 
 const {
@@ -32,14 +33,20 @@ async function deployExchange()
   console.log('deploying Exchange')
   console.log('========================================\n')
 
-  console.log('\ndeploying rbtree lib:')
-  let rbtLib = await deployContract(RBTree, [], {from: DEPLOYMENT_ACCOUNT_ADDRESS, nonce: nonce})
-  console.log('RBTRee Library: ', rbtLib.options.address)
+  console.log('\ndeploying AskHeap lib:')
+  let askHeap = await deployContract(AskHeap, [], {from: DEPLOYMENT_ACCOUNT_ADDRESS, nonce: nonce})
+  console.log('AskHeap Library: ', askHeap.options.address)
+  nonce++;
+
+  console.log('\ndeploying BidHeap lib:')
+  let bidHeap = await deployContract(BidHeap, [], {from: DEPLOYMENT_ACCOUNT_ADDRESS, nonce: nonce})
+  console.log('BidHeap Library: ', bidHeap.options.address)
   nonce++;
 
   console.log('\ndeploying implementation for exchange:')
-  const linkedExchange = link(Exchange, rbtLib, 'RedBlackTree');
-  let exchangeImplementation = await deployContract(linkedExchange, [], {from: DEPLOYMENT_ACCOUNT_ADDRESS, nonce: nonce})
+  let linkedAsk = link(Exchange, askHeap, 'AskHeap');
+  const linkedBid = link(linkedAsk, bidHeap, 'BidHeap');
+  let exchangeImplementation = await deployContract(linkedBid, [], {from: DEPLOYMENT_ACCOUNT_ADDRESS, nonce: nonce})
   console.log('Exchange Implementation: ', exchangeImplementation.options.address)
   nonce++;
 
@@ -80,7 +87,8 @@ async function deployExchange()
   nonce++;
 
   return {
-    redBlackTreeLib: rbtLib.options.address,
+    askHeap: askHeap.options.address,
+    bidHeap: bidHeap.options.address,
     exchangeImplementation: exchangeImplementationAddress,
     exchangeProxy: exchangeProxy.options.address
   }
