@@ -237,31 +237,47 @@ contract Exchange is Initializable, Pausable {
     function dumpAsks(address baseToken, address tradeToken)
         external
         view
-        returns (uint[] id, address[] owner, uint[] price, uint[] amount)
+        returns (uint[], address[], uint[], uint[])
     {
-        OrderNode.Node[] memory nodes = orderbooks[baseToken][tradeToken].asks.dump();
+        AskHeap.Tree storage asks = orderbooks[baseToken][tradeToken].asks;
+        uint size = asks.size();
+        OrderNode.Node[] memory nodes = asks.dump();
+        uint[] memory ids = new uint[](size);
+        address[] memory owners = new address[](size);
+        uint[] memory prices = new uint[](size);
+        uint[] memory amounts = new uint[](size);
 
-        for (uint i = 0; i < nodes.length; i++) {
-            id[i] = (nodes[i].id);
-            owner[i] = (nodes[i].owner);
-            price[i] = (nodes[i].price);
-            amount[i] = (nodes[i].amount);
+        for (uint i = 0; i < size; i++) {
+            ids[i] = nodes[i+1].id;
+            owners[i] = nodes[i+1].owner;
+            prices[i] = nodes[i+1].price;
+            amounts[i] = nodes[i+1].amount;
         }
+
+        return (ids, owners, prices, amounts);
     }
 
     function dumpBids(address baseToken, address tradeToken)
         external
         view
-        returns (uint[] id, address[] owner, uint[] price, uint[] amount)
+        returns (uint[], address[], uint[], uint[])
     {
-        OrderNode.Node[] memory nodes = orderbooks[baseToken][tradeToken].bids.dump();
+        BidHeap.Tree storage bids = orderbooks[baseToken][tradeToken].bids;
+        uint size = bids.size();
+        OrderNode.Node[] memory nodes = bids.dump();
+        uint[] memory ids = new uint[](size);
+        address[] memory owners = new address[](size);
+        uint[] memory prices = new uint[](size);
+        uint[] memory amounts = new uint[](size);
 
-        for (uint i = 0; i < nodes.length; i++) {
-            id[i] = (nodes[i].id);
-            owner[i] = (nodes[i].owner);
-            price[i] = (nodes[i].price);
-            amount[i] = (nodes[i].amount);
+        for (uint i = 0; i < size; i++) {
+            ids[i] = nodes[i+1].id;
+            owners[i] = nodes[i+1].owner;
+            prices[i] = nodes[i+1].price;
+            amounts[i] = nodes[i+1].amount;
         }
+
+        return (ids, owners, prices, amounts);
     }
 
     /* --- INTERNAL / PRIVATE METHODS --- */

@@ -896,6 +896,32 @@ contract.only("Exchange", () => {
         })
     });
 
+    describe("Dump Orders", () => {
+        it("should dump all ask orders", () => {
+            let [sell10, sell11, sell12] = [sell(10, 1), sell(11, 1), sell(12, 1)]
+            return placeOrder(sell10)
+                .then(() => placeOrder(sell11))
+                .then(() => placeOrder(sell12))
+                .then(() => checkDumpAsks([
+                  {id: 1, owner: seller, price: sell10.price, amount: sell10.amount},
+                  {id: 2, owner: seller, price: sell11.price, amount: sell11.amount},
+                  {id: 3, owner: seller, price: sell12.price, amount: sell12.amount},
+                ]))
+        })
+
+        it("should dump all bid orders", () => {
+            let [buy10, buy11, buy12] = [buy(10, 1), buy(11, 1), buy(12, 1)]
+            return placeOrder(buy10)
+                .then(() => placeOrder(buy11))
+                .then(() => placeOrder(buy12))
+                .then(() => checkDumpBids([
+                  {id: 3, owner: buyer, price: buy12.price, amount: buy12.amount},
+                  {id: 1, owner: buyer, price: buy10.price, amount: buy10.amount},
+                  {id: 2, owner: buyer, price: buy11.price, amount: buy11.amount},
+                ]))
+        })
+    })
+
     async function deployExchange() {
         baseToken = await Token.new()
         tradeToken = await Token.new()
@@ -965,24 +991,50 @@ contract.only("Exchange", () => {
 
     function checkGetOrderbookAsks(expectedAsks) {
         return exchange.getOrderbookAsks(baseToken.address, tradeToken.address)
-        .then(result => {
-            const asks = parseGetOrderbookResult(result);
-            for (let i = 0; i < asks.items; i++) {
-                assert.equal(asks.price[i], expectedAsks[i].price);
-                assert.equal(asks.amount[i], expectedAsks[i].amount);
-            }
-        });
+            .then(result => {
+                const asks = parseGetOrderbookResult(result);
+                for (let i = 0; i < expectedAsks.length; i++) {
+                    assert.equal(asks.price[i], expectedAsks[i].price);
+                    assert.equal(asks.amount[i], expectedAsks[i].amount);
+                }
+            });
     }
 
     function checkGetOrderbookBids(expectedBids) {
         return exchange.getOrderbookBids(baseToken.address, tradeToken.address)
-        .then(result => {
-            const bids = parseGetOrderbookResult(result);
-            for (let i = 0; i < bids.items; i++) {
-                assert.equal(bids.price[i], expectedBids[i].price);
-                assert.equal(bids.amount[i], expectedBids[i].amount);
-            }
-        });
+            .then(result => {
+                const bids = parseGetOrderbookResult(result);
+                for (let i = 0; i < expectedBids.length; i++) {
+                    assert.equal(bids.price[i], expectedBids[i].price);
+                    assert.equal(bids.amount[i], expectedBids[i].amount);
+                }
+            });
+    }
+
+    function checkDumpBids(expectedBids) {
+        return exchange.dumpBids(baseToken.address, tradeToken.address)
+            .then(result => {
+                const bids = parseDumpResult(result)
+                for (let i = 0; i < expectedBids.length; i++) {
+                    assert.equal(bids.id[i], expectedBids[i].id)
+                    assert.equal(bids.owner[i], expectedBids[i].owner)
+                    assert.equal(bids.price[i], expectedBids[i].price)
+                    assert.equal(bids.amount[i], expectedBids[i].amount)
+                }
+            })
+    }
+
+    function checkDumpAsks(expectedAsks) {
+        return exchange.dumpAsks(baseToken.address, tradeToken.address)
+            .then(result => {
+                const asks = parseDumpResult(result)
+                for (let i = 0; i < expectedAsks.length; i++) {
+                    assert.equal(asks.id[i], expectedAsks[i].id)
+                    assert.equal(asks.owner[i], expectedAsks[i].owner)
+                    assert.equal(asks.price[i], expectedAsks[i].price)
+                    assert.equal(asks.amount[i], expectedAsks[i].amount)
+                }
+            })
     }
 
     function checkTradeEvents(watcher, eventsState) {
@@ -1069,4 +1121,12 @@ contract.only("Exchange", () => {
         }
     }
 
-});
+    function parseDumpResult(result) {
+        return {
+            id: result[0].map(t => t.toNumber()),
+            owner: result[1].map(t => t.toString()),
+            price: result[2].map(t => t.toNumber()),
+            amount: result[3].map(t => t.toNumber())
+        }
+    }
+})
