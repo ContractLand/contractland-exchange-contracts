@@ -12,7 +12,7 @@ const ExchangeProxy = artifacts.require('AdminUpgradeabilityProxy')
 const Token = artifacts.require("./TestToken.sol");
 const FallbackTrap = artifacts.require("./FallbackTrap.sol");
 
-contract("Exchange", () => {
+contract.only("Exchange", () => {
     const [deployer, buyer, seller, proxyOwner, exchangeOwner, notExchangeOwner] = web3.eth.accounts;
     let exchange, exchangeProxy, baseToken, tradeToken, orderId, fallbackTrap;
     const etherAddress = '0x0000000000000000000000000000000000000000'
@@ -695,7 +695,7 @@ contract("Exchange", () => {
                 .then(() => checkOrderbook({bestBid: 0, bestAsk: 0}))
         })
 
-        it.only("sell order should match the best priced buy order", () => {
+        it.skip("sell order should match the best priced buy order", () => {
             const buyOrderOne = buy(90, 5);
             const buyOrderTwo = buy(95, 5);
             const buyOrderThree = buy(100, 5);
