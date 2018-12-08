@@ -59,13 +59,13 @@ contract Exchange is Initializable, Pausable {
 
     /* --- FIELDS / CONSTANTS --- */
 
-    // ***Start of V1.0.0 storage variables***
-
-    uint16 constant ORDERBOOK_MAX_ITEMS = 20;
+    /* --- START OF V1 VARIABLES --- */
 
     uint128 constant MAX_ORDER_SIZE = 1000000000000000000000000000; // 1,000,000,000 units in ether
 
     uint64 constant MIN_ORDER_SIZE = 10000000000000; // 0.00001 units in ether
+
+    uint64 constant priceDenominator = 1000000000000000000; // 18 decimal places. This assumes all tokens trading in exchange has 18 decimal places
 
     uint64 lastOrderId;
 
@@ -78,20 +78,17 @@ contract Exchange is Initializable, Pausable {
     // Mapping of user address to mapping of token address to reserved balance in orderbook
     mapping (address => mapping (address => uint)) public reserved;
 
-    uint64 private priceDenominator; // should be 18 decimal places
-
-    // ***End of V1.0.0 storage variables***
+    /* --- END OF V1 VARIABLES --- */
 
     /* --- CONSTRUCTOR / INITIALIZATION --- */
 
     function initialize() public isInitializer {
         owner = msg.sender; // initialize owner for admin functionalities
-        priceDenominator = 1000000000000000000; // This assumes all tokens trading in exchange has 18 decimal places
     }
 
     /* --- EXTERNAL / PUBLIC  METHODS --- */
 
-    function sell(address baseToken, address tradeToken, address orderOwner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
+    function sell(address baseToken, address tradeToken, address orderOwner, uint amount, uint price) external whenNotPaused payable returns (uint64) {
         require(isValidOrder(baseToken, tradeToken, amount, price));
 
         transferFundFromUser(orderOwner, tradeToken, amount);
@@ -111,7 +108,7 @@ contract Exchange is Initializable, Pausable {
         return id;
     }
 
-    function buy(address baseToken, address tradeToken, address orderOwner, uint amount, uint price) public whenNotPaused payable returns (uint64) {
+    function buy(address baseToken, address tradeToken, address orderOwner, uint amount, uint price) external whenNotPaused payable returns (uint64) {
         require(isValidOrder(baseToken, tradeToken, amount, price));
 
         uint baseTokenAmount = amount.mul(price).div(priceDenominator);
@@ -132,7 +129,7 @@ contract Exchange is Initializable, Pausable {
         return id;
     }
 
-    function cancelOrder(uint64 id) public {
+    function cancelOrder(uint64 id) external {
         OrderInfo memory orderInfo = orderInfoMap[id];
         require(orderInfo.owner == msg.sender || msg.sender == owner);
 
@@ -153,9 +150,13 @@ contract Exchange is Initializable, Pausable {
         emit NewCancelOrder(id);
     }
 
-    function getOrder(uint64 id) public view returns (uint price, bool isSell, uint amount) {
+    function getOrder(uint64 id)
+        external
+        view
+        returns (uint price, bool isSell, uint amount)
+    {
         OrderInfo memory orderInfo = orderInfoMap[id];
-        
+
         if (orderInfo.isSell) {
           OrderNode.Node memory askOrder = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].asks.getById(id);
           price = askOrder.price;
@@ -169,54 +170,42 @@ contract Exchange is Initializable, Pausable {
         }
     }
 
-    function getOrderBookInfo(address baseToken, address tradeToken) public view returns (uint64 bestAsk, uint64 bestBid) {
+    function getOrderBookInfo(address baseToken, address tradeToken)
+        external
+        view
+        returns (uint64 bestAsk, uint64 bestBid)
+    {
         bestAsk = orderbooks[baseToken][tradeToken].asks.peak().id;
         bestBid = orderbooks[baseToken][tradeToken].bids.peak().id;
     }
 
-    function getOrderbookAsks(address baseToken, address tradeToken)
+    function getAsks(address baseToken, address tradeToken)
         external
         view
-        returns (uint[ORDERBOOK_MAX_ITEMS] price, bool[ORDERBOOK_MAX_ITEMS] isSell, uint[ORDERBOOK_MAX_ITEMS] amount, uint[ORDERBOOK_MAX_ITEMS] id, uint64 items)
+        returns (uint[] id, address[] owner, uint[] price, uint[] amount, uint64 count)
     {
-        AskHeap.Tree memory asks = orderbooks[baseToken][tradeToken].asks;
+        OrderNode.Node[] memory nodes = orderbooks[baseToken][tradeToken].asks.dump();
 
-        items = 0;
-        uint previousPrice = 0;
-        while(AskHeap.isValid(asks.peak()) && items < ORDERBOOK_MAX_ITEMS) {
-            OrderNode.Node memory order = asks.pop();
-            id[items] = order.id;
-            price[items] = order.price;
-            isSell[items] = orderInfoMap[order.id].isSell;
-            amount[items] = amount[items] + order.amount;
-            previousPrice = order.price;
-
-            if (order.price != previousPrice) {
-                items = items + 1;
-            }
+        for (count = 0; count < nodes.length; count++) {
+            id[count] = (nodes[count].id);
+            owner[count] = (nodes[count].owner);
+            price[count] = (nodes[count].price);
+            amount[count] = (nodes[count].amount);
         }
     }
 
-    function getOrderbookBids(address baseToken, address tradeToken)
+    function getBids(address baseToken, address tradeToken)
         external
         view
-        returns (uint[ORDERBOOK_MAX_ITEMS] price, bool[ORDERBOOK_MAX_ITEMS] isSell, uint[ORDERBOOK_MAX_ITEMS] amount, uint[ORDERBOOK_MAX_ITEMS] id, uint64 items)
+        returns (uint[] id, address[] owner, uint[] price, uint[] amount, uint64 count)
     {
-        BidHeap.Tree memory bids = orderbooks[baseToken][tradeToken].bids;
+        OrderNode.Node[] memory nodes = orderbooks[baseToken][tradeToken].bids.dump();
 
-        items = 0;
-        uint previousPrice = 0;
-        while(BidHeap.isValid(bids.peak()) && items < ORDERBOOK_MAX_ITEMS) {
-            OrderNode.Node memory order = bids.pop();
-            id[items] = order.id;
-            price[items] = order.price;
-            isSell[items] = orderInfoMap[order.id].isSell;
-            amount[items] = amount[items] + order.amount;
-            previousPrice = order.price;
-
-            if (order.price != previousPrice) {
-                items = items + 1;
-            }
+        for (count = 0; count < nodes.length; count++) {
+            id[count] = (nodes[count].id);
+            owner[count] = (nodes[count].owner);
+            price[count] = (nodes[count].price);
+            amount[count] = (nodes[count].amount);
         }
     }
 
@@ -256,7 +245,7 @@ contract Exchange is Initializable, Pausable {
         BidHeap.Tree storage bids = orderbooks[order.baseToken][order.tradeToken].bids;
 
         while (order.amount != 0 &&
-               BidHeap.isValid(bids.peak()) && 
+               BidHeap.isValid(bids.peak()) &&
                order.price <= bids.peak().price) {
             OrderNode.Node memory matchingOrder = bids.peak();
             uint tradeAmount;
