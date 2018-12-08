@@ -314,6 +314,7 @@ contract Exchange is Initializable, Pausable {
         uint price
     )
         private
+        pure
         returns (bool)
     {
         return tradeTokenAmount != 0 &&

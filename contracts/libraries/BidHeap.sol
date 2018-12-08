@@ -21,7 +21,9 @@ library BidHeap {
 
   /* --- PUBLIC --- */
 
-  function add(Tree storage self, OrderNode.Node memory n) internal {
+  function add(Tree storage self, OrderNode.Node memory n)
+    internal
+  {
     if (self.nodes.length == 0) { _init(self); }
     self.nodes.length++;
     uint i = self.nodes.length - 1;
@@ -29,7 +31,9 @@ library BidHeap {
     _bubbleUp(self, i);
   }
 
-  function updatePriceById(Tree storage self, uint64 id, uint newPrice) internal {
+  function updatePriceById(Tree storage self, uint64 id, uint newPrice)
+    internal
+  {
     uint i = self.idToIndex[id];
 
     if (newPrice == self.nodes[i].price) {
@@ -45,12 +49,17 @@ library BidHeap {
     }
   }
 
-  function updateAmountById(Tree storage self, uint64 id, uint newAmount) internal {
+  function updateAmountById(Tree storage self, uint64 id, uint newAmount)
+    internal
+  {
     uint i = self.idToIndex[id];
     self.nodes[i].amount = newAmount;
   }
-  
-  function pop(Tree storage self) internal returns (OrderNode.Node) {
+
+  function pop(Tree storage self)
+    internal
+    returns (OrderNode.Node)
+  {
     if (self.nodes.length <= 1) {
       return OrderNode.Node(0,0,0,0,0,0,0);
     }
@@ -73,32 +82,61 @@ library BidHeap {
     return root;
   }
 
-  function removeById(Tree storage self, uint64 id) internal returns (OrderNode.Node) {
+  function removeById(Tree storage self, uint64 id)
+    internal
+    returns (OrderNode.Node)
+  {
     uint i = self.idToIndex[id];
     self.nodes[i].price = UINT256_MAX;
     _bubbleUp(self, i);
     return pop(self);
   }
 
-  function peak(Tree storage self) internal view returns(OrderNode.Node){
+  function peak(Tree storage self)
+    internal
+    view
+    returns (OrderNode.Node)
+  {
     return getByIndex(self, ROOT_INDEX);
   }
 
-  function getById(Tree storage self, uint64 id) internal view returns(OrderNode.Node){
-    return getByIndex(self, self.idToIndex[id]);//test that all these return the emptyNode
+  function getById(Tree storage self, uint64 id)
+    internal
+    view
+    returns (OrderNode.Node)
+  {
+    return getByIndex(self, self.idToIndex[id]);
   }
 
-  function getByIndex(Tree storage self, uint i) internal view returns(OrderNode.Node){
+  function getByIndex(Tree storage self, uint i)
+    internal
+    view
+    returns (OrderNode.Node)
+  {
     return self.nodes.length > i ? self.nodes[i] : OrderNode.Node(0,0,0,0,0,0,0);
   }
 
-  function size(Tree storage self) internal view returns(uint){
+  function size(Tree storage self)
+    internal
+    view
+    returns (uint)
+  {
     return self.nodes.length > 0 ? self.nodes.length - 1 : 0;
   }
 
-  function isValid(OrderNode.Node n) internal pure returns (bool) { return n.id > 0; }
+  function isValid(OrderNode.Node n)
+    internal
+    pure
+    returns (bool)
+  {
+    return n.id > 0;
+  }
 
-  function dump(Tree storage self) internal view returns(OrderNode.Node[]){
+  function dump(Tree storage self)
+    internal
+    view
+    returns (OrderNode.Node[])
+  {
     //note: Empty set will return `[Node(0,0,0,0)]`. uninitialized will return `[]`.
     return self.nodes;
   }
@@ -107,22 +145,30 @@ library BidHeap {
 
   // Initialize node at index 0 with empty node because mapping values in Solidity defaults to 0.
   // Therefore, in order to maintain proper mapping in idToIndex, we treat index 0 as invalid.
-  function _init(Tree storage self) private {
+  function _init(Tree storage self)
+    private
+  {
     if (self.nodes.length == 0) self.nodes.push(OrderNode.Node(0,0,0,0,0,0,0));
   }
 
-  function _insert(Tree storage self, OrderNode.Node memory n, uint i) private {
+  function _insert(Tree storage self, OrderNode.Node memory n, uint i)
+    private
+  {
     self.nodes[i] = n;
     self.idToIndex[n.id] = i;
   }
 
-  function _swap(Tree storage self, uint x, uint y) private {
+  function _swap(Tree storage self, uint x, uint y)
+    private
+  {
     OrderNode.Node memory temp = self.nodes[x];
     _insert(self, self.nodes[y], x);
     _insert(self, temp, y);
   }
 
-  function _bubbleDown(Tree storage self, uint i) private {
+  function _bubbleDown(Tree storage self, uint i)
+    private
+  {
     uint l = _left(i);
     uint r = _right(i);
     uint largest = i;
@@ -142,7 +188,9 @@ library BidHeap {
     }
   }
 
-  function _bubbleUp(Tree storage self, uint i) private {
+  function _bubbleUp(Tree storage self, uint i)
+    private
+  {
     while (i != ROOT_INDEX && self.nodes[i].isGreaterThan(self.nodes[_parent(i)]))
     {
        _swap(self, i, _parent(i));
@@ -150,15 +198,27 @@ library BidHeap {
     }
   }
 
-  function _parent(uint i) private pure returns (uint) {
+  function _parent(uint i)
+    private
+    pure
+    returns (uint)
+  {
     return i.div(2);
   }
 
-  function _left(uint i) private pure returns (uint) {
+  function _left(uint i)
+    private
+    pure
+    returns (uint)
+  {
     return i.mul(2);
   }
 
-  function _right(uint i) private pure returns (uint) {
+  function _right(uint i)
+    private
+    pure
+    returns (uint)
+  {
     return i.mul(2).add(1);
   }
 }
