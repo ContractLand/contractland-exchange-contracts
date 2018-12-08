@@ -696,7 +696,7 @@ contract.only("Exchange", () => {
                 .then(() => checkOrderbook({bestBid: 0, bestAsk: 0}))
         })
 
-        it.skip("sell order should match the best priced buy order", () => {
+        it("sell order should match the best priced buy order", () => {
             const buyOrderOne = buy(90, 5);
             const buyOrderTwo = buy(95, 5);
             const buyOrderThree = buy(100, 5);
@@ -713,7 +713,7 @@ contract.only("Exchange", () => {
                 .then(() => checkGetOrderbookBids([{amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}, {amount: buyOrderTwo.amount, price: buyOrderTwo.price}, {amount: buyOrderOne.amount, price: buyOrderOne.price}]))
         })
 
-        it.skip("sell order should match the best priced buy order after adding orders with the same price", () => {
+        it("sell order should match the best priced buy order after adding orders with the same price", () => {
             const buyOrderOne = buy(90, 5);
             const buyOrderTwo = buy(90, 5);
             const buyOrderThree = buy(100, 5);
@@ -730,7 +730,7 @@ contract.only("Exchange", () => {
                 .then(() => checkGetOrderbookBids([{amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}, {amount: buyOrderTwo.amount.plus(buyOrderOne.amount), price: buyOrderTwo.price}]))
         })
 
-        it.skip("buy order should match the best priced sell order", () => {
+        it("buy order should match the best priced sell order", () => {
             const sellOrderOne = sell(100, 5);
             const sellOrderTwo = sell(95, 5);
             const sellOrderThree = sell(90, 5);
@@ -747,7 +747,7 @@ contract.only("Exchange", () => {
                 .then(() => checkGetOrderbookBids([]))
         })
 
-        it.skip("buy order should match the best priced sell order after adding orders with the same price", () => {
+        it("buy order should match the best priced sell order after adding orders with the same price", () => {
             const sellOrderOne = sell(100, 5);
             const sellOrderTwo = sell(100, 5);
             const sellOrderThree = sell(90, 5);
@@ -764,7 +764,7 @@ contract.only("Exchange", () => {
                 .then(() => checkGetOrderbookBids([]))
         })
 
-      it.skip("should properly insert different bids with same prices", () => {
+      it("should properly insert different bids with same prices", () => {
         let [buy10, buy11, buy12] = [buy(10, 1), buy(11, 1), buy(12, 1)]
         return placeOrder(buy10)
             .then(() => placeOrder(buy10))
@@ -780,7 +780,7 @@ contract.only("Exchange", () => {
             ]))
       })
 
-      it.skip("should properly insert different asks with same prices", () => {
+      it("should properly insert different asks with same prices", () => {
         let [ask15, ask14, ask13, ask12] = [sell(15, 1), sell(14, 1), sell(13, 1), sell(12, 1)]
         return placeOrder(ask15)
             .then(() => placeOrder(ask15))
@@ -967,7 +967,6 @@ contract.only("Exchange", () => {
         return exchange.getOrderbookAsks(baseToken.address, tradeToken.address)
         .then(result => {
             const asks = parseGetOrderbookResult(result);
-            assert.equal(asks.items, expectedAsks.length);
             for (let i = 0; i < asks.items; i++) {
                 assert.equal(asks.price[i], expectedAsks[i].price);
                 assert.equal(asks.amount[i], expectedAsks[i].amount);
@@ -979,8 +978,6 @@ contract.only("Exchange", () => {
         return exchange.getOrderbookBids(baseToken.address, tradeToken.address)
         .then(result => {
             const bids = parseGetOrderbookResult(result);
-            console.log(bids)
-            assert.equal(bids.items, expectedBids.length);
             for (let i = 0; i < bids.items; i++) {
                 assert.equal(bids.price[i], expectedBids[i].price);
                 assert.equal(bids.amount[i], expectedBids[i].amount);
@@ -1068,10 +1065,7 @@ contract.only("Exchange", () => {
     function parseGetOrderbookResult(result) {
         return {
             price: result[0].map(t => t.toNumber()),
-            isSell: result[1],
-            amount: result[2].map(t => t.toNumber()),
-            id: result[3].map(t => t.toNumber()),
-            items: result[4].toNumber()
+            amount: result[1].map(t => t.toNumber())
         }
     }
 

@@ -74,7 +74,9 @@ contract Exchange is Initializable, Pausable {
 
     uint64 constant MIN_ORDER_SIZE = 10000000000000; // 0.00001 units in ether
 
-    uint64 constant priceDenominator = 1000000000000000000; // 18 decimal places. This assumes all tokens trading in exchange has 18 decimal places
+    uint64 constant PRICE_DENOMINATOR = 1000000000000000000; // 18 decimal places. This assumes all tokens trading in exchange has 18 decimal places
+
+    uint16 constant MAX_ORDERBOOK_FETCH_SIZE = 20;
 
     uint64 lastOrderId;
 
@@ -120,7 +122,7 @@ contract Exchange is Initializable, Pausable {
     function buy(address baseToken, address tradeToken, address orderOwner, uint amount, uint price) external whenNotPaused payable returns (uint64) {
         require(isValidOrder(baseToken, tradeToken, amount, price));
 
-        uint baseTokenAmount = amount.mul(price).div(priceDenominator);
+        uint baseTokenAmount = amount.mul(price).div(PRICE_DENOMINATOR);
         transferFundFromUser(orderOwner, baseToken, baseTokenAmount);
 
         uint64 id = ++lastOrderId;
@@ -151,8 +153,8 @@ contract Exchange is Initializable, Pausable {
             emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, askOrder.price, askOrder.amount, uint64(block.timestamp));
         } else {
             OrderNode.Node memory bidOrder = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].bids.getById(id);
-            reserved[bidOrder.baseToken][bidOrder.owner] = reserved[bidOrder.baseToken][bidOrder.owner].sub(bidOrder.amount.mul(bidOrder.price).div(priceDenominator));
-            transferFundToUser(bidOrder.owner, bidOrder.baseToken, bidOrder.amount.mul(bidOrder.price).div(priceDenominator));
+            reserved[bidOrder.baseToken][bidOrder.owner] = reserved[bidOrder.baseToken][bidOrder.owner].sub(bidOrder.amount.mul(bidOrder.price).div(PRICE_DENOMINATOR));
+            transferFundToUser(bidOrder.owner, bidOrder.baseToken, bidOrder.amount.mul(bidOrder.price).div(PRICE_DENOMINATOR));
             orderbooks[bidOrder.baseToken][bidOrder.tradeToken].bids.removeById(id);
 
             emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, bidOrder.price, bidOrder.amount, uint64(block.timestamp));
@@ -190,33 +192,75 @@ contract Exchange is Initializable, Pausable {
         bestBid = orderbooks[baseToken][tradeToken].bids.peak().id;
     }
 
-    function getAsks(address baseToken, address tradeToken)
+    function getOrderbookAsks(address baseToken, address tradeToken)
         external
         view
-        returns (uint[] id, address[] owner, uint[] price, uint[] amount, uint64 count)
+        returns (uint[MAX_ORDERBOOK_FETCH_SIZE] memory prices, uint[MAX_ORDERBOOK_FETCH_SIZE] memory amounts)
     {
-        OrderNode.Node[] memory nodes = orderbooks[baseToken][tradeToken].asks.dump();
+        AskHeap.Tree storage asks = orderbooks[baseToken][tradeToken].asks;
 
-        for (count = 0; count < nodes.length; count++) {
-            id[count] = (nodes[count].id);
-            owner[count] = (nodes[count].owner);
-            price[count] = (nodes[count].price);
-            amount[count] = (nodes[count].amount);
+        uint i = 0;
+        uint previousPrice = 0;
+        while(BidHeap.isValid(asks.peak()) && i < MAX_ORDERBOOK_FETCH_SIZE) {
+            OrderNode.Node memory order = asks.pop();
+            prices[i] = order.price;
+            amounts[i] = amounts[i].add(order.amount);
+            previousPrice = order.price;
+
+            if (asks.peak().price != previousPrice) {
+                i++;
+            }
         }
     }
 
-    function getBids(address baseToken, address tradeToken)
+    function getOrderbookBids(address baseToken, address tradeToken)
         external
         view
-        returns (uint[] id, address[] owner, uint[] price, uint[] amount, uint64 count)
+        returns (uint[MAX_ORDERBOOK_FETCH_SIZE] memory prices, uint[MAX_ORDERBOOK_FETCH_SIZE] memory amounts)
+    {
+        BidHeap.Tree storage bids = orderbooks[baseToken][tradeToken].bids;
+
+        uint i = 0;
+        uint previousPrice = 0;
+        while(BidHeap.isValid(bids.peak()) && i < MAX_ORDERBOOK_FETCH_SIZE) {
+            OrderNode.Node memory order = bids.pop();
+            prices[i] = order.price;
+            amounts[i] = amounts[i].add(order.amount);
+            previousPrice = order.price;
+
+            if (bids.peak().price != previousPrice) {
+                i++;
+            }
+        }
+    }
+
+    function dumpAsks(address baseToken, address tradeToken)
+        external
+        view
+        returns (uint[] id, address[] owner, uint[] price, uint[] amount)
+    {
+        OrderNode.Node[] memory nodes = orderbooks[baseToken][tradeToken].asks.dump();
+
+        for (uint i = 0; i < nodes.length; i++) {
+            id[i] = (nodes[i].id);
+            owner[i] = (nodes[i].owner);
+            price[i] = (nodes[i].price);
+            amount[i] = (nodes[i].amount);
+        }
+    }
+
+    function dumpBids(address baseToken, address tradeToken)
+        external
+        view
+        returns (uint[] id, address[] owner, uint[] price, uint[] amount)
     {
         OrderNode.Node[] memory nodes = orderbooks[baseToken][tradeToken].bids.dump();
 
-        for (count = 0; count < nodes.length; count++) {
-            id[count] = (nodes[count].id);
-            owner[count] = (nodes[count].owner);
-            price[count] = (nodes[count].price);
-            amount[count] = (nodes[count].amount);
+        for (uint i = 0; i < nodes.length; i++) {
+            id[i] = (nodes[i].id);
+            owner[i] = (nodes[i].owner);
+            price[i] = (nodes[i].price);
+            amount[i] = (nodes[i].amount);
         }
     }
 
@@ -228,9 +272,9 @@ contract Exchange is Initializable, Pausable {
                tradeTokenAmount >= MIN_ORDER_SIZE &&
                price != 0 &&
                baseToken != tradeToken &&
-               tradeTokenAmount.mul(price).div(priceDenominator) != 0 &&
-               tradeTokenAmount.mul(price).div(priceDenominator) <= MAX_ORDER_SIZE &&
-               tradeTokenAmount.mul(price).div(priceDenominator) >= MIN_ORDER_SIZE;
+               tradeTokenAmount.mul(price).div(PRICE_DENOMINATOR) != 0 &&
+               tradeTokenAmount.mul(price).div(PRICE_DENOMINATOR) <= MAX_ORDER_SIZE &&
+               tradeTokenAmount.mul(price).div(PRICE_DENOMINATOR) >= MIN_ORDER_SIZE;
     }
 
     function transferFundFromUser(address sender, address token, uint amount) private {
@@ -273,7 +317,7 @@ contract Exchange is Initializable, Pausable {
 
             reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(tradeAmount);
             transferFundToUser(matchingOrder.owner, order.tradeToken, tradeAmount);
-            uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(priceDenominator);
+            uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(PRICE_DENOMINATOR);
             transferFundToUser(order.owner, order.baseToken, baseTokenAmount);
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
@@ -308,10 +352,10 @@ contract Exchange is Initializable, Pausable {
                 matchingOrder.amount = 0;
             }
 
-            reserved[order.baseToken][order.owner] = reserved[order.baseToken][order.owner].sub(tradeAmount.mul(order.price).div(priceDenominator));
-            transferFundToUser(order.owner, order.baseToken, tradeAmount.mul(order.price.sub(matchingOrder.price)).div(priceDenominator));
+            reserved[order.baseToken][order.owner] = reserved[order.baseToken][order.owner].sub(tradeAmount.mul(order.price).div(PRICE_DENOMINATOR));
+            transferFundToUser(order.owner, order.baseToken, tradeAmount.mul(order.price.sub(matchingOrder.price)).div(PRICE_DENOMINATOR));
             reserved[order.tradeToken][matchingOrder.owner] = reserved[order.tradeToken][matchingOrder.owner].sub(tradeAmount);
-            transferFundToUser(matchingOrder.owner, order.baseToken, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
+            transferFundToUser(matchingOrder.owner, order.baseToken, tradeAmount.mul(matchingOrder.price).div(PRICE_DENOMINATOR));
             transferFundToUser(order.owner, order.tradeToken, tradeAmount);
 
             emit NewTrade(order.baseToken, order.tradeToken, order.id, matchingOrder.id, order.owner, matchingOrder.owner, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
