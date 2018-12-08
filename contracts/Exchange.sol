@@ -23,7 +23,7 @@ contract Exchange is Initializable, Pausable {
         AskHeap.Tree asks;
         BidHeap.Tree bids;
     }
-    
+
     struct OrderInfo {
         address owner;
         address baseToken;
@@ -49,13 +49,22 @@ contract Exchange is Initializable, Pausable {
         address indexed tradeToken,
         uint64 bidId,
         uint64 askId,
+        address bidOwner,
+        address askOwner,
         bool side,
         uint amount,
         uint price,
         uint64 timestamp
     );
 
-    event NewCancelOrder(uint64 id);
+    event NewCancelOrder(address indexed baseToken,
+        address indexed tradeToken,
+        address indexed owner,
+        uint64 id, bool sell,
+        uint price,
+        uint amount,
+        uint64 timestamp
+    );
 
     /* --- FIELDS / CONSTANTS --- */
 
@@ -138,16 +147,18 @@ contract Exchange is Initializable, Pausable {
             reserved[askOrder.tradeToken][askOrder.owner] = reserved[askOrder.tradeToken][askOrder.owner].sub(askOrder.amount);
             transferFundToUser(askOrder.owner, askOrder.tradeToken, askOrder.amount);
             orderbooks[askOrder.baseToken][askOrder.tradeToken].asks.removeById(id);
+
+            emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, askOrder.price, askOrder.amount, uint64(block.timestamp));
         } else {
             OrderNode.Node memory bidOrder = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].bids.getById(id);
             reserved[bidOrder.baseToken][bidOrder.owner] = reserved[bidOrder.baseToken][bidOrder.owner].sub(bidOrder.amount.mul(bidOrder.price).div(priceDenominator));
             transferFundToUser(bidOrder.owner, bidOrder.baseToken, bidOrder.amount.mul(bidOrder.price).div(priceDenominator));
             orderbooks[bidOrder.baseToken][bidOrder.tradeToken].bids.removeById(id);
+
+            emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, bidOrder.price, bidOrder.amount, uint64(block.timestamp));
         }
 
         delete orderInfoMap[id];
-
-        emit NewCancelOrder(id);
     }
 
     function getOrder(uint64 id)
@@ -266,13 +277,13 @@ contract Exchange is Initializable, Pausable {
             transferFundToUser(order.owner, order.baseToken, baseTokenAmount);
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
-            emit NewTrade(order.baseToken, order.tradeToken, matchingOrder.id, order.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
+            emit NewTrade(order.baseToken, order.tradeToken, matchingOrder.id, order.id, matchingOrder.owner, order.owner, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
                 bids.updateAmountById(matchingOrder.id, matchingOrder.amount);
                 break;
-            } 
-            
+            }
+
             bids.pop();
             delete orderInfoMap[matchingOrder.id];
         }
@@ -282,7 +293,7 @@ contract Exchange is Initializable, Pausable {
         AskHeap.Tree storage asks = orderbooks[order.baseToken][order.tradeToken].asks;
 
         while (order.amount != 0 &&
-               BidHeap.isValid(asks.peak()) && 
+               BidHeap.isValid(asks.peak()) &&
                order.price >= asks.peak().price) {
             OrderNode.Node memory matchingOrder = asks.peak();
             uint tradeAmount;
@@ -303,13 +314,13 @@ contract Exchange is Initializable, Pausable {
             transferFundToUser(matchingOrder.owner, order.baseToken, tradeAmount.mul(matchingOrder.price).div(priceDenominator));
             transferFundToUser(order.owner, order.tradeToken, tradeAmount);
 
-            emit NewTrade(order.baseToken, order.tradeToken, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
+            emit NewTrade(order.baseToken, order.tradeToken, order.id, matchingOrder.id, order.owner, matchingOrder.owner, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
                 asks.updateAmountById(matchingOrder.id, matchingOrder.amount);
                 break;
-            } 
-            
+            }
+
             asks.pop();
             delete orderInfoMap[matchingOrder.id];
         }

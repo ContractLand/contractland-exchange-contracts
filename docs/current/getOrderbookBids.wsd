@@ -1,0 +1,9 @@
+@startuml
+
+User -> Exchange: getOrderbookBids()
+activate Exchange #FFBBBB
+|||
+Exchange -> User
+deactivate Exchange
+
+@enduml
