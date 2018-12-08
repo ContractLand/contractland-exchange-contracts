@@ -57,10 +57,12 @@ contract Exchange is Initializable, Pausable {
         uint64 timestamp
     );
 
-    event NewCancelOrder(address indexed baseToken,
+    event NewCancelOrder(
+        address indexed baseToken,
         address indexed tradeToken,
         address indexed owner,
-        uint64 id, bool sell,
+        uint64 id,
+        bool sell,
         uint price,
         uint amount,
         uint64 timestamp
@@ -93,13 +95,27 @@ contract Exchange is Initializable, Pausable {
 
     /* --- CONSTRUCTOR / INITIALIZATION --- */
 
-    function initialize() public isInitializer {
+    function initialize()
+        public
+        isInitializer
+    {
         owner = msg.sender; // initialize owner for admin functionalities
     }
 
     /* --- EXTERNAL / PUBLIC  METHODS --- */
 
-    function sell(address baseToken, address tradeToken, address orderOwner, uint amount, uint price) external whenNotPaused payable returns (uint64) {
+    function sell(
+        address baseToken,
+        address tradeToken,
+        address orderOwner,
+        uint amount,
+        uint price
+    )
+        external
+        whenNotPaused
+        payable
+        returns (uint64)
+    {
         require(isValidOrder(baseToken, tradeToken, amount, price));
 
         transferFundFromUser(orderOwner, tradeToken, amount);
@@ -119,7 +135,18 @@ contract Exchange is Initializable, Pausable {
         return id;
     }
 
-    function buy(address baseToken, address tradeToken, address orderOwner, uint amount, uint price) external whenNotPaused payable returns (uint64) {
+    function buy(
+        address baseToken,
+        address tradeToken,
+        address orderOwner,
+        uint amount,
+        uint price
+    )
+        external
+        whenNotPaused
+        payable
+        returns (uint64)
+    {
         require(isValidOrder(baseToken, tradeToken, amount, price));
 
         uint baseTokenAmount = amount.mul(price).div(PRICE_DENOMINATOR);
@@ -140,26 +167,26 @@ contract Exchange is Initializable, Pausable {
         return id;
     }
 
-    function cancelOrder(uint64 id) external {
+    function cancelOrder(uint64 id)
+        external
+    {
         OrderInfo memory orderInfo = orderInfoMap[id];
         require(orderInfo.owner == msg.sender || msg.sender == owner);
 
+        OrderNode.Node memory orderToCancel;
         if (orderInfo.isSell) {
-            OrderNode.Node memory askOrder = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].asks.getById(id);
-            reserved[askOrder.tradeToken][askOrder.owner] = reserved[askOrder.tradeToken][askOrder.owner].sub(askOrder.amount);
-            transferFundToUser(askOrder.owner, askOrder.tradeToken, askOrder.amount);
-            orderbooks[askOrder.baseToken][askOrder.tradeToken].asks.removeById(id);
-
-            emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, askOrder.price, askOrder.amount, uint64(block.timestamp));
+            orderToCancel = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].asks.getById(id);
+            reserved[orderToCancel.tradeToken][orderToCancel.owner] = reserved[orderToCancel.tradeToken][orderToCancel.owner].sub(orderToCancel.amount);
+            transferFundToUser(orderToCancel.owner, orderToCancel.tradeToken, orderToCancel.amount);
+            orderbooks[orderToCancel.baseToken][orderToCancel.tradeToken].asks.removeById(id);
         } else {
-            OrderNode.Node memory bidOrder = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].bids.getById(id);
-            reserved[bidOrder.baseToken][bidOrder.owner] = reserved[bidOrder.baseToken][bidOrder.owner].sub(bidOrder.amount.mul(bidOrder.price).div(PRICE_DENOMINATOR));
-            transferFundToUser(bidOrder.owner, bidOrder.baseToken, bidOrder.amount.mul(bidOrder.price).div(PRICE_DENOMINATOR));
-            orderbooks[bidOrder.baseToken][bidOrder.tradeToken].bids.removeById(id);
-
-            emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, bidOrder.price, bidOrder.amount, uint64(block.timestamp));
+            orderToCancel = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].bids.getById(id);
+            reserved[orderToCancel.baseToken][orderToCancel.owner] = reserved[orderToCancel.baseToken][orderToCancel.owner].sub(orderToCancel.amount.mul(orderToCancel.price).div(PRICE_DENOMINATOR));
+            transferFundToUser(orderToCancel.owner, orderToCancel.baseToken, orderToCancel.amount.mul(orderToCancel.price).div(PRICE_DENOMINATOR));
+            orderbooks[orderToCancel.baseToken][orderToCancel.tradeToken].bids.removeById(id);
         }
 
+        emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, orderToCancel.price, orderToCancel.amount, uint64(block.timestamp));
         delete orderInfoMap[id];
     }
 
@@ -170,17 +197,15 @@ contract Exchange is Initializable, Pausable {
     {
         OrderInfo memory orderInfo = orderInfoMap[id];
 
+        OrderNode.Node memory order;
         if (orderInfo.isSell) {
-          OrderNode.Node memory askOrder = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].asks.getById(id);
-          price = askOrder.price;
-          isSell = true;
-          amount = askOrder.amount;
+          order = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].asks.getById(id);
         } else {
-          OrderNode.Node memory bidOrder = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].bids.getById(id);
-          price = bidOrder.price;
-          isSell = false;
-          amount = bidOrder.amount;
+          order = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].bids.getById(id);
         }
+        price = order.price;
+        isSell = orderInfo.isSell;
+        amount = order.amount;
     }
 
     function getOrderBookInfo(address baseToken, address tradeToken)
@@ -282,7 +307,15 @@ contract Exchange is Initializable, Pausable {
 
     /* --- INTERNAL / PRIVATE METHODS --- */
 
-    function isValidOrder(address baseToken, address tradeToken, uint tradeTokenAmount, uint price) private returns (bool) {
+    function isValidOrder(
+        address baseToken,
+        address tradeToken,
+        uint tradeTokenAmount,
+        uint price
+    )
+        private
+        returns (bool)
+    {
         return tradeTokenAmount != 0 &&
                tradeTokenAmount <= MAX_ORDER_SIZE &&
                tradeTokenAmount >= MIN_ORDER_SIZE &&
@@ -293,7 +326,9 @@ contract Exchange is Initializable, Pausable {
                tradeTokenAmount.mul(price).div(PRICE_DENOMINATOR) >= MIN_ORDER_SIZE;
     }
 
-    function transferFundFromUser(address sender, address token, uint amount) private {
+    function transferFundFromUser(address sender, address token, uint amount)
+        private
+    {
         if(token == address(0)) {
             require(msg.value == amount);
         } else {
@@ -302,7 +337,9 @@ contract Exchange is Initializable, Pausable {
         reserved[token][sender] = reserved[token][sender].add(amount);
     }
 
-    function transferFundToUser(address recipient, address token, uint amount) private {
+    function transferFundToUser(address recipient, address token, uint amount)
+        private
+    {
         if(token == address(0)) {
             if (!recipient.send(amount)) {
                 (new DestructibleTransfer).value(amount)(recipient);
@@ -312,7 +349,9 @@ contract Exchange is Initializable, Pausable {
         }
     }
 
-    function matchSell(OrderNode.Node memory order) private {
+    function matchSell(OrderNode.Node memory order)
+        private
+    {
         BidHeap.Tree storage bids = orderbooks[order.baseToken][order.tradeToken].bids;
 
         while (order.amount != 0 &&
@@ -349,7 +388,9 @@ contract Exchange is Initializable, Pausable {
         }
     }
 
-    function matchBuy(OrderNode.Node memory order) private {
+    function matchBuy(OrderNode.Node memory order)
+        private
+    {
         AskHeap.Tree storage asks = orderbooks[order.baseToken][order.tradeToken].asks;
 
         while (order.amount != 0 &&
