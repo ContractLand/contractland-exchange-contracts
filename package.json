@@ -13,7 +13,7 @@
     "clear-build": "rm -rf build",
     "flatten": "cd scripts && bash flatten.sh",
     "test": "truffle test --network development",
-    "ganache": "ganache-cli --allowUnlimitedContractSize --gasLimit 10000000"
+    "ganache": "ganache-cli --allowUnlimitedContractSize --gasLimit 100000000"
   },
   "author": "ContractLand Fundation",
   "license": "MIT",

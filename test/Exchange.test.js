@@ -12,7 +12,7 @@ const ExchangeProxy = artifacts.require('AdminUpgradeabilityProxy')
 const Token = artifacts.require("./TestToken.sol");
 const FallbackTrap = artifacts.require("./FallbackTrap.sol");
 
-describe("Exchange", () => {
+contract("Exchange", () => {
     const [deployer, buyer, seller, proxyOwner, exchangeOwner, notExchangeOwner] = web3.eth.accounts;
     let exchange, exchangeProxy, baseToken, tradeToken, orderId, fallbackTrap;
     const etherAddress = '0x0000000000000000000000000000000000000000'
@@ -279,7 +279,7 @@ describe("Exchange", () => {
             await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
             await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
-        
+
         it("should not be able to create sell order where amount * price is zero in solidity", async () => {
             const order = {
               'baseToken': baseToken.address,
@@ -319,191 +319,116 @@ describe("Exchange", () => {
         })
 
         it("should insert a new buy order as first", () => {
-            const order = buy(100, 5);
-            const orderState = {prev: 0, next: 0};
-            const orderbookState = {firstOrder: 1, bestBid: 1, bestAsk: 0, lastOrder: 1};
-            const newBestBidWatcher = exchange.NewBestBid();
-            const newBidWatcher = exchange.NewBid();
+            const order = buy(100, 5)
+            const orderbookState = {bestBid: 1, bestAsk: 0}
             const newOrderWatcher = exchange.NewOrder();
-            return testOrder(order, orderState, orderbookState)
+            return testOrder(order, orderbookState)
                 .then(() => {
-                    let eventState = order;
-                    eventState.id = 1;
-                    checkNewOrderEvent(newOrderWatcher, eventState);
+                    let eventState = order
+                    eventState.id = 1
+                    checkNewOrderEvent(newOrderWatcher, eventState)
                 })
-                .then(() => checkNewAskOrBidEvent(newBestBidWatcher, {price: order.price}))
-                .then(() => checkNewAskOrBidEvent(newBidWatcher, {price: order.price}))
-                .then(() => checkBalance(baseToken.address, order.from, {available: tokenDepositAmount - order.total, reserved: order.total}));
+                .then(() => checkBalance(baseToken.address, order.from, {available: tokenDepositAmount - order.total, reserved: order.total}))
         });
 
         it("should insert a new sell order as first", () => {
-            const order = sell(100, 5);
-            const orderState = {prev: 0, next: 0};
-            const orderbookState = {firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 1};
-            const newBestAskWatcher = exchange.NewBestAsk();
-            const newAskWatcher = exchange.NewAsk();
-            const newOrderWatcher = exchange.NewOrder();
-            return testOrder(order, orderState, orderbookState)
+            const order = sell(100, 5)
+            const orderbookState = {bestBid: 0, bestAsk: 1}
+            const newOrderWatcher = exchange.NewOrder()
+            return testOrder(order, orderbookState)
                 .then(() => {
                     let eventState = order;
                     eventState.id = 1;
-                    checkNewOrderEvent(newOrderWatcher, eventState);
+                    checkNewOrderEvent(newOrderWatcher, eventState)
                 })
-                .then(() => checkNewAskOrBidEvent(newBestAskWatcher, {price: order.price}))
-                .then(() => checkNewAskOrBidEvent(newAskWatcher, {price: order.price}))
-                .then(() => checkBalance(tradeToken.address, order.from, {available: tokenDepositAmount - order.amount, reserved: order.amount}));
+                .then(() => checkBalance(tradeToken.address, order.from, {available: tokenDepositAmount - order.amount, reserved: order.amount}))
         });
 
         it("should cancel the last single buy order", () => {
             const order = buy(100, 5);
             let orderId;
-            const newBestBidWatcher = exchange.NewBestBid();
             const cancelOrderWatcher = exchange.NewCancelOrder();
             return placeOrder(order)
                 .then(id => orderId = id)
                 .then(() => cancelOrder(orderId, order.from))
                 .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: buyer, sell: order.sell, price: order.price, amount: order.amount}))
                 .then(() => checkOrder(orderId, undefined))
-                .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
-                .then(() => checkNewAskOrBidEvent(newBestBidWatcher, {price: 0}))
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 0}))
                 .then(() => checkBalance(baseToken.address, order.from, {available: tokenDepositAmount, reserved: 0}));
         });
 
         it("should cancel the last single sell order", () => {
             const order = sell(100, 5);
             let orderId;
-            const newBestAskWatcher = exchange.NewBestAsk();
             const cancelOrderWatcher = exchange.NewCancelOrder();
             return placeOrder(order)
                 .then(id => orderId = id)
                 .then(() => cancelOrder(orderId, order.from))
                 .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: orderId, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: seller, sell: order.sell, price: order.price, amount: order.amount}))
                 .then(() => checkOrder(orderId, undefined))
-                .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
-                .then(() => checkNewAskOrBidEvent(newBestAskWatcher, {price: 0}))
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 0}))
                 .then(() => checkBalance(tradeToken.address, order.from, {available: tokenDepositAmount, reserved: 0}));
         });
 
-        it("should insert a new sell order, change the first order reference and update the best ask reference", () => {
+        it("should insert a new sell order and update the best ask reference", () => {
             const order = sell(100, 5);
-            const orderState = {prev: 0, next: 1};
-            const orderbookState = {firstOrder: 2, bestBid: 0, bestAsk: 2, lastOrder: 1};
-            let newBestAskWatcher;
-            let newAskWatcher;
+            const orderbookState = {bestBid: 0, bestAsk: 2};
             return placeOrder(sell(110, 5))
-                .then(() => {
-                    newBestAskWatcher = exchange.NewBestAsk();
-                    newAskWatcher = exchange.NewAsk();
-                })
-                .then(() => testOrder(order, orderState, orderbookState))
-                .then(() => checkOrder(1, {prev: 2, next: 0}))
-                .then(() => checkNewAskOrBidEvent(newBestAskWatcher, {price: order.price}))
-                .then(() => checkNewAskOrBidEvent(newAskWatcher, {price: order.price}));
+                .then(() => testOrder(order, orderbookState))
         });
 
-        it("should insert a new buy order, change the last order reference and update the best bid reference", () => {
+        it("should insert a new buy order and update the best bid reference", () => {
             const order = buy(110, 5);
-            const orderState = {prev: 1, next: 0};
-            const orderbookState = {firstOrder: 1, bestBid: 2, bestAsk: 0, lastOrder: 2};
-            let newBestBidWatcher;
-            let newBidWatcher;
+            const orderbookState = {bestBid: 2, bestAsk: 0};
             return placeOrder(buy(100, 5))
-                .then(() => {
-                    newBestBidWatcher = exchange.NewBestBid();
-                    newBidWatcher = exchange.NewBid();
-                })
-                .then(() => testOrder(order, orderState, orderbookState))
-                .then(() => checkOrder(1, {prev: 0, next: 2}))
-                .then(() => checkNewAskOrBidEvent(newBestBidWatcher, {price: order.price}))
-                .then(() => checkNewAskOrBidEvent(newBidWatcher, {price: order.price}));
+                .then(() => testOrder(order, orderbookState))
         });
 
-        it("should insert a new buy order as first of buy orders", () => {
+        it("should insert a new buy order behind best bid orders", () => {
             const order = buy(50, 5);
-            const orderState = {prev: 0, next: 1};
-            const orderbookState = {firstOrder: 2, bestBid: 1, bestAsk: 0, lastOrder: 1};
+            const orderbookState = {bestBid: 1, bestAsk: 0};
             return placeOrder(buy(100, 5))
-                .then(() => testOrder(order, orderState, orderbookState))
-                .then(() => checkOrder(1, {prev: 2, next: 0}));
+                .then(() => testOrder(order, orderbookState))
         });
 
-        it("should insert a new sell order as last of sell orders", () => {
+        it("should insert a new sell order behind best ask orders", () => {
             const order = sell(100, 5);
-            const orderState = {prev: 1, next: 0};
-            const orderbookState = {firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 2};
+            const orderbookState = {bestBid: 0, bestAsk: 1};
             return placeOrder(sell(50, 5))
-                .then(() => testOrder(order, orderState, orderbookState))
-                .then(() => checkOrder(1, {prev: 0, next: 2}));
-        });
-
-        it("should insert a new buy order between two others", () => {
-            const order = buy(110, 5);
-            const orderState = {prev: 1, next: 2};
-            const orderbookState = {firstOrder: 1, bestBid: 2, bestAsk: 0, lastOrder: 2};
-            return placeOrder(buy(100, 5))
-                .then(() => placeOrder(buy(120, 5)))
-                .then(() => testOrder(order, orderState, orderbookState))
-                .then(() => checkOrder(1, {prev: 0, next: 3}))
-                .then(() => checkOrder(2, {prev: 3, next: 0}));
-        });
-
-        it("should insert a new sell order between two others", () => {
-            const order = sell(110, 5);
-            const orderState = {prev: 1, next: 2};
-            const orderbookState = {firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 2};
-            return placeOrder(sell(100, 5))
-                .then(() => placeOrder(sell(120, 5)))
-                .then(() => testOrder(order, orderState, orderbookState))
-                .then(() => checkOrder(1, {prev: 0, next: 3}))
-                .then(() => checkOrder(2, {prev: 3, next: 0}));
-        });
-
-        it("should insert a new sell order after the best buy order", () => {
-            const order = sell(130, 5);
-            const orderState = {prev: 1, next: 0};
-            const orderbookState = {firstOrder: 1, bestBid: 1, bestAsk: 2, lastOrder: 2};
-            return placeOrder(buy(100, 5))
-                .then(() => testOrder(order, orderState, orderbookState))
-                .then(() => checkOrder(1, {prev: 0, next: 2}));
-        });
-
-        it("should insert a new buy order before the best sell order", () => {
-            const order = buy(100, 5);
-            const orderState = {prev: 0, next: 1};
-            const orderbookState = {firstOrder: 2, bestBid: 2, bestAsk: 1, lastOrder: 1};
-            return placeOrder(sell(130, 5))
-                .then(() => testOrder(order, orderState, orderbookState))
-                .then(() => checkOrder(1, {prev: 2, next: 0}));
+                .then(() => testOrder(order, orderbookState))
         });
 
         it("should cancel a sell order from the middle of sell orders", () => {
-            const order = sell(110, 5);
-            const orderState = {prev: 1, next: 0};
+            const order1 = sell(100, 5)
+            const order2 = sell(110, 5)
+            const order3 = sell(120, 5)
             const cancelOrderWatcher = exchange.NewCancelOrder();
-            return placeOrder(sell(100, 5))
-                .then(() => placeOrder(order))
-                .then(() => placeOrder(sell(120, 5)))
-                .then(() => cancelOrder(2, order.from))
-                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: seller, sell: order.sell, price: order.price, amount: order.amount}))
+            return placeOrder(order1)
+                .then(() => placeOrder(order2))
+                .then(() => placeOrder(order3))
+                .then(() => cancelOrder(2, order2.from))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: seller, sell: order2.sell, price: order2.price, amount: order2.amount}))
                 .then(() => checkOrder(2, undefined))
-                .then(() => checkOrder(1, {prev: 0, next: 3}))
-                .then(() => checkOrder(3, {prev: 1, next: 0}))
-                .then(() => checkOrderbook({firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 3}));
+                .then(() => checkOrder(1, {price: order1.price, amount: order1.amount}))
+                .then(() => checkOrder(3, {price: order3.price, amount: order3.amount}))
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 1}))
         });
 
         it("should cancel a buy order from the middle of buy orders", () => {
-            const order = buy(110, 5);
-            const orderState = {prev: 1, next: 0};
+            const order1 = buy(100, 5)
+            const order2 = buy(110, 5)
+            const order3 = buy(120, 5)
             const cancelOrderWatcher = exchange.NewCancelOrder();
-            return placeOrder(buy(100, 5))
-                .then(() => placeOrder(order))
-                .then(() => placeOrder(buy(120, 5)))
-                .then(() => cancelOrder(2, order.from))
-                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: buyer, sell: order.sell, price: order.price, amount: order.amount}))
+
+            return placeOrder(order1)
+                .then(() => placeOrder(order2))
+                .then(() => placeOrder(order3))
+                .then(() => cancelOrder(2, order2.from))
+                .then(() => checkCancelOrderEvent(cancelOrderWatcher, {id: 2, baseToken: baseToken.address, tradeToken: tradeToken.address, owner: buyer, sell: order2.sell, price: order2.price, amount: order2.amount}))
                 .then(() => checkOrder(2, undefined))
-                .then(() => checkOrder(1, {prev: 0, next: 3}))
-                .then(() => checkOrder(3, {prev: 1, next: 0}))
-                .then(() => checkOrderbook({firstOrder: 1, bestBid: 3, bestAsk: 0, lastOrder: 3}));
+                .then(() => checkOrder(1, {price: order1.price, amount: order1.amount}))
+                .then(() => checkOrder(3, {price: order3.price, amount: order3.amount}))
+                .then(() => checkOrderbook({bestBid: 3, bestAsk: 0}));
         });
 
         it("should determine correct best bid after adding different orders", () => {
@@ -534,7 +459,7 @@ describe("Exchange", () => {
             return placeOrder(sell(4, 1))
                 .then(() => placeOrder(sell(3, 1)))
                 .then(() => placeOrder(sell(2, 1)))
-                .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestAsk = orderbook[2].toFixed()}))
+                .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestAsk = orderbook[0].toFixed()}))
                 .then(() => exchange.getOrder(bestAsk).then(order => {bestAskPrice = order[0].toFixed()}))
                 .then(() => assert.equal(bestAskPrice, 2000000000000000000))
         });
@@ -545,7 +470,7 @@ describe("Exchange", () => {
             return placeOrder(sell(4, 1))
                 .then(() => placeOrder(sell(4, 1)))
                 .then(() => placeOrder(sell(2, 1)))
-                .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestAsk = orderbook[2].toFixed()}))
+                .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestAsk = orderbook[0].toFixed()}))
                 .then(() => exchange.getOrder(bestAsk).then(order => {bestAskPrice = order[0].toFixed()}))
                 .then(() => assert.equal(bestAskPrice, 2000000000000000000))
         });
@@ -560,7 +485,7 @@ describe("Exchange", () => {
             return placeOrder(buyOrder)
                 .then(() => placeOrder(sellOrder))
                 .then(() => checkOrder(2, undefined))
-                .then(() => checkOrder(1, {amount: buyOrder.amount - sellOrder.amount, prev: 0, next: 0}))
+                .then(() => checkOrder(1, {amount: buyOrder.amount - sellOrder.amount}))
                 .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount - sellOrder.amount, reserved: 0}))
                 .then(() => checkBalance(baseToken.address, sellOrder.from, {available: sellOrder.amount * fromWei(buyOrder.price), reserved: 0}))
                 .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: sellOrder.amount, reserved: 0}))
@@ -569,7 +494,7 @@ describe("Exchange", () => {
                         reserved: fromWei(buyOrder.price) * (buyOrder.amount - sellOrder.amount)
                     }))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
-                .then(() => checkOrderbook({firstOrder: 1, bestBid: 1, bestAsk: 0, lastOrder: 1}));
+                .then(() => checkOrderbook({bestBid: 1, bestAsk: 0}));
         });
 
         it("the best sell order should be partially filled by a new buy order", () => {
@@ -580,7 +505,7 @@ describe("Exchange", () => {
             return placeOrder(sellOrder)
                 .then(() => placeOrder(buyOrder))
                 .then(() => checkOrder(2, undefined))
-                .then(() => checkOrder(1, {amount: sellOrder.amount - buyOrder.amount, prev: 0, next: 0}))
+                .then(() => checkOrder(1, {amount: sellOrder.amount - buyOrder.amount}))
                 .then(() => checkBalance(tradeToken.address, sellOrder.from, {
                         available: tokenDepositAmount - sellOrder.amount,
                         reserved: sellOrder.amount - buyOrder.amount
@@ -592,7 +517,7 @@ describe("Exchange", () => {
                         reserved: 0
                     }))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
-                .then(() => checkOrderbook({firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 1}));
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 1}));
         });
 
         it("a new sell order should be partially filled by the best buy order", () => {
@@ -603,13 +528,13 @@ describe("Exchange", () => {
             return placeOrder(buyOrder)
                 .then(() => placeOrder(sellOrder))
                 .then(() => checkOrder(1, undefined))
-                .then(() => checkOrder(2, {amount: sellOrder.amount - buyOrder.amount, prev: 0, next: 0}))
+                .then(() => checkOrder(2, {amount: sellOrder.amount - buyOrder.amount}))
                 .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount - sellOrder.amount, reserved: sellOrder.amount - buyOrder.amount}))
                 .then(() => checkBalance(baseToken.address, sellOrder.from, {available: buyOrder.total, reserved: 0}))
                 .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: buyOrder.amount, reserved: 0}))
                 .then(() => checkBalance(baseToken.address, buyOrder.from, {available: tokenDepositAmount - buyOrder.total, reserved: 0}))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
-                .then(() => checkOrderbook({firstOrder: 2, bestBid: 0, bestAsk: 2, lastOrder: 2}));
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 2}));
         });
 
         it("a new buy order should be partially filled by the best sell order", () => {
@@ -620,7 +545,7 @@ describe("Exchange", () => {
             return placeOrder(sellOrder)
                 .then(() => placeOrder(buyOrder))
                 .then(() => checkOrder(1, undefined))
-                .then(() => checkOrder(2, {amount: buyOrder.amount - sellOrder.amount, prev: 0, next: 0}))
+                .then(() => checkOrder(2, {amount: buyOrder.amount - sellOrder.amount}))
                 .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: tokenDepositAmount - sellOrder.amount, reserved: 0}))
                 .then(() => checkBalance(baseToken.address, sellOrder.from, {available: sellOrder.total, reserved: 0}))
                 .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: sellOrder.amount, reserved: 0}))
@@ -629,7 +554,7 @@ describe("Exchange", () => {
                         reserved: fromWei(buyOrder.price) * (buyOrder.amount - sellOrder.amount)
                     }))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
-                .then(() => checkOrderbook({firstOrder: 2, bestBid: 2, bestAsk: 0, lastOrder: 2}));
+                .then(() => checkOrderbook({bestBid: 2, bestAsk: 0}));
         });
 
         it("a new sell order should be completely filled and completely fill the best buy order", () => {
@@ -646,7 +571,7 @@ describe("Exchange", () => {
                 .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: buyOrder.amount, reserved: 0}))
                 .then(() => checkBalance(baseToken.address, buyOrder.from, {available: tokenDepositAmount - buyOrder.total, reserved: 0}))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
-                .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}));
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 0}));
         });
 
         it("a new buy order should be completely filled and completely fill the best sell order", () => {
@@ -663,7 +588,7 @@ describe("Exchange", () => {
                 .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: sellOrder.amount, reserved: 0}))
                 .then(() => checkBalance(baseToken.address, buyOrder.from, {available: tokenDepositAmount - sellOrder.total, reserved: 0}))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
-                .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}));
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 0}));
         });
 
         it("a new sell order should completely fill several buy orders", () => {
@@ -688,7 +613,7 @@ describe("Exchange", () => {
                 .then(() => checkBalance(tradeToken.address, buy1.from, {available: expectedTokenSoldAmount, reserved: 0}))
                 .then(() => checkBalance(baseToken.address, buy1.from, {available: tokenDepositAmount.minus(buy3.total.plus(buy2.total.plus(buy1.total))), reserved: buy1.total}))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
-                .then(() => checkOrderbook({firstOrder: 1, bestBid: 1, bestAsk: 4, lastOrder: 4}));
+                .then(() => checkOrderbook({bestBid: 1, bestAsk: 4}));
         });
 
         it("a new buy order should completely fill several sell orders", () => {
@@ -716,7 +641,7 @@ describe("Exchange", () => {
                         reserved: fromWei(buyOrder.price).times(buyOrder.amount.minus(expectedTokenBoughtAmount))
                     }))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsStates))
-                .then(() => checkOrderbook({firstOrder: 4, bestBid: 4, bestAsk: 1, lastOrder: 1}));
+                .then(() => checkOrderbook({bestBid: 4, bestAsk: 1}));
         });
 
         it("sell orders should match same priced buy orders in FIFO fashion", () => {
@@ -733,16 +658,16 @@ describe("Exchange", () => {
             return placeOrder(buyOrderOne)
                 .then(() => placeOrder(buyOrderTwo))
                 .then(() => placeOrder(buyOrderThree))
-                .then(() => checkOrderbook({firstOrder: 3, bestBid: 1, bestAsk: 0, lastOrder: 1}))
+                .then(() => checkOrderbook({bestBid: 1, bestAsk: 0}))
                 .then(() => placeOrder(sellOrderOne))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsOne))
-                .then(() => checkOrderbook({firstOrder: 3, bestBid: 2, bestAsk: 0, lastOrder: 2}))
+                .then(() => checkOrderbook({bestBid: 2, bestAsk: 0}))
                 .then(() => placeOrder(sellOrderTwo))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsTwo))
-                .then(() => checkOrderbook({firstOrder: 3, bestBid: 3, bestAsk: 0, lastOrder: 3}))
+                .then(() => checkOrderbook({bestBid: 3, bestAsk: 0}))
                 .then(() => placeOrder(sellOrderThree))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsThree))
-                .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 0}))
         })
 
         it("buy orders should match same priced sell orders in FIFO fashion", () => {
@@ -759,16 +684,16 @@ describe("Exchange", () => {
             return placeOrder(sellOrderOne)
                 .then(() => placeOrder(sellOrderTwo))
                 .then(() => placeOrder(sellOrderThree))
-                .then(() => checkOrderbook({firstOrder: 1, bestBid: 0, bestAsk: 1, lastOrder: 3}))
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 1}))
                 .then(() => placeOrder(buyOrderOne))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsOne))
-                .then(() => checkOrderbook({firstOrder: 2, bestBid: 0, bestAsk: 2, lastOrder: 3}))
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 2}))
                 .then(() => placeOrder(buyOrderTwo))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsTwo))
-                .then(() => checkOrderbook({firstOrder: 3, bestBid: 0, bestAsk: 3, lastOrder: 3}))
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 3}))
                 .then(() => placeOrder(buyOrderThree))
                 .then(() => checkTradeEvents(newTradeWatcher, tradeEventsThree))
-                .then(() => checkOrderbook({firstOrder: 0, bestBid: 0, bestAsk: 0, lastOrder: 0}))
+                .then(() => checkOrderbook({bestBid: 0, bestAsk: 0}))
         })
 
         it("sell order should match the best priced buy order", () => {
@@ -971,6 +896,32 @@ describe("Exchange", () => {
         })
     });
 
+    describe("Dump Orders", () => {
+        it("should dump all ask orders", () => {
+            let [sell10, sell11, sell12] = [sell(10, 1), sell(11, 1), sell(12, 1)]
+            return placeOrder(sell10)
+                .then(() => placeOrder(sell11))
+                .then(() => placeOrder(sell12))
+                .then(() => checkDumpAsks([
+                  {id: 1, owner: seller, price: sell10.price, amount: sell10.amount},
+                  {id: 2, owner: seller, price: sell11.price, amount: sell11.amount},
+                  {id: 3, owner: seller, price: sell12.price, amount: sell12.amount},
+                ]))
+        })
+
+        it("should dump all bid orders", () => {
+            let [buy10, buy11, buy12] = [buy(10, 1), buy(11, 1), buy(12, 1)]
+            return placeOrder(buy10)
+                .then(() => placeOrder(buy11))
+                .then(() => placeOrder(buy12))
+                .then(() => checkDumpBids([
+                  {id: 3, owner: buyer, price: buy12.price, amount: buy12.amount},
+                  {id: 1, owner: buyer, price: buy10.price, amount: buy10.amount},
+                  {id: 2, owner: buyer, price: buy11.price, amount: buy11.amount},
+                ]))
+        })
+    })
+
     async function deployExchange() {
         baseToken = await Token.new()
         tradeToken = await Token.new()
@@ -1016,56 +967,74 @@ describe("Exchange", () => {
 
     function checkOrder(id, orderState) {
         if (orderState == undefined) {
-            orderState = {price: 0, sell: false, amount: 0, prev: 0, next: 0};
+            orderState = {price: 0, sell: false, amount: 0}
         }
 
         return exchange.getOrder(id)
             .then(order => {
                 if (orderState.price != undefined)
-                    assert.equal(order[0].toFixed(), orderState.price, "price");
+                    assert.equal(order[0].toFixed(), orderState.price, "price")
                 if (orderState.sell != undefined)
-                    assert.equal(order[1], orderState.sell, "order type");
+                    assert.equal(order[1], orderState.sell, "order type")
                 if (orderState.amount != undefined)
-                    assert.equal(order[2].toFixed(), orderState.amount, "amount");
-                if (orderState.next != undefined)
-                    assert.equal(order[3].toFixed(), orderState.next, "next order");
-                if (orderState.prev != undefined)
-                    assert.equal(order[4].toFixed(), orderState.prev, "prev order");
+                    assert.equal(order[2].toFixed(), orderState.amount, "amount")
             });
     }
 
     function checkOrderbook(orderbookState) {
         return exchange.getOrderBookInfo(baseToken.address, tradeToken.address)
             .then(orderbook => {
-                assert.equal(orderbook[0].toFixed(), orderbookState.firstOrder, "first order");
-                assert.equal(orderbook[1].toFixed(), orderbookState.bestBid, "best bid");
-                assert.equal(orderbook[2].toFixed(), orderbookState.bestAsk, "best ask");
-                assert.equal(orderbook[3].toFixed(), orderbookState.lastOrder, "last order");
+                assert.equal(orderbook[0].toFixed(), orderbookState.bestAsk, "best ask")
+                assert.equal(orderbook[1].toFixed(), orderbookState.bestBid, "best bid")
             });
     }
 
     function checkGetOrderbookAsks(expectedAsks) {
         return exchange.getOrderbookAsks(baseToken.address, tradeToken.address)
-        .then(result => {
-            const asks = parseGetOrderbookResult(result);
-            assert.equal(asks.items, expectedAsks.length);
-            for (let i = 0; i < asks.items; i++) {
-                assert.equal(asks.price[i], expectedAsks[i].price);
-                assert.equal(asks.amount[i], expectedAsks[i].amount);
-            }
-        });
+            .then(result => {
+                const asks = parseGetOrderbookResult(result);
+                for (let i = 0; i < expectedAsks.length; i++) {
+                    assert.equal(asks.price[i], expectedAsks[i].price);
+                    assert.equal(asks.amount[i], expectedAsks[i].amount);
+                }
+            });
     }
 
     function checkGetOrderbookBids(expectedBids) {
         return exchange.getOrderbookBids(baseToken.address, tradeToken.address)
-        .then(result => {
-            const bids = parseGetOrderbookResult(result);
-            assert.equal(bids.items, expectedBids.length);
-            for (let i = 0; i < bids.items; i++) {
-                assert.equal(bids.price[i], expectedBids[i].price);
-                assert.equal(bids.amount[i], expectedBids[i].amount);
-            }
-        });
+            .then(result => {
+                const bids = parseGetOrderbookResult(result);
+                for (let i = 0; i < expectedBids.length; i++) {
+                    assert.equal(bids.price[i], expectedBids[i].price);
+                    assert.equal(bids.amount[i], expectedBids[i].amount);
+                }
+            });
+    }
+
+    function checkDumpBids(expectedBids) {
+        return exchange.dumpBids(baseToken.address, tradeToken.address)
+            .then(result => {
+                const bids = parseDumpResult(result)
+                for (let i = 0; i < expectedBids.length; i++) {
+                    assert.equal(bids.id[i], expectedBids[i].id)
+                    assert.equal(bids.owner[i], expectedBids[i].owner)
+                    assert.equal(bids.price[i], expectedBids[i].price)
+                    assert.equal(bids.amount[i], expectedBids[i].amount)
+                }
+            })
+    }
+
+    function checkDumpAsks(expectedAsks) {
+        return exchange.dumpAsks(baseToken.address, tradeToken.address)
+            .then(result => {
+                const asks = parseDumpResult(result)
+                for (let i = 0; i < expectedAsks.length; i++) {
+                    assert.equal(asks.id[i], expectedAsks[i].id)
+                    assert.equal(asks.owner[i], expectedAsks[i].owner)
+                    assert.equal(asks.price[i], expectedAsks[i].price)
+                    assert.equal(asks.amount[i], expectedAsks[i].amount)
+                }
+            })
     }
 
     function checkTradeEvents(watcher, eventsState) {
@@ -1085,16 +1054,6 @@ describe("Exchange", () => {
             assert.equal(event.amount.toString(), state.amount.toString());
             assert.equal(event.price.toString(), state.price.toString());
         }
-    }
-
-    function checkNewAskOrBidEvent(watcher, expectedState) {
-        let events = watcher.get();
-        assert.equal(events.length, 1);
-
-        let event = events[0].args;
-        assert.equal(event.baseToken, baseToken.address);
-        assert.equal(event.tradeToken, tradeToken.address);
-        assert.equal(event.price.toString(), expectedState.price.toString());
     }
 
     function checkNewOrderEvent(watcher, expectedState) {
@@ -1141,19 +1100,14 @@ describe("Exchange", () => {
         return exchange.cancelOrder(id, {from: from});
     }
 
-    function testOrder(order, orderItemState, orderbookState) {
+    function testOrder(order, orderbookState) {
         return placeOrder(order)
             .then(id => {
-                let orderState;
-                if (orderItemState != undefined) {
-                    orderState = {
-                        price: order.price,
-                        sell: order.sell,
-                        amount: orderItemState.amount != undefined ? orderItemState.amount : order.amount,
-                        prev: orderItemState.prev,
-                        next: orderItemState.next
-                    };
-                }
+                let orderState = {
+                    price: order.price,
+                    sell: order.sell,
+                    amount: order.amount
+                };
                 return checkOrder(id, orderState);
             }).then(() => {
                 return checkOrderbook(orderbookState);
@@ -1163,11 +1117,16 @@ describe("Exchange", () => {
     function parseGetOrderbookResult(result) {
         return {
             price: result[0].map(t => t.toNumber()),
-            isSell: result[1],
-            amount: result[2].map(t => t.toNumber()),
-            id: result[3].map(t => t.toNumber()),
-            items: result[4].toNumber()
+            amount: result[1].map(t => t.toNumber())
         }
     }
 
-});
+    function parseDumpResult(result) {
+        return {
+            id: result[0].map(t => t.toNumber()),
+            owner: result[1].map(t => t.toString()),
+            price: result[2].map(t => t.toNumber()),
+            amount: result[3].map(t => t.toNumber())
+        }
+    }
+})
