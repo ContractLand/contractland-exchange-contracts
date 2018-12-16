@@ -896,25 +896,25 @@ contract("Exchange", () => {
         })
     });
 
-    describe("Dump Orders", () => {
-        it("should dump all ask orders", () => {
+    describe("Get Orders", () => {
+        it("should get all ask orders", () => {
             let [sell10, sell11, sell12] = [sell(10, 1), sell(11, 1), sell(12, 1)]
             return placeOrder(sell10)
                 .then(() => placeOrder(sell11))
                 .then(() => placeOrder(sell12))
-                .then(() => checkDumpAsks([
+                .then(() => checkGetAsks([
                   {id: 1, owner: seller, price: sell10.price, amount: sell10.amount},
                   {id: 2, owner: seller, price: sell11.price, amount: sell11.amount},
                   {id: 3, owner: seller, price: sell12.price, amount: sell12.amount},
                 ]))
         })
 
-        it("should dump all bid orders", () => {
+        it("should get all bid orders", () => {
             let [buy10, buy11, buy12] = [buy(10, 1), buy(11, 1), buy(12, 1)]
             return placeOrder(buy10)
                 .then(() => placeOrder(buy11))
                 .then(() => placeOrder(buy12))
-                .then(() => checkDumpBids([
+                .then(() => checkGetBids([
                   {id: 3, owner: buyer, price: buy12.price, amount: buy12.amount},
                   {id: 1, owner: buyer, price: buy10.price, amount: buy10.amount},
                   {id: 2, owner: buyer, price: buy11.price, amount: buy11.amount},
@@ -1011,10 +1011,10 @@ contract("Exchange", () => {
             });
     }
 
-    function checkDumpBids(expectedBids) {
-        return exchange.dumpBids(baseToken.address, tradeToken.address)
+    function checkGetBids(expectedBids) {
+        return exchange.getBids(baseToken.address, tradeToken.address)
             .then(result => {
-                const bids = parseDumpResult(result)
+                const bids = parseGetResult(result)
                 for (let i = 0; i < expectedBids.length; i++) {
                     assert.equal(bids.id[i], expectedBids[i].id)
                     assert.equal(bids.owner[i], expectedBids[i].owner)
@@ -1024,10 +1024,10 @@ contract("Exchange", () => {
             })
     }
 
-    function checkDumpAsks(expectedAsks) {
-        return exchange.dumpAsks(baseToken.address, tradeToken.address)
+    function checkGetAsks(expectedAsks) {
+        return exchange.getAsks(baseToken.address, tradeToken.address)
             .then(result => {
-                const asks = parseDumpResult(result)
+                const asks = parseGetResult(result)
                 for (let i = 0; i < expectedAsks.length; i++) {
                     assert.equal(asks.id[i], expectedAsks[i].id)
                     assert.equal(asks.owner[i], expectedAsks[i].owner)
@@ -1121,7 +1121,7 @@ contract("Exchange", () => {
         }
     }
 
-    function parseDumpResult(result) {
+    function parseGetResult(result) {
         return {
             id: result[0].map(t => t.toNumber()),
             owner: result[1].map(t => t.toString()),

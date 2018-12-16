@@ -259,7 +259,7 @@ contract Exchange is Initializable, Pausable {
         }
     }
 
-    function dumpAsks(address baseToken, address tradeToken)
+    function getAsks(address baseToken, address tradeToken)
         external
         view
         returns (uint[], address[], uint[], uint[])
@@ -282,7 +282,7 @@ contract Exchange is Initializable, Pausable {
         return (ids, owners, prices, amounts);
     }
 
-    function dumpBids(address baseToken, address tradeToken)
+    function getBids(address baseToken, address tradeToken)
         external
         view
         returns (uint[], address[], uint[], uint[])
