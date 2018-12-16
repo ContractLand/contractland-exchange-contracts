@@ -226,7 +226,7 @@ contract Exchange is Initializable, Pausable {
 
         uint i = 0;
         uint previousPrice = 0;
-        while(BidHeap.isValid(asks.peak()) && i < MAX_ORDERBOOK_FETCH_SIZE) {
+        while(OrderNode.isValid(asks.peak()) && i < MAX_ORDERBOOK_FETCH_SIZE) {
             OrderNode.Node memory order = asks.pop();
             prices[i] = order.price;
             amounts[i] = amounts[i].add(order.amount);
@@ -247,7 +247,7 @@ contract Exchange is Initializable, Pausable {
 
         uint i = 0;
         uint previousPrice = 0;
-        while(BidHeap.isValid(bids.peak()) && i < MAX_ORDERBOOK_FETCH_SIZE) {
+        while(OrderNode.isValid(bids.peak()) && i < MAX_ORDERBOOK_FETCH_SIZE) {
             OrderNode.Node memory order = bids.pop();
             prices[i] = order.price;
             amounts[i] = amounts[i].add(order.amount);
@@ -356,7 +356,7 @@ contract Exchange is Initializable, Pausable {
         BidHeap.Tree storage bids = orderbooks[order.baseToken][order.tradeToken].bids;
 
         while (order.amount != 0 &&
-               BidHeap.isValid(bids.peak()) &&
+               OrderNode.isValid(bids.peak()) &&
                order.price <= bids.peak().price) {
             OrderNode.Node memory matchingOrder = bids.peak();
             uint tradeAmount;
@@ -395,7 +395,7 @@ contract Exchange is Initializable, Pausable {
         AskHeap.Tree storage asks = orderbooks[order.baseToken][order.tradeToken].asks;
 
         while (order.amount != 0 &&
-               BidHeap.isValid(asks.peak()) &&
+               OrderNode.isValid(asks.peak()) &&
                order.price >= asks.peak().price) {
             OrderNode.Node memory matchingOrder = asks.peak();
             uint tradeAmount;

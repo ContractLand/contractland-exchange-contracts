@@ -12,6 +12,14 @@ library OrderNode {
     uint64 timestamp;
   }
 
+  function isValid(Node n)
+    internal
+    pure
+    returns (bool)
+  {
+    return n.id > 0;
+  }
+
   function isGreaterThan(Node storage self, Node memory b)
     internal
     view

@@ -124,14 +124,6 @@ library BidHeap {
     return self.nodes.length > 0 ? self.nodes.length - 1 : 0;
   }
 
-  function isValid(OrderNode.Node n)
-    internal
-    pure
-    returns (bool)
-  {
-    return n.id > 0;
-  }
-
   function dump(Tree storage self)
     internal
     view
