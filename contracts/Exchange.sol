@@ -83,7 +83,7 @@ contract Exchange is Initializable, Pausable {
     uint64 lastOrderId;
 
     // Mapping of order id to order meta data that helps to identify the order in the book
-    mapping(uint64 => OrderInfo) orderInfoMap;
+    mapping(uint64 => OrderInfo) orders;
 
     // Mapping of base token to trade token to OrderBook
     mapping(address => mapping(address => OrderBook)) orderbooks;
@@ -129,7 +129,7 @@ contract Exchange is Initializable, Pausable {
 
         if (order.amount != 0) {
             orderbooks[baseToken][tradeToken].asks.add(order);
-            orderInfoMap[id] = OrderInfo(orderOwner, baseToken, tradeToken, true);
+            orders[id] = OrderInfo(orderOwner, baseToken, tradeToken, true);
         }
 
         return id;
@@ -161,7 +161,7 @@ contract Exchange is Initializable, Pausable {
 
         if (order.amount != 0) {
             orderbooks[baseToken][tradeToken].bids.add(order);
-            orderInfoMap[id] = OrderInfo(orderOwner, baseToken, tradeToken, false);
+            orders[id] = OrderInfo(orderOwner, baseToken, tradeToken, false);
         }
 
         return id;
@@ -170,7 +170,7 @@ contract Exchange is Initializable, Pausable {
     function cancelOrder(uint64 id)
         external
     {
-        OrderInfo memory orderInfo = orderInfoMap[id];
+        OrderInfo memory orderInfo = orders[id];
         require(orderInfo.owner == msg.sender || msg.sender == owner);
 
         OrderNode.Node memory orderToCancel;
@@ -187,7 +187,7 @@ contract Exchange is Initializable, Pausable {
         }
 
         emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, orderToCancel.price, orderToCancel.amount, uint64(block.timestamp));
-        delete orderInfoMap[id];
+        delete orders[id];
     }
 
     function getOrder(uint64 id)
@@ -195,7 +195,7 @@ contract Exchange is Initializable, Pausable {
         view
         returns (uint price, bool isSell, uint amount)
     {
-        OrderInfo memory orderInfo = orderInfoMap[id];
+        OrderInfo memory orderInfo = orders[id];
 
         OrderNode.Node memory order;
         if (orderInfo.isSell) {
@@ -355,7 +355,7 @@ contract Exchange is Initializable, Pausable {
             }
 
             bids.pop();
-            delete orderInfoMap[matchingOrder.id];
+            delete orders[matchingOrder.id];
         }
     }
 
@@ -394,7 +394,7 @@ contract Exchange is Initializable, Pausable {
             }
 
             asks.pop();
-            delete orderInfoMap[matchingOrder.id];
+            delete orders[matchingOrder.id];
         }
     }
 }
