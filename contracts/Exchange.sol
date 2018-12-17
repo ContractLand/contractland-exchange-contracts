@@ -193,19 +193,33 @@ contract Exchange is Initializable, Pausable {
     function getOrder(uint64 id)
         external
         view
-        returns (uint price, bool isSell, uint amount)
+        returns (
+            address owner,
+            address baseToken,
+            address tradeToken,
+            uint price,
+            uint originalAmount,
+            uint amount,
+            bool isSell,
+            uint64 timestamp
+        )
     {
         OrderInfo memory orderInfo = orderInfoMap[id];
-
         OrderNode.Node memory order;
         if (orderInfo.isSell) {
           order = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].asks.getById(id);
         } else {
           order = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].bids.getById(id);
         }
+
+        owner = order.owner;
+        baseToken = order.baseToken;
+        tradeToken = order.tradeToken;
         price = order.price;
-        isSell = orderInfo.isSell;
+        originalAmount = order.originalAmount;
         amount = order.amount;
+        isSell = order.isSell;
+        timestamp = order.timestamp;
     }
 
     function getOrderBookInfo(address baseToken, address tradeToken)

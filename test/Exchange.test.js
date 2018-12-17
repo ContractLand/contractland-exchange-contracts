@@ -438,7 +438,7 @@ contract("Exchange", () => {
                 .then(() => placeOrder(buy(3, 1)))
                 .then(() => placeOrder(buy(4, 1)))
                 .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestBid = orderbook[1].toFixed()}))
-                .then(() => exchange.getOrder(bestBid).then(order => {bestBidPrice = order[0].toFixed()}))
+                .then(() => exchange.getOrder(bestBid).then(order => {bestBidPrice = order[3].toFixed()}))
                 .then(() => assert.equal(bestBidPrice, 4000000000000000000))
         });
 
@@ -449,7 +449,7 @@ contract("Exchange", () => {
                 .then(() => placeOrder(buy(2, 1)))
                 .then(() => placeOrder(buy(4, 1)))
                 .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestBid = orderbook[1].toFixed()}))
-                .then(() => exchange.getOrder(bestBid).then(order => {bestBidPrice = order[0].toFixed()}))
+                .then(() => exchange.getOrder(bestBid).then(order => {bestBidPrice = order[3].toFixed()}))
                 .then(() => assert.equal(bestBidPrice, 4000000000000000000))
         });
 
@@ -460,7 +460,7 @@ contract("Exchange", () => {
                 .then(() => placeOrder(sell(3, 1)))
                 .then(() => placeOrder(sell(2, 1)))
                 .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestAsk = orderbook[0].toFixed()}))
-                .then(() => exchange.getOrder(bestAsk).then(order => {bestAskPrice = order[0].toFixed()}))
+                .then(() => exchange.getOrder(bestAsk).then(order => {bestAskPrice = order[3].toFixed()}))
                 .then(() => assert.equal(bestAskPrice, 2000000000000000000))
         });
 
@@ -471,7 +471,7 @@ contract("Exchange", () => {
                 .then(() => placeOrder(sell(4, 1)))
                 .then(() => placeOrder(sell(2, 1)))
                 .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestAsk = orderbook[0].toFixed()}))
-                .then(() => exchange.getOrder(bestAsk).then(order => {bestAskPrice = order[0].toFixed()}))
+                .then(() => exchange.getOrder(bestAsk).then(order => {bestAskPrice = order[3].toFixed()}))
                 .then(() => assert.equal(bestAskPrice, 2000000000000000000))
         });
     });
@@ -1001,11 +1001,11 @@ contract("Exchange", () => {
         return exchange.getOrder(id)
             .then(order => {
                 if (orderState.price != undefined)
-                    assert.equal(order[0].toFixed(), orderState.price, "price")
+                    assert.equal(order[3].toFixed(), orderState.price, "price")
                 if (orderState.sell != undefined)
-                    assert.equal(order[1], orderState.sell, "order type")
+                    assert.equal(order[6], orderState.sell, "order type")
                 if (orderState.amount != undefined)
-                    assert.equal(order[2].toFixed(), orderState.amount, "amount")
+                    assert.equal(order[5].toFixed(), orderState.amount, "amount")
             });
     }
 
