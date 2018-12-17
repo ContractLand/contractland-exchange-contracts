@@ -10,6 +10,7 @@ library OrderNode {
     uint price;
     uint originalAmount;
     uint amount;
+    bool isSell;
     uint64 timestamp;
   }
 

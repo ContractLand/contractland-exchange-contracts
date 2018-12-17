@@ -9,7 +9,7 @@ contract TestAskHeap {
   AskHeap.Tree data;
 
   function add(uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) public {
-    data.add(OrderNode.Node(id, owner, baseToken, tradeToken, price, amount, amount, timestamp));
+    data.add(OrderNode.Node(id, owner, baseToken, tradeToken, price, amount, amount, true, timestamp));
   }
 
   function pop() public returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp){

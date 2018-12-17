@@ -121,7 +121,7 @@ contract Exchange is Initializable, Pausable {
         transferFundFromUser(orderOwner, tradeToken, amount);
 
         uint64 id = ++lastOrderId;
-        OrderNode.Node memory order = OrderNode.Node(id, orderOwner, baseToken, tradeToken, price, amount, amount, uint64(block.timestamp));
+        OrderNode.Node memory order = OrderNode.Node(id, orderOwner, baseToken, tradeToken, price, amount, amount, true, uint64(block.timestamp));
 
         emit NewOrder(baseToken, tradeToken, orderOwner, id, true, price, amount, order.timestamp);
 
@@ -153,7 +153,7 @@ contract Exchange is Initializable, Pausable {
         transferFundFromUser(orderOwner, baseToken, baseTokenAmount);
 
         uint64 id = ++lastOrderId;
-        OrderNode.Node memory order = OrderNode.Node(id, orderOwner, baseToken, tradeToken, price, amount, amount, uint64(block.timestamp));
+        OrderNode.Node memory order = OrderNode.Node(id, orderOwner, baseToken, tradeToken, price, amount, amount, false, uint64(block.timestamp));
 
         emit NewOrder(baseToken, tradeToken, orderOwner, id, false, price, amount, order.timestamp);
 

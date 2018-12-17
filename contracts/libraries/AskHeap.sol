@@ -61,7 +61,7 @@ library AskHeap {
     returns (OrderNode.Node)
   {
     if (self.nodes.length <= 1) {
-      return OrderNode.Node(0,0,0,0,0,0,0,0);
+      return OrderNode.Node(0,0,0,0,0,0,0,false,0);
     }
 
     if (self.nodes.length == 2) {
@@ -113,7 +113,7 @@ library AskHeap {
     view
     returns (OrderNode.Node)
   {
-    return self.nodes.length > i ? self.nodes[i] : OrderNode.Node(0,0,0,0,0,0,0,0);
+    return self.nodes.length > i ? self.nodes[i] : OrderNode.Node(0,0,0,0,0,0,0,false,0);
   }
 
   function size(Tree storage self)
@@ -164,7 +164,7 @@ library AskHeap {
   function _init(Tree storage self)
     private
   {
-    if (self.nodes.length == 0) self.nodes.push(OrderNode.Node(0,0,0,0,0,0,0,0));
+    if (self.nodes.length == 0) self.nodes.push(OrderNode.Node(0,0,0,0,0,0,0,false,0));
   }
 
   function _insert(Tree storage self, OrderNode.Node memory n, uint i)
