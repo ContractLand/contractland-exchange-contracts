@@ -264,22 +264,7 @@ contract Exchange is Initializable, Pausable {
         view
         returns (uint[], address[], uint[], uint[])
     {
-        AskHeap.Tree storage asks = orderbooks[baseToken][tradeToken].asks;
-        uint size = asks.size();
-        OrderNode.Node[] memory nodes = asks.dump();
-        uint[] memory ids = new uint[](size);
-        address[] memory owners = new address[](size);
-        uint[] memory prices = new uint[](size);
-        uint[] memory amounts = new uint[](size);
-
-        for (uint i = 0; i < size; i++) {
-            ids[i] = nodes[i+1].id;
-            owners[i] = nodes[i+1].owner;
-            prices[i] = nodes[i+1].price;
-            amounts[i] = nodes[i+1].amount;
-        }
-
-        return (ids, owners, prices, amounts);
+        return orderbooks[baseToken][tradeToken].asks.getOrders();
     }
 
     function getBids(address baseToken, address tradeToken)
@@ -287,22 +272,7 @@ contract Exchange is Initializable, Pausable {
         view
         returns (uint[], address[], uint[], uint[])
     {
-        BidHeap.Tree storage bids = orderbooks[baseToken][tradeToken].bids;
-        uint size = bids.size();
-        OrderNode.Node[] memory nodes = bids.dump();
-        uint[] memory ids = new uint[](size);
-        address[] memory owners = new address[](size);
-        uint[] memory prices = new uint[](size);
-        uint[] memory amounts = new uint[](size);
-
-        for (uint i = 0; i < size; i++) {
-            ids[i] = nodes[i+1].id;
-            owners[i] = nodes[i+1].owner;
-            prices[i] = nodes[i+1].price;
-            amounts[i] = nodes[i+1].amount;
-        }
-
-        return (ids, owners, prices, amounts);
+        return orderbooks[baseToken][tradeToken].bids.getOrders();
     }
 
     /* --- INTERNAL / PRIVATE METHODS --- */

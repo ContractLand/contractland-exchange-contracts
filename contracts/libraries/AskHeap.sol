@@ -124,6 +124,26 @@ library AskHeap {
     return self.nodes.length > 0 ? self.nodes.length - 1 : 0;
   }
 
+  function getOrders(Tree storage self)
+    internal
+    view
+    returns (uint[], address[], uint[], uint[])
+  {
+    uint[] memory ids = new uint[](size(self));
+    address[] memory owners = new address[](size(self));
+    uint[] memory prices = new uint[](size(self));
+    uint[] memory amounts = new uint[](size(self));
+
+    for (uint i = 0; i < size(self); i++) {
+        ids[i] = self.nodes[ROOT_INDEX + i].id;
+        owners[i] = self.nodes[ROOT_INDEX + i].owner;
+        prices[i] = self.nodes[ROOT_INDEX + i].price;
+        amounts[i] = self.nodes[ROOT_INDEX + i].amount;
+    }
+
+    return (ids, owners, prices, amounts);
+  }
+
   function dump(Tree storage self)
     internal
     view
