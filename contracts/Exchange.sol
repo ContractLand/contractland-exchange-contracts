@@ -262,7 +262,7 @@ contract Exchange is Initializable, Pausable {
     function getAsks(address baseToken, address tradeToken)
         external
         view
-        returns (uint64[], address[], uint[], uint[], uint[])
+        returns (uint64[], address[], uint[], uint[], uint[], uint64[])
     {
         return orderbooks[baseToken][tradeToken].asks.getOrders();
     }
@@ -270,7 +270,7 @@ contract Exchange is Initializable, Pausable {
     function getBids(address baseToken, address tradeToken)
         external
         view
-        returns (uint64[], address[], uint[], uint[], uint[])
+        returns (uint64[], address[], uint[], uint[], uint[], uint64[])
     {
         return orderbooks[baseToken][tradeToken].bids.getOrders();
     }
