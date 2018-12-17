@@ -1080,7 +1080,7 @@ contract("Exchange", () => {
             assert.equal(event.askId, state.askId);
             assert.equal(event.bidOwner, state.bidOwner);
             assert.equal(event.askOwner, state.askOwner);
-            assert.equal(event.side, state.side);
+            assert.equal(event.isSell, state.side);
             assert.equal(event.amount.toString(), state.amount.toString());
             assert.equal(event.price.toString(), state.price.toString());
         }
@@ -1095,7 +1095,7 @@ contract("Exchange", () => {
         assert.equal(event.tradeToken, tradeToken.address);
         assert.equal(event.owner, expectedState.from);
         assert.equal(event.id, expectedState.id);
-        assert.equal(event.side, expectedState.side);
+        assert.equal(event.isSell, expectedState.sell);
         assert.equal(event.price.toString(), expectedState.price.toString());
         assert.equal(event.amount.toString(), expectedState.amount.toString());
     }
@@ -1109,7 +1109,7 @@ contract("Exchange", () => {
         assert.equal(event.tradeToken, expectedState.tradeToken);
         assert.equal(event.owner, expectedState.owner);
         assert.equal(event.id.toString(), expectedState.id.toString());
-        assert.equal(event.sell, expectedState.sell);
+        assert.equal(event.isSell, expectedState.sell);
         assert.equal(event.price.toString(), expectedState.price.toString());
         assert.equal(event.amount.toString(), expectedState.amount.toString());
     }

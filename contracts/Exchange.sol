@@ -38,7 +38,7 @@ contract Exchange is Initializable, Pausable {
         address indexed tradeToken,
         address indexed owner,
         uint64 id,
-        bool sell,
+        bool isSell,
         uint price,
         uint amount,
         uint64 timestamp
@@ -51,7 +51,7 @@ contract Exchange is Initializable, Pausable {
         uint64 askId,
         address bidOwner,
         address askOwner,
-        bool side,
+        bool isSell,
         uint amount,
         uint price,
         uint64 timestamp
@@ -62,7 +62,7 @@ contract Exchange is Initializable, Pausable {
         address indexed tradeToken,
         address indexed owner,
         uint64 id,
-        bool sell,
+        bool isSell,
         uint price,
         uint amount,
         uint64 timestamp
