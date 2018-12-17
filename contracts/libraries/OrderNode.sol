@@ -8,6 +8,7 @@ library OrderNode {
     address baseToken;
     address tradeToken;
     uint price;
+    uint originalAmount;
     uint amount;
     uint64 timestamp;
   }

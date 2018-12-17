@@ -61,7 +61,7 @@ library BidHeap {
     returns (OrderNode.Node)
   {
     if (self.nodes.length <= 1) {
-      return OrderNode.Node(0,0,0,0,0,0,0);
+      return OrderNode.Node(0,0,0,0,0,0,0,0);
     }
 
     if (self.nodes.length == 2) {
@@ -113,7 +113,7 @@ library BidHeap {
     view
     returns (OrderNode.Node)
   {
-    return self.nodes.length > i ? self.nodes[i] : OrderNode.Node(0,0,0,0,0,0,0);
+    return self.nodes.length > i ? self.nodes[i] : OrderNode.Node(0,0,0,0,0,0,0,0);
   }
 
   function size(Tree storage self)
@@ -127,21 +127,23 @@ library BidHeap {
   function getOrders(Tree storage self)
     internal
     view
-    returns (uint[], address[], uint[], uint[])
+    returns (uint64[], address[], uint[], uint[], uint[])
   {
-    uint[] memory ids = new uint[](size(self));
+    uint64[] memory ids = new uint64[](size(self));
     address[] memory owners = new address[](size(self));
     uint[] memory prices = new uint[](size(self));
+    uint[] memory originalAmounts = new uint[](size(self));
     uint[] memory amounts = new uint[](size(self));
 
     for (uint i = 0; i < size(self); i++) {
         ids[i] = self.nodes[ROOT_INDEX + i].id;
         owners[i] = self.nodes[ROOT_INDEX + i].owner;
         prices[i] = self.nodes[ROOT_INDEX + i].price;
+        originalAmounts[i] = self.nodes[ROOT_INDEX + i].originalAmount;
         amounts[i] = self.nodes[ROOT_INDEX + i].amount;
     }
 
-    return (ids, owners, prices, amounts);
+    return (ids, owners, prices, originalAmounts, amounts);
   }
 
   function dump(Tree storage self)
@@ -160,7 +162,7 @@ library BidHeap {
   function _init(Tree storage self)
     private
   {
-    if (self.nodes.length == 0) self.nodes.push(OrderNode.Node(0,0,0,0,0,0,0));
+    if (self.nodes.length == 0) self.nodes.push(OrderNode.Node(0,0,0,0,0,0,0,0));
   }
 
   function _insert(Tree storage self, OrderNode.Node memory n, uint i)

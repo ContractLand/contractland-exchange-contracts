@@ -897,15 +897,23 @@ contract("Exchange", () => {
     });
 
     describe("Get Orders", () => {
+        it("should return 0 asks when empty", () => {
+            return checkGetAsks([])
+        })
+
+        it("should return 0 bids when empty", () => {
+            return checkGetBids([])
+        })
+
         it("should get all ask orders", () => {
             let [sell10, sell11, sell12] = [sell(10, 1), sell(11, 1), sell(12, 1)]
             return placeOrder(sell10)
                 .then(() => placeOrder(sell11))
                 .then(() => placeOrder(sell12))
                 .then(() => checkGetAsks([
-                  {id: 1, owner: seller, price: sell10.price, amount: sell10.amount},
-                  {id: 2, owner: seller, price: sell11.price, amount: sell11.amount},
-                  {id: 3, owner: seller, price: sell12.price, amount: sell12.amount},
+                  {id: 1, owner: seller, price: sell10.price, originalAmount: sell10.amount, amount: sell10.amount},
+                  {id: 2, owner: seller, price: sell11.price, originalAmount: sell11.amount, amount: sell11.amount},
+                  {id: 3, owner: seller, price: sell12.price, originalAmount: sell12.amount, amount: sell12.amount},
                 ]))
         })
 
@@ -915,9 +923,29 @@ contract("Exchange", () => {
                 .then(() => placeOrder(buy11))
                 .then(() => placeOrder(buy12))
                 .then(() => checkGetBids([
-                  {id: 3, owner: buyer, price: buy12.price, amount: buy12.amount},
-                  {id: 1, owner: buyer, price: buy10.price, amount: buy10.amount},
-                  {id: 2, owner: buyer, price: buy11.price, amount: buy11.amount},
+                  {id: 3, owner: buyer, price: buy12.price, originalAmount: buy12.amount, amount: buy12.amount},
+                  {id: 1, owner: buyer, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount},
+                  {id: 2, owner: buyer, price: buy11.price, originalAmount: buy11.amount, amount: buy11.amount},
+                ]))
+        })
+
+        it("should get original ask amount after matching", () => {
+            let sellOrder = sell(10, 3)
+            let buyOrder = buy(10, 1)
+            return placeOrder(sellOrder)
+                .then(() => placeOrder(buyOrder))
+                .then(() => checkGetAsks([
+                  {id: 1, owner: seller, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount.minus(buyOrder.amount)}
+                ]))
+        })
+
+        it("should get original bid amount after matching", () => {
+            let buyOrder = buy(10, 3)
+            let sellOrder = sell(10, 1)
+            return placeOrder(buyOrder)
+                .then(() => placeOrder(sellOrder))
+                .then(() => checkGetBids([
+                  {id: 1, owner: buyer, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount.minus(sellOrder.amount)}
                 ]))
         })
     })
@@ -1019,6 +1047,7 @@ contract("Exchange", () => {
                     assert.equal(bids.id[i], expectedBids[i].id)
                     assert.equal(bids.owner[i], expectedBids[i].owner)
                     assert.equal(bids.price[i], expectedBids[i].price)
+                    assert.equal(bids.originalAmount[i], expectedBids[i].originalAmount.toFixed())
                     assert.equal(bids.amount[i], expectedBids[i].amount)
                 }
             })
@@ -1032,6 +1061,7 @@ contract("Exchange", () => {
                     assert.equal(asks.id[i], expectedAsks[i].id)
                     assert.equal(asks.owner[i], expectedAsks[i].owner)
                     assert.equal(asks.price[i], expectedAsks[i].price)
+                    assert.equal(asks.originalAmount[i], expectedAsks[i].originalAmount)
                     assert.equal(asks.amount[i], expectedAsks[i].amount)
                 }
             })
@@ -1126,7 +1156,8 @@ contract("Exchange", () => {
             id: result[0].map(t => t.toNumber()),
             owner: result[1].map(t => t.toString()),
             price: result[2].map(t => t.toNumber()),
-            amount: result[3].map(t => t.toNumber())
+            originalAmount: result[3].map(t => t.toNumber()),
+            amount: result[4].map(t => t.toNumber())
         }
     }
 })
