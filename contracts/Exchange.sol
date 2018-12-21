@@ -231,48 +231,6 @@ contract Exchange is Initializable, Pausable {
         bestBid = orderbooks[baseToken][tradeToken].bids.peak().id;
     }
 
-    function getOrderbookAsks(address baseToken, address tradeToken)
-        external
-        view
-        returns (uint[MAX_ORDERBOOK_FETCH_SIZE] memory prices, uint[MAX_ORDERBOOK_FETCH_SIZE] memory amounts)
-    {
-        AskHeap.Tree storage asks = orderbooks[baseToken][tradeToken].asks;
-
-        uint i = 0;
-        uint previousPrice = 0;
-        while(OrderNode.isValid(asks.peak()) && i < MAX_ORDERBOOK_FETCH_SIZE) {
-            OrderNode.Node memory order = asks.pop();
-            prices[i] = order.price;
-            amounts[i] = amounts[i].add(order.amount);
-            previousPrice = order.price;
-
-            if (asks.peak().price != previousPrice) {
-                i++;
-            }
-        }
-    }
-
-    function getOrderbookBids(address baseToken, address tradeToken)
-        external
-        view
-        returns (uint[MAX_ORDERBOOK_FETCH_SIZE] memory prices, uint[MAX_ORDERBOOK_FETCH_SIZE] memory amounts)
-    {
-        BidHeap.Tree storage bids = orderbooks[baseToken][tradeToken].bids;
-
-        uint i = 0;
-        uint previousPrice = 0;
-        while(OrderNode.isValid(bids.peak()) && i < MAX_ORDERBOOK_FETCH_SIZE) {
-            OrderNode.Node memory order = bids.pop();
-            prices[i] = order.price;
-            amounts[i] = amounts[i].add(order.amount);
-            previousPrice = order.price;
-
-            if (bids.peak().price != previousPrice) {
-                i++;
-            }
-        }
-    }
-
     function getAsks(address baseToken, address tradeToken)
         external
         view
