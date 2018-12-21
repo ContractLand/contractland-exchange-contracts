@@ -55,7 +55,7 @@ contract('Exchange Load Test',  async(accounts) => {
       await exchange.sell(baseToken.address, tradeToken.address, seller, toWei(tradeTokenAmount), toWei(price), { from: seller })
     }
     const lastSellOrder = await exchange.getOrder(TEST_SIZE)
-    assert.equal(fromWei(lastSellOrder[0]).toNumber(), price)
+    assert.equal(fromWei(lastSellOrder[3]).toNumber(), price)
 
     // Buy with a single buy order
     await baseToken.approve(exchange.address, toWei(baseTokenAmount), { from: buyer })
@@ -79,7 +79,7 @@ contract('Exchange Load Test',  async(accounts) => {
       const tx = await exchange.buy(baseToken.address, tradeToken.address, buyer, toWei(baseTokenAmount), toWei(price), { from: buyer })
     }
     const lastSellOrder = await exchange.getOrder(TEST_SIZE)
-    assert.equal(fromWei(lastSellOrder[0]).toNumber(), price)
+    assert.equal(fromWei(lastSellOrder[3]).toNumber(), price)
 
     // Buy with a single sell order
     await tradeToken.approve(exchange.address, toWei(tradeTokenAmount), { from: seller })
