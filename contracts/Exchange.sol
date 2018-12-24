@@ -78,8 +78,6 @@ contract Exchange is Initializable, Pausable {
 
     uint64 constant PRICE_DENOMINATOR = 1000000000000000000; // 18 decimal places. This assumes all tokens trading in exchange has 18 decimal places
 
-    uint16 constant MAX_ORDERBOOK_FETCH_SIZE = 20;
-
     uint64 lastOrderId;
 
     // Mapping of order id to order meta data that helps to identify the order in the book
