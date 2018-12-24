@@ -72,9 +72,9 @@ contract Exchange is Initializable, Pausable {
 
     /* --- START OF V1 VARIABLES --- */
 
-    uint128 constant MAX_ORDER_SIZE = 1000000000000000000000000000; // 1,000,000,000 units in ether
+    uint128 constant MAX_ORDER_SIZE = 1000000000 ether;
 
-    uint64 constant MIN_ORDER_SIZE = 10000000000000; // 0.00001 units in ether
+    uint64 constant MIN_ORDER_SIZE = 0.00001 ether;
 
     uint64 constant PRICE_DENOMINATOR = 1000000000000000000; // 18 decimal places. This assumes all tokens trading in exchange has 18 decimal places
 
