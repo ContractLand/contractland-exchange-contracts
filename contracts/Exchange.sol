@@ -47,10 +47,10 @@ contract Exchange is Initializable, Pausable {
     event NewTrade(
         address indexed baseToken,
         address indexed tradeToken,
-        uint64 bidId,
-        uint64 askId,
-        address bidOwner,
-        address askOwner,
+        address indexed taker,
+        address maker,
+        uint64 takeOrderId,
+        uint64 makeOrderId,
         bool isSell,
         uint amount,
         uint price,
@@ -317,7 +317,7 @@ contract Exchange is Initializable, Pausable {
             transferFundToUser(order.owner, order.baseToken, baseTokenAmount);
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
-            emit NewTrade(order.baseToken, order.tradeToken, matchingOrder.id, order.id, matchingOrder.owner, order.owner, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
+            emit NewTrade(order.baseToken, order.tradeToken, order.owner, matchingOrder.owner, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
                 bids.updateAmountById(matchingOrder.id, matchingOrder.amount);
@@ -356,7 +356,7 @@ contract Exchange is Initializable, Pausable {
             transferFundToUser(matchingOrder.owner, order.baseToken, tradeAmount.mul(matchingOrder.price).div(PRICE_DENOMINATOR));
             transferFundToUser(order.owner, order.tradeToken, tradeAmount);
 
-            emit NewTrade(order.baseToken, order.tradeToken, order.id, matchingOrder.id, order.owner, matchingOrder.owner, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
+            emit NewTrade(order.baseToken, order.tradeToken, order.owner, matchingOrder.owner, order.id, matchingOrder.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
                 asks.updateAmountById(matchingOrder.id, matchingOrder.amount);

@@ -480,7 +480,7 @@ contract("Exchange", () => {
         it("the best buy order should be partially filled by a new sell order", () => {
             const buyOrder = buy(100, 5);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: sellOrder.amount, price: buyOrder.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsStates = [{makeOrderId: 1, takeOrderId: 2, taker: seller, maker: buyer, isSell: true, amount: sellOrder.amount, price: buyOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrder)
                 .then(() => placeOrder(sellOrder))
@@ -500,7 +500,7 @@ contract("Exchange", () => {
         it("the best sell order should be partially filled by a new buy order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 5);
-            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: buyOrder.amount, price: sellOrder.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsStates = [{takeOrderId: 2, makeOrderId: 1, taker: buyer, maker: seller, isSell: false, amount: buyOrder.amount, price: sellOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrder)
                 .then(() => placeOrder(buyOrder))
@@ -523,7 +523,7 @@ contract("Exchange", () => {
         it("a new sell order should be partially filled by the best buy order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 5);
-            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: buyOrder.amount, price: buyOrder.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsStates = [{makeOrderId: 1, takeOrderId: 2, taker: seller, maker: buyer, isSell: true, amount: buyOrder.amount, price: buyOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrder)
                 .then(() => placeOrder(sellOrder))
@@ -540,7 +540,7 @@ contract("Exchange", () => {
         it("a new buy order should be partially filled by the best sell order", () => {
             const buyOrder = buy(100, 5);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: sellOrder.amount, price: sellOrder.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsStates = [{takeOrderId: 2, makeOrderId: 1, isSell: false, taker: buyer, maker: seller, amount: sellOrder.amount, price: sellOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrder)
                 .then(() => placeOrder(buyOrder))
@@ -560,7 +560,7 @@ contract("Exchange", () => {
         it("a new sell order should be completely filled and completely fill the best buy order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 1, askId: 2, side: false, amount: sellOrder.amount, price: buyOrder.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsStates = [{makeOrderId: 1, takeOrderId: 2, isSell: true, taker: seller, maker: buyer, amount: sellOrder.amount, price: buyOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrder)
                 .then(() => placeOrder(sellOrder))
@@ -577,7 +577,7 @@ contract("Exchange", () => {
         it("a new buy order should be completely filled and completely fill the best sell order", () => {
             const buyOrder = buy(100, 2);
             const sellOrder = sell(90, 2);
-            const tradeEventsStates = [{bidId: 2, askId: 1, side: true, amount: sellOrder.amount, price: sellOrder.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsStates = [{takeOrderId: 2, makeOrderId: 1, isSell: false, taker: buyer, maker: seller, amount: sellOrder.amount, price: sellOrder.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrder)
                 .then(() => placeOrder(buyOrder))
@@ -595,8 +595,8 @@ contract("Exchange", () => {
             let [buy1, buy2, buy3] = [buy(100, 2), buy(110, 3), buy(120, 4)]
             const sellOrder = sell(105, 10);
             const tradeEventsStates = [
-                {bidId: 3, askId: 4, side: false, amount: buy3.amount, price: buy3.price, askOwner: seller, bidOwner: buyer},
-                {bidId: 2, askId: 4, side: false, amount: buy2.amount, price: buy2.price, askOwner: seller, bidOwner: buyer}
+                {makeOrderId: 3, takeOrderId: 4, isSell: true, taker: seller, maker: buyer, amount: buy3.amount, price: buy3.price},
+                {makeOrderId: 2, takeOrderId: 4, isSell: true, taker: seller, maker: buyer, amount: buy2.amount, price: buy2.price}
             ];
             const newTradeWatcher = exchange.NewTrade();
             const expectedTokenSoldAmount = buy3.amount.plus(buy2.amount);
@@ -620,8 +620,8 @@ contract("Exchange", () => {
             let [sell1, sell2, sell3] = [sell(120, 4), sell(110, 3), sell(100, 2)]
             const buyOrder = buy(115, 10);
             const tradeEventsStates = [
-                {bidId: 4, askId: 3, side: true, amount: sell3.amount, price: sell3.price, askOwner: seller, bidOwner: buyer},
-                {bidId: 4, askId: 2, side: true, amount: sell2.amount, price: sell2.price, askOwner: seller, bidOwner: buyer}
+                {takeOrderId: 4, makeOrderId: 3, isSell: false, taker: buyer, maker: seller, amount: sell3.amount, price: sell3.price},
+                {takeOrderId: 4, makeOrderId: 2, isSell: false, taker: buyer, maker: seller, amount: sell2.amount, price: sell2.price}
             ];
             const newTradeWatcher = exchange.NewTrade();
             const expectedTokenBoughtAmount = sell3.amount.plus(sell2.amount);
@@ -651,9 +651,9 @@ contract("Exchange", () => {
             const sellOrderOne = sell(90, 5);
             const sellOrderTwo = sell(90, 5);
             const sellOrderThree = sell(90, 5);
-            const tradeEventsOne = [{bidId: 1, askId: 4, side: false, amount: buyOrderOne.amount, price: buyOrderOne.price, askOwner: seller, bidOwner: buyer}];
-            const tradeEventsTwo = [{bidId: 2, askId: 5, side: false, amount: buyOrderTwo.amount, price: buyOrderTwo.price, askOwner: seller, bidOwner: buyer}];
-            const tradeEventsThree = [{bidId: 3, askId: 6, side: false, amount: buyOrderThree.amount, price: buyOrderThree.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsOne = [{makeOrderId: 1, takeOrderId: 4, isSell: true, taker:seller, maker: buyer, amount: buyOrderOne.amount, price: buyOrderOne.price}];
+            const tradeEventsTwo = [{makeOrderId: 2, takeOrderId: 5, isSell: true, taker:seller, maker: buyer, amount: buyOrderTwo.amount, price: buyOrderTwo.price}];
+            const tradeEventsThree = [{makeOrderId: 3, takeOrderId: 6, isSell: true, taker:seller, maker: buyer, amount: buyOrderThree.amount, price: buyOrderThree.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(buyOrderOne)
                 .then(() => placeOrder(buyOrderTwo))
@@ -677,9 +677,9 @@ contract("Exchange", () => {
             const buyOrderOne = buy(90, 5);
             const buyOrderTwo = buy(90, 5);
             const buyOrderThree = buy(90, 5);
-            const tradeEventsOne = [{bidId: 4, askId: 1, side: true, amount: sellOrderOne.amount, price: sellOrderOne.price, askOwner: seller, bidOwner: buyer}];
-            const tradeEventsTwo = [{bidId: 5, askId: 2, side: true, amount: sellOrderTwo.amount, price: sellOrderTwo.price, askOwner: seller, bidOwner: buyer}];
-            const tradeEventsThree = [{bidId: 6, askId: 3, side: true, amount: sellOrderThree.amount, price: sellOrderThree.price, askOwner: seller, bidOwner: buyer}];
+            const tradeEventsOne = [{takeOrderId: 4, makeOrderId: 1, isSell: false, taker: buyer, maker: seller, amount: sellOrderOne.amount, price: sellOrderOne.price}];
+            const tradeEventsTwo = [{takeOrderId: 5, makeOrderId: 2, isSell: false, taker: buyer, maker: seller, amount: sellOrderTwo.amount, price: sellOrderTwo.price}];
+            const tradeEventsThree = [{takeOrderId: 6, makeOrderId: 3, isSell: false, taker: buyer, maker: seller, amount: sellOrderThree.amount, price: sellOrderThree.price}];
             const newTradeWatcher = exchange.NewTrade();
             return placeOrder(sellOrderOne)
                 .then(() => placeOrder(sellOrderTwo))
@@ -1096,7 +1096,7 @@ contract("Exchange", () => {
             assert.equal(event.askId, state.askId);
             assert.equal(event.bidOwner, state.bidOwner);
             assert.equal(event.askOwner, state.askOwner);
-            assert.equal(event.isSell, state.side);
+            assert.equal(event.isSell, state.isSell);
             assert.equal(event.amount.toString(), state.amount.toString());
             assert.equal(event.price.toString(), state.price.toString());
         }
