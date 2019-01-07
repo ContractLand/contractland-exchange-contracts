@@ -8,8 +8,18 @@ library OrderNode {
     address baseToken;
     address tradeToken;
     uint price;
+    uint originalAmount;
     uint amount;
+    bool isSell;
     uint64 timestamp;
+  }
+
+  function isValid(Node n)
+    internal
+    pure
+    returns (bool)
+  {
+    return n.id > 0;
   }
 
   function isGreaterThan(Node storage self, Node memory b)

@@ -438,7 +438,7 @@ contract("Exchange", () => {
                 .then(() => placeOrder(buy(3, 1)))
                 .then(() => placeOrder(buy(4, 1)))
                 .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestBid = orderbook[1].toFixed()}))
-                .then(() => exchange.getOrder(bestBid).then(order => {bestBidPrice = order[0].toFixed()}))
+                .then(() => exchange.getOrder(bestBid).then(order => {bestBidPrice = order[3].toFixed()}))
                 .then(() => assert.equal(bestBidPrice, 4000000000000000000))
         });
 
@@ -449,7 +449,7 @@ contract("Exchange", () => {
                 .then(() => placeOrder(buy(2, 1)))
                 .then(() => placeOrder(buy(4, 1)))
                 .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestBid = orderbook[1].toFixed()}))
-                .then(() => exchange.getOrder(bestBid).then(order => {bestBidPrice = order[0].toFixed()}))
+                .then(() => exchange.getOrder(bestBid).then(order => {bestBidPrice = order[3].toFixed()}))
                 .then(() => assert.equal(bestBidPrice, 4000000000000000000))
         });
 
@@ -460,7 +460,7 @@ contract("Exchange", () => {
                 .then(() => placeOrder(sell(3, 1)))
                 .then(() => placeOrder(sell(2, 1)))
                 .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestAsk = orderbook[0].toFixed()}))
-                .then(() => exchange.getOrder(bestAsk).then(order => {bestAskPrice = order[0].toFixed()}))
+                .then(() => exchange.getOrder(bestAsk).then(order => {bestAskPrice = order[3].toFixed()}))
                 .then(() => assert.equal(bestAskPrice, 2000000000000000000))
         });
 
@@ -471,7 +471,7 @@ contract("Exchange", () => {
                 .then(() => placeOrder(sell(4, 1)))
                 .then(() => placeOrder(sell(2, 1)))
                 .then(() => exchange.getOrderBookInfo(baseToken.address, tradeToken.address).then(orderbook => {bestAsk = orderbook[0].toFixed()}))
-                .then(() => exchange.getOrder(bestAsk).then(order => {bestAskPrice = order[0].toFixed()}))
+                .then(() => exchange.getOrder(bestAsk).then(order => {bestAskPrice = order[3].toFixed()}))
                 .then(() => assert.equal(bestAskPrice, 2000000000000000000))
         });
     });
@@ -710,7 +710,7 @@ contract("Exchange", () => {
                 .then(() => checkOrder(2, {amount: buyOrderTwo.amount, price: buyOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: buyOrderOne.amount, price: buyOrderOne.price}))
                 .then(() => checkGetOrderbookAsks([]))
-                .then(() => checkGetOrderbookBids([{amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}, {amount: buyOrderTwo.amount, price: buyOrderTwo.price}, {amount: buyOrderOne.amount, price: buyOrderOne.price}]))
+                .then(() => checkGetOrderbookBids([{id: 3, owner: buyer, price: buyOrderThree.price, originalAmount: buyOrderThree.amount, amount: buyOrderThree.amount - sellOrder.amount}, {id: 1, owner: buyer, price: buyOrderOne.price, originalAmount: buyOrderOne.amount, amount: buyOrderOne.amount}, {id: 2, owner: buyer, price: buyOrderTwo.price, originalAmount: buyOrderThree.amount, amount: buyOrderTwo.amount}]))
         })
 
         it("sell order should match the best priced buy order after adding orders with the same price", () => {
@@ -727,7 +727,7 @@ contract("Exchange", () => {
                 .then(() => checkOrder(2, {amount: buyOrderTwo.amount, price: buyOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: buyOrderOne.amount, price: buyOrderOne.price}))
                 .then(() => checkGetOrderbookAsks([]))
-                .then(() => checkGetOrderbookBids([{amount: buyOrderThree.amount - sellOrder.amount, price: buyOrderThree.price}, {amount: buyOrderTwo.amount.plus(buyOrderOne.amount), price: buyOrderTwo.price}]))
+                .then(() => checkGetOrderbookBids([{id: 3, owner: buyer, price: buyOrderThree.price, originalAmount: buyOrderThree.amount, amount: buyOrderThree.amount - sellOrder.amount}, {id: 2, owner: buyer, price: buyOrderTwo.price, originalAmount: buyOrderThree.amount, amount: buyOrderTwo.amount}, {id: 1, owner: buyer, price: buyOrderOne.price, originalAmount: buyOrderOne.amount, amount: buyOrderOne.amount}]))
         })
 
         it("buy order should match the best priced sell order", () => {
@@ -743,7 +743,7 @@ contract("Exchange", () => {
                 .then(() => checkOrder(3, {amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}))
                 .then(() => checkOrder(2, {amount: sellOrderTwo.amount, price: sellOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: sellOrderOne.amount, price: sellOrderOne.price}))
-                .then(() => checkGetOrderbookAsks([{amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}, {amount: sellOrderTwo.amount, price: sellOrderTwo.price}, {amount: sellOrderOne.amount, price: sellOrderOne.price}]))
+                .then(() => checkGetOrderbookAsks([{id: 3, owner: seller, price: sellOrderThree.price, originalAmount: sellOrderThree.amount, amount: sellOrderThree.amount - buyOrder.amount}, {id:1, owner: seller, price: sellOrderOne.price, originalAmount: sellOrderOne.amount, amount: sellOrderOne.amount}, {id: 2, owner:seller, price: sellOrderTwo.price, originalAmount: sellOrderTwo.amount, amount: sellOrderTwo.amount}]))
                 .then(() => checkGetOrderbookBids([]))
         })
 
@@ -760,7 +760,7 @@ contract("Exchange", () => {
                 .then(() => checkOrder(3, {amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}))
                 .then(() => checkOrder(2, {amount: sellOrderTwo.amount, price: sellOrderTwo.price}))
                 .then(() => checkOrder(1, {amount: sellOrderOne.amount, price: sellOrderOne.price}))
-                .then(() => checkGetOrderbookAsks([{amount: sellOrderThree.amount - buyOrder.amount, price: sellOrderThree.price}, {amount: sellOrderTwo.amount.plus(sellOrderOne.amount), price: sellOrderTwo.price}]))
+                .then(() => checkGetOrderbookAsks([{id: 3, owner: seller, price: sellOrderThree.price, originalAmount: sellOrderThree.amount, amount: sellOrderThree.amount - buyOrder.amount}, {id: 2, owner:seller, price: sellOrderTwo.price, originalAmount: sellOrderTwo.amount, amount: sellOrderTwo.amount}, {id:1, owner: seller, price: sellOrderOne.price, originalAmount: sellOrderOne.amount, amount: sellOrderOne.amount}]))
                 .then(() => checkGetOrderbookBids([]))
         })
 
@@ -774,9 +774,13 @@ contract("Exchange", () => {
             .then(() => placeOrder(buy10))
             .then(() => placeOrder(buy12))
             .then(() => checkGetOrderbookBids([
-              {amount: buy12.amount * 3, price: buy12.price},
-              {amount: buy11.amount, price: buy11.price},
-              {amount: buy10.amount * 3, price: buy10.price},
+              {id: 4, owner: buyer, price: buy12.price, originalAmount: buy12.amount, amount: buy12.amount},
+              {id: 5, owner: buyer, price: buy12.price, originalAmount: buy12.amount, amount: buy12.amount},
+              {id: 7, owner: buyer, price: buy12.price, originalAmount: buy12.amount, amount: buy12.amount},
+              {id: 2, owner: buyer, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount},
+              {id: 3, owner: buyer, price: buy11.price, originalAmount: buy11.amount, amount: buy11.amount},
+              {id: 6, owner: buyer, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount},
+              {id: 1, owner: buyer, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount}
             ]))
       })
 
@@ -793,10 +797,16 @@ contract("Exchange", () => {
             .then(() => placeOrder(ask15))
             .then(() => placeOrder(ask13))
             .then(() => checkGetOrderbookAsks([
-              {amount: ask12.amount * 2, price: ask12.price},
-              {amount: ask13.amount * 3, price: ask13.price},
-              {amount: ask14.amount * 2, price: ask14.price},
-              {amount: ask15.amount * 3, price: ask15.price},
+              {id: 7, owner: seller, price: ask12.price, originalAmount: ask12.amount, amount: ask12.amount},
+              {id: 8, owner: seller, price: ask12.price, originalAmount: ask12.amount, amount: ask12.amount},
+              {id: 5, owner: seller, price: ask13.price, originalAmount: ask13.amount, amount: ask13.amount},
+              {id: 3, owner: seller, price: ask14.price, originalAmount: ask14.amount, amount: ask14.amount},
+              {id: 10, owner: seller, price: ask13.price, originalAmount: ask13.amount, amount: ask13.amount},
+              {id: 1, owner: seller, price: ask15.price, originalAmount: ask15.amount, amount: ask15.amount},
+              {id: 6, owner: seller, price: ask13.price, originalAmount: ask13.amount, amount: ask13.amount},
+              {id: 2, owner: seller, price: ask15.price, originalAmount: ask15.amount, amount: ask15.amount},
+              {id: 9, owner: seller, price: ask15.price, originalAmount: ask15.amount, amount: ask15.amount},
+              {id: 4, owner: seller, price: ask14.price, originalAmount: ask14.amount, amount: ask14.amount}
             ]))
       })
     });
@@ -896,28 +906,56 @@ contract("Exchange", () => {
         })
     });
 
-    describe("Dump Orders", () => {
-        it("should dump all ask orders", () => {
+    describe("Get Orders", () => {
+        it("should return 0 asks when empty", () => {
+            return checkGetAsks([])
+        })
+
+        it("should return 0 bids when empty", () => {
+            return checkGetBids([])
+        })
+
+        it("should get all ask orders", () => {
             let [sell10, sell11, sell12] = [sell(10, 1), sell(11, 1), sell(12, 1)]
             return placeOrder(sell10)
                 .then(() => placeOrder(sell11))
                 .then(() => placeOrder(sell12))
-                .then(() => checkDumpAsks([
-                  {id: 1, owner: seller, price: sell10.price, amount: sell10.amount},
-                  {id: 2, owner: seller, price: sell11.price, amount: sell11.amount},
-                  {id: 3, owner: seller, price: sell12.price, amount: sell12.amount},
+                .then(() => checkGetAsks([
+                  {id: 1, owner: seller, price: sell10.price, originalAmount: sell10.amount, amount: sell10.amount},
+                  {id: 2, owner: seller, price: sell11.price, originalAmount: sell11.amount, amount: sell11.amount},
+                  {id: 3, owner: seller, price: sell12.price, originalAmount: sell12.amount, amount: sell12.amount},
                 ]))
         })
 
-        it("should dump all bid orders", () => {
+        it("should get all bid orders", () => {
             let [buy10, buy11, buy12] = [buy(10, 1), buy(11, 1), buy(12, 1)]
             return placeOrder(buy10)
                 .then(() => placeOrder(buy11))
                 .then(() => placeOrder(buy12))
-                .then(() => checkDumpBids([
-                  {id: 3, owner: buyer, price: buy12.price, amount: buy12.amount},
-                  {id: 1, owner: buyer, price: buy10.price, amount: buy10.amount},
-                  {id: 2, owner: buyer, price: buy11.price, amount: buy11.amount},
+                .then(() => checkGetBids([
+                  {id: 3, owner: buyer, price: buy12.price, originalAmount: buy12.amount, amount: buy12.amount},
+                  {id: 1, owner: buyer, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount},
+                  {id: 2, owner: buyer, price: buy11.price, originalAmount: buy11.amount, amount: buy11.amount},
+                ]))
+        })
+
+        it("should get original ask amount after matching", () => {
+            let sellOrder = sell(10, 3)
+            let buyOrder = buy(10, 1)
+            return placeOrder(sellOrder)
+                .then(() => placeOrder(buyOrder))
+                .then(() => checkGetAsks([
+                  {id: 1, owner: seller, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount.minus(buyOrder.amount)}
+                ]))
+        })
+
+        it("should get original bid amount after matching", () => {
+            let buyOrder = buy(10, 3)
+            let sellOrder = sell(10, 1)
+            return placeOrder(buyOrder)
+                .then(() => placeOrder(sellOrder))
+                .then(() => checkGetBids([
+                  {id: 1, owner: buyer, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount.minus(sellOrder.amount)}
                 ]))
         })
     })
@@ -973,11 +1011,11 @@ contract("Exchange", () => {
         return exchange.getOrder(id)
             .then(order => {
                 if (orderState.price != undefined)
-                    assert.equal(order[0].toFixed(), orderState.price, "price")
+                    assert.equal(order[3].toFixed(), orderState.price, "price")
                 if (orderState.sell != undefined)
-                    assert.equal(order[1], orderState.sell, "order type")
+                    assert.equal(order[6], orderState.sell, "order type")
                 if (orderState.amount != undefined)
-                    assert.equal(order[2].toFixed(), orderState.amount, "amount")
+                    assert.equal(order[5].toFixed(), orderState.amount, "amount")
             });
     }
 
@@ -990,48 +1028,56 @@ contract("Exchange", () => {
     }
 
     function checkGetOrderbookAsks(expectedAsks) {
-        return exchange.getOrderbookAsks(baseToken.address, tradeToken.address)
+        return exchange.getAsks(baseToken.address, tradeToken.address)
             .then(result => {
-                const asks = parseGetOrderbookResult(result);
+                const asks = parseGetResult(result);
                 for (let i = 0; i < expectedAsks.length; i++) {
+                    assert.equal(asks.id[i], expectedAsks[i].id);
+                    assert.equal(asks.owner[i], expectedAsks[i].owner);
                     assert.equal(asks.price[i], expectedAsks[i].price);
+                    assert.equal(asks.originalAmount[i], expectedAsks[i].originalAmount);
                     assert.equal(asks.amount[i], expectedAsks[i].amount);
                 }
             });
     }
 
     function checkGetOrderbookBids(expectedBids) {
-        return exchange.getOrderbookBids(baseToken.address, tradeToken.address)
+        return exchange.getBids(baseToken.address, tradeToken.address)
             .then(result => {
-                const bids = parseGetOrderbookResult(result);
+                const bids = parseGetResult(result);
                 for (let i = 0; i < expectedBids.length; i++) {
+                    assert.equal(bids.id[i], expectedBids[i].id);
+                    assert.equal(bids.owner[i], expectedBids[i].owner);
                     assert.equal(bids.price[i], expectedBids[i].price);
+                    assert.equal(bids.originalAmount[i], expectedBids[i].originalAmount);
                     assert.equal(bids.amount[i], expectedBids[i].amount);
                 }
             });
     }
 
-    function checkDumpBids(expectedBids) {
-        return exchange.dumpBids(baseToken.address, tradeToken.address)
+    function checkGetBids(expectedBids) {
+        return exchange.getBids(baseToken.address, tradeToken.address)
             .then(result => {
-                const bids = parseDumpResult(result)
+                const bids = parseGetResult(result)
                 for (let i = 0; i < expectedBids.length; i++) {
                     assert.equal(bids.id[i], expectedBids[i].id)
                     assert.equal(bids.owner[i], expectedBids[i].owner)
                     assert.equal(bids.price[i], expectedBids[i].price)
+                    assert.equal(bids.originalAmount[i], expectedBids[i].originalAmount.toFixed())
                     assert.equal(bids.amount[i], expectedBids[i].amount)
                 }
             })
     }
 
-    function checkDumpAsks(expectedAsks) {
-        return exchange.dumpAsks(baseToken.address, tradeToken.address)
+    function checkGetAsks(expectedAsks) {
+        return exchange.getAsks(baseToken.address, tradeToken.address)
             .then(result => {
-                const asks = parseDumpResult(result)
+                const asks = parseGetResult(result)
                 for (let i = 0; i < expectedAsks.length; i++) {
                     assert.equal(asks.id[i], expectedAsks[i].id)
                     assert.equal(asks.owner[i], expectedAsks[i].owner)
                     assert.equal(asks.price[i], expectedAsks[i].price)
+                    assert.equal(asks.originalAmount[i], expectedAsks[i].originalAmount)
                     assert.equal(asks.amount[i], expectedAsks[i].amount)
                 }
             })
@@ -1050,7 +1096,7 @@ contract("Exchange", () => {
             assert.equal(event.askId, state.askId);
             assert.equal(event.bidOwner, state.bidOwner);
             assert.equal(event.askOwner, state.askOwner);
-            assert.equal(event.side, state.side);
+            assert.equal(event.isSell, state.side);
             assert.equal(event.amount.toString(), state.amount.toString());
             assert.equal(event.price.toString(), state.price.toString());
         }
@@ -1065,7 +1111,7 @@ contract("Exchange", () => {
         assert.equal(event.tradeToken, tradeToken.address);
         assert.equal(event.owner, expectedState.from);
         assert.equal(event.id, expectedState.id);
-        assert.equal(event.side, expectedState.side);
+        assert.equal(event.isSell, expectedState.sell);
         assert.equal(event.price.toString(), expectedState.price.toString());
         assert.equal(event.amount.toString(), expectedState.amount.toString());
     }
@@ -1079,7 +1125,7 @@ contract("Exchange", () => {
         assert.equal(event.tradeToken, expectedState.tradeToken);
         assert.equal(event.owner, expectedState.owner);
         assert.equal(event.id.toString(), expectedState.id.toString());
-        assert.equal(event.sell, expectedState.sell);
+        assert.equal(event.isSell, expectedState.sell);
         assert.equal(event.price.toString(), expectedState.price.toString());
         assert.equal(event.amount.toString(), expectedState.amount.toString());
     }
@@ -1114,19 +1160,14 @@ contract("Exchange", () => {
             });
     }
 
-    function parseGetOrderbookResult(result) {
-        return {
-            price: result[0].map(t => t.toNumber()),
-            amount: result[1].map(t => t.toNumber())
-        }
-    }
-
-    function parseDumpResult(result) {
+    function parseGetResult(result) {
         return {
             id: result[0].map(t => t.toNumber()),
             owner: result[1].map(t => t.toString()),
             price: result[2].map(t => t.toNumber()),
-            amount: result[3].map(t => t.toNumber())
+            originalAmount: result[3].map(t => t.toNumber()),
+            amount: result[4].map(t => t.toNumber())
         }
     }
+
 })

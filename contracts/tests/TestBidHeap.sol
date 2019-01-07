@@ -9,7 +9,7 @@ contract TestBidHeap {
   BidHeap.Tree data;
 
   function add(uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) public {
-    data.add(OrderNode.Node(id, owner, baseToken, tradeToken, price, amount, timestamp));
+    data.add(OrderNode.Node(id, owner, baseToken, tradeToken, price, amount, amount, false, timestamp));
   }
 
   function pop() public returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp){
@@ -34,8 +34,8 @@ contract TestBidHeap {
   function updateAmountById(uint64 id, uint newAmount) public {
     data.updateAmountById(id, newAmount);
   }
-  
-  function peak() public returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) {
+
+  function peak() public view returns (uint64 id, address owner, address baseToken, address tradeToken, uint price, uint amount, uint64 timestamp) {
     OrderNode.Node memory n = data.peak();
     id = n.id;
     owner = n.owner;

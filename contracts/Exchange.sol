@@ -38,7 +38,7 @@ contract Exchange is Initializable, Pausable {
         address indexed tradeToken,
         address indexed owner,
         uint64 id,
-        bool sell,
+        bool isSell,
         uint price,
         uint amount,
         uint64 timestamp
@@ -51,7 +51,7 @@ contract Exchange is Initializable, Pausable {
         uint64 askId,
         address bidOwner,
         address askOwner,
-        bool side,
+        bool isSell,
         uint amount,
         uint price,
         uint64 timestamp
@@ -62,7 +62,7 @@ contract Exchange is Initializable, Pausable {
         address indexed tradeToken,
         address indexed owner,
         uint64 id,
-        bool sell,
+        bool isSell,
         uint price,
         uint amount,
         uint64 timestamp
@@ -72,13 +72,11 @@ contract Exchange is Initializable, Pausable {
 
     /* --- START OF V1 VARIABLES --- */
 
-    uint128 constant MAX_ORDER_SIZE = 1000000000000000000000000000; // 1,000,000,000 units in ether
+    uint128 constant MAX_ORDER_SIZE = 1000000000 ether;
 
-    uint64 constant MIN_ORDER_SIZE = 10000000000000; // 0.00001 units in ether
+    uint64 constant MIN_ORDER_SIZE = 0.00001 ether;
 
     uint64 constant PRICE_DENOMINATOR = 1000000000000000000; // 18 decimal places. This assumes all tokens trading in exchange has 18 decimal places
-
-    uint16 constant MAX_ORDERBOOK_FETCH_SIZE = 20;
 
     uint64 lastOrderId;
 
@@ -121,7 +119,7 @@ contract Exchange is Initializable, Pausable {
         transferFundFromUser(orderOwner, tradeToken, amount);
 
         uint64 id = ++lastOrderId;
-        OrderNode.Node memory order = OrderNode.Node(id, orderOwner, baseToken, tradeToken, price, amount, uint64(block.timestamp));
+        OrderNode.Node memory order = OrderNode.Node(id, orderOwner, baseToken, tradeToken, price, amount, amount, true, uint64(block.timestamp));
 
         emit NewOrder(baseToken, tradeToken, orderOwner, id, true, price, amount, order.timestamp);
 
@@ -153,7 +151,7 @@ contract Exchange is Initializable, Pausable {
         transferFundFromUser(orderOwner, baseToken, baseTokenAmount);
 
         uint64 id = ++lastOrderId;
-        OrderNode.Node memory order = OrderNode.Node(id, orderOwner, baseToken, tradeToken, price, amount, uint64(block.timestamp));
+        OrderNode.Node memory order = OrderNode.Node(id, orderOwner, baseToken, tradeToken, price, amount, amount, false, uint64(block.timestamp));
 
         emit NewOrder(baseToken, tradeToken, orderOwner, id, false, price, amount, order.timestamp);
 
@@ -193,19 +191,33 @@ contract Exchange is Initializable, Pausable {
     function getOrder(uint64 id)
         external
         view
-        returns (uint price, bool isSell, uint amount)
+        returns (
+            address owner,
+            address baseToken,
+            address tradeToken,
+            uint price,
+            uint originalAmount,
+            uint amount,
+            bool isSell,
+            uint64 timestamp
+        )
     {
         OrderInfo memory orderInfo = orderInfoMap[id];
-
         OrderNode.Node memory order;
         if (orderInfo.isSell) {
           order = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].asks.getById(id);
         } else {
           order = orderbooks[orderInfo.baseToken][orderInfo.tradeToken].bids.getById(id);
         }
+
+        owner = order.owner;
+        baseToken = order.baseToken;
+        tradeToken = order.tradeToken;
         price = order.price;
-        isSell = orderInfo.isSell;
+        originalAmount = order.originalAmount;
         amount = order.amount;
+        isSell = order.isSell;
+        timestamp = order.timestamp;
     }
 
     function getOrderBookInfo(address baseToken, address tradeToken)
@@ -217,92 +229,20 @@ contract Exchange is Initializable, Pausable {
         bestBid = orderbooks[baseToken][tradeToken].bids.peak().id;
     }
 
-    function getOrderbookAsks(address baseToken, address tradeToken)
+    function getAsks(address baseToken, address tradeToken)
         external
         view
-        returns (uint[MAX_ORDERBOOK_FETCH_SIZE] memory prices, uint[MAX_ORDERBOOK_FETCH_SIZE] memory amounts)
+        returns (uint64[], address[], uint[], uint[], uint[], uint64[])
     {
-        AskHeap.Tree storage asks = orderbooks[baseToken][tradeToken].asks;
-
-        uint i = 0;
-        uint previousPrice = 0;
-        while(BidHeap.isValid(asks.peak()) && i < MAX_ORDERBOOK_FETCH_SIZE) {
-            OrderNode.Node memory order = asks.pop();
-            prices[i] = order.price;
-            amounts[i] = amounts[i].add(order.amount);
-            previousPrice = order.price;
-
-            if (asks.peak().price != previousPrice) {
-                i++;
-            }
-        }
+        return orderbooks[baseToken][tradeToken].asks.getOrders();
     }
 
-    function getOrderbookBids(address baseToken, address tradeToken)
+    function getBids(address baseToken, address tradeToken)
         external
         view
-        returns (uint[MAX_ORDERBOOK_FETCH_SIZE] memory prices, uint[MAX_ORDERBOOK_FETCH_SIZE] memory amounts)
+        returns (uint64[], address[], uint[], uint[], uint[], uint64[])
     {
-        BidHeap.Tree storage bids = orderbooks[baseToken][tradeToken].bids;
-
-        uint i = 0;
-        uint previousPrice = 0;
-        while(BidHeap.isValid(bids.peak()) && i < MAX_ORDERBOOK_FETCH_SIZE) {
-            OrderNode.Node memory order = bids.pop();
-            prices[i] = order.price;
-            amounts[i] = amounts[i].add(order.amount);
-            previousPrice = order.price;
-
-            if (bids.peak().price != previousPrice) {
-                i++;
-            }
-        }
-    }
-
-    function dumpAsks(address baseToken, address tradeToken)
-        external
-        view
-        returns (uint[], address[], uint[], uint[])
-    {
-        AskHeap.Tree storage asks = orderbooks[baseToken][tradeToken].asks;
-        uint size = asks.size();
-        OrderNode.Node[] memory nodes = asks.dump();
-        uint[] memory ids = new uint[](size);
-        address[] memory owners = new address[](size);
-        uint[] memory prices = new uint[](size);
-        uint[] memory amounts = new uint[](size);
-
-        for (uint i = 0; i < size; i++) {
-            ids[i] = nodes[i+1].id;
-            owners[i] = nodes[i+1].owner;
-            prices[i] = nodes[i+1].price;
-            amounts[i] = nodes[i+1].amount;
-        }
-
-        return (ids, owners, prices, amounts);
-    }
-
-    function dumpBids(address baseToken, address tradeToken)
-        external
-        view
-        returns (uint[], address[], uint[], uint[])
-    {
-        BidHeap.Tree storage bids = orderbooks[baseToken][tradeToken].bids;
-        uint size = bids.size();
-        OrderNode.Node[] memory nodes = bids.dump();
-        uint[] memory ids = new uint[](size);
-        address[] memory owners = new address[](size);
-        uint[] memory prices = new uint[](size);
-        uint[] memory amounts = new uint[](size);
-
-        for (uint i = 0; i < size; i++) {
-            ids[i] = nodes[i+1].id;
-            owners[i] = nodes[i+1].owner;
-            prices[i] = nodes[i+1].price;
-            amounts[i] = nodes[i+1].amount;
-        }
-
-        return (ids, owners, prices, amounts);
+        return orderbooks[baseToken][tradeToken].bids.getOrders();
     }
 
     /* --- INTERNAL / PRIVATE METHODS --- */
@@ -356,7 +296,7 @@ contract Exchange is Initializable, Pausable {
         BidHeap.Tree storage bids = orderbooks[order.baseToken][order.tradeToken].bids;
 
         while (order.amount != 0 &&
-               BidHeap.isValid(bids.peak()) &&
+               OrderNode.isValid(bids.peak()) &&
                order.price <= bids.peak().price) {
             OrderNode.Node memory matchingOrder = bids.peak();
             uint tradeAmount;
@@ -395,7 +335,7 @@ contract Exchange is Initializable, Pausable {
         AskHeap.Tree storage asks = orderbooks[order.baseToken][order.tradeToken].asks;
 
         while (order.amount != 0 &&
-               BidHeap.isValid(asks.peak()) &&
+               OrderNode.isValid(asks.peak()) &&
                order.price >= asks.peak().price) {
             OrderNode.Node memory matchingOrder = asks.peak();
             uint tradeAmount;
