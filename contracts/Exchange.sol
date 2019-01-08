@@ -47,7 +47,7 @@ contract Exchange is Initializable, Pausable {
     event NewTrade(
         address indexed baseToken,
         address indexed tradeToken,
-        address indexed taker,
+        address taker,
         address maker,
         uint64 takeOrderId,
         uint64 makeOrderId,
