@@ -1090,8 +1090,7 @@ contract("Exchange", () => {
         for (let i = 0; i < events.length; i++) {
             let event = events[i].args;
             let state = eventsState[i];
-            assert.equal(event.baseToken, baseToken.address);
-            assert.equal(event.tradeToken, tradeToken.address);
+            assert.equal(event.tokenPairHash, getTokenPairHash());
             assert.equal(event.bidId, state.bidId);
             assert.equal(event.askId, state.askId);
             assert.equal(event.bidOwner, state.bidOwner);
@@ -1170,4 +1169,11 @@ contract("Exchange", () => {
         }
     }
 
+    function getTokenPairHash() {
+        const baseTokenStr = (baseToken.address).replace(/^0x/, '')
+        const tradeTokenStr = (tradeToken.address).replace(/^0x/, '')
+        const tokenPair = `0x${baseTokenStr}${tradeTokenStr}`
+        const hash = web3.sha3(tokenPair, {encoding: 'hex'})
+        return hash
+    }
 })

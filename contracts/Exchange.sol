@@ -45,10 +45,9 @@ contract Exchange is Initializable, Pausable {
     );
 
     event NewTrade(
-        address indexed baseToken,
-        address indexed tradeToken,
-        address taker,
-        address maker,
+        bytes32 indexed tokenPairHash,
+        address indexed taker,
+        address indexed maker,
         uint64 takeOrderId,
         uint64 makeOrderId,
         bool isSell,
@@ -317,7 +316,8 @@ contract Exchange is Initializable, Pausable {
             transferFundToUser(order.owner, order.baseToken, baseTokenAmount);
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
-            emit NewTrade(order.baseToken, order.tradeToken, order.owner, matchingOrder.owner, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
+            bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
+            emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
                 bids.updateAmountById(matchingOrder.id, matchingOrder.amount);
@@ -356,7 +356,8 @@ contract Exchange is Initializable, Pausable {
             transferFundToUser(matchingOrder.owner, order.baseToken, tradeAmount.mul(matchingOrder.price).div(PRICE_DENOMINATOR));
             transferFundToUser(order.owner, order.tradeToken, tradeAmount);
 
-            emit NewTrade(order.baseToken, order.tradeToken, order.owner, matchingOrder.owner, order.id, matchingOrder.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
+            bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
+            emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
 
             if (matchingOrder.amount != 0) {
                 asks.updateAmountById(matchingOrder.id, matchingOrder.amount);
