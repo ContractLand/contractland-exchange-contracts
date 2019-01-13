@@ -7,7 +7,7 @@ Token exchange with orderbook and matching engine implemented as a smart contrac
 * Trading directly from user wallet (address) without upfront deposit
 
 ## Algorithmic complexity
-The orderbook is built with a combination of maps and tree (Red and Black Tree) to optimized performance.
+The orderbook is built with a combination of maps and tree (Heap Tree) to optimized performance.
 
 * Order search O(log n)
 * Order insertion O(log n)
