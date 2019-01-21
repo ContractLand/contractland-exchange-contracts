@@ -842,6 +842,30 @@ contract("Exchange", () => {
                 await cancelOrder(1, exchangeOwner).should.be.fulfilled
             })
         })
+
+        describe("Set Order Limits", () => {
+            it("should only allow owner to set max order size", async () => {
+                const currentMax = await exchange.MAX_ORDER_SIZE()
+                const newMax = currentMax.times(2)
+
+                await exchange.setMaxOrderSize(newMax, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+                await exchange.setMaxOrderSize(newMax, { from: exchangeOwner }).should.be.fulfilled
+
+                const actualMax = await exchange.MAX_ORDER_SIZE()
+                assert(actualMax.toString(), newMax.toString())
+            })
+
+            it("should only allow owner to set min order size", async () => {
+                const currentMin = await exchange.MIN_ORDER_SIZE()
+                const newMin = currentMin.times(2)
+
+                await exchange.setMinOrderSize(newMin, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+                await exchange.setMinOrderSize(newMin, { from: exchangeOwner }).should.be.fulfilled
+
+                const actualMin = await exchange.MIN_ORDER_SIZE()
+                assert(actualMin.toString(), newMin.toString())
+            })
+        })
     })
 
     describe("Upgrade", () => {
