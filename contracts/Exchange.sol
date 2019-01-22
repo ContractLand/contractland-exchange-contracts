@@ -71,9 +71,9 @@ contract Exchange is Initializable, Pausable {
 
     /* --- START OF V1 VARIABLES --- */
 
-    uint128 constant MAX_ORDER_SIZE = 1000000000 ether;
+    uint128 public MAX_ORDER_SIZE;
 
-    uint64 constant MIN_ORDER_SIZE = 0.00001 ether;
+    uint64 public MIN_ORDER_SIZE;
 
     uint64 constant PRICE_DENOMINATOR = 1000000000000000000; // 18 decimal places. This assumes all tokens trading in exchange has 18 decimal places
 
@@ -96,6 +96,9 @@ contract Exchange is Initializable, Pausable {
         public
         isInitializer
     {
+        MAX_ORDER_SIZE = 1000000000 ether;
+        MIN_ORDER_SIZE = 0.00001 ether;
+
         owner = msg.sender; // initialize owner for admin functionalities
     }
 
@@ -244,6 +247,20 @@ contract Exchange is Initializable, Pausable {
         return orderbooks[baseToken][tradeToken].bids.getOrders();
     }
 
+    function setMaxOrderSize(uint128 newMax)
+        external
+        onlyOwner
+    {
+        MAX_ORDER_SIZE = newMax;
+    }
+
+    function setMinOrderSize(uint64 newMin)
+        external
+        onlyOwner
+    {
+        MIN_ORDER_SIZE = newMin;
+    }
+
     /* --- INTERNAL / PRIVATE METHODS --- */
 
     function isValidOrder(
@@ -253,7 +270,7 @@ contract Exchange is Initializable, Pausable {
         uint price
     )
         private
-        pure
+        view
         returns (bool)
     {
         return tradeTokenAmount != 0 &&
