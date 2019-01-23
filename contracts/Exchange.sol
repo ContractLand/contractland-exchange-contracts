@@ -71,9 +71,11 @@ contract Exchange is Initializable, Pausable {
 
     /* --- START OF V1 VARIABLES --- */
 
-    uint128 public MAX_ORDER_SIZE;
+    uint64 public MIN_PRICE_SIZE;
 
-    uint64 public MIN_ORDER_SIZE;
+    uint64 public MIN_AMOUNT_SIZE;
+
+    uint128 public MAX_TOTAL_SIZE;
 
     uint64 constant PRICE_DENOMINATOR = 1000000000000000000; // 18 decimal places. This assumes all tokens trading in exchange has 18 decimal places
 
@@ -96,8 +98,9 @@ contract Exchange is Initializable, Pausable {
         public
         isInitializer
     {
-        MAX_ORDER_SIZE = 1000000000 ether;
-        MIN_ORDER_SIZE = 0.00001 ether;
+        MIN_PRICE_SIZE = 0.00000001 ether;
+        MIN_AMOUNT_SIZE = 0.0001 ether;
+        MAX_TOTAL_SIZE = 1000000000 ether;
 
         owner = msg.sender; // initialize owner for admin functionalities
     }
@@ -247,18 +250,25 @@ contract Exchange is Initializable, Pausable {
         return orderbooks[baseToken][tradeToken].bids.getOrders();
     }
 
-    function setMaxOrderSize(uint128 newMax)
+    function setMinPriceSize(uint64 newMin)
         external
         onlyOwner
     {
-        MAX_ORDER_SIZE = newMax;
+        MIN_PRICE_SIZE = newMin;
     }
 
-    function setMinOrderSize(uint64 newMin)
+    function setMinAmountSize(uint64 newMin)
         external
         onlyOwner
     {
-        MIN_ORDER_SIZE = newMin;
+        MIN_AMOUNT_SIZE = newMin;
+    }
+
+    function setMaxTotalSize(uint128 newMax)
+        external
+        onlyOwner
+    {
+        MAX_TOTAL_SIZE = newMax;
     }
 
     /* --- INTERNAL / PRIVATE METHODS --- */
@@ -266,21 +276,17 @@ contract Exchange is Initializable, Pausable {
     function isValidOrder(
         address baseToken,
         address tradeToken,
-        uint tradeTokenAmount,
+        uint amount,
         uint price
     )
         private
         view
         returns (bool)
     {
-        return tradeTokenAmount != 0 &&
-               tradeTokenAmount <= MAX_ORDER_SIZE &&
-               tradeTokenAmount >= MIN_ORDER_SIZE &&
-               price != 0 &&
-               baseToken != tradeToken &&
-               tradeTokenAmount.mul(price).div(PRICE_DENOMINATOR) != 0 &&
-               tradeTokenAmount.mul(price).div(PRICE_DENOMINATOR) <= MAX_ORDER_SIZE &&
-               tradeTokenAmount.mul(price).div(PRICE_DENOMINATOR) >= MIN_ORDER_SIZE;
+        return baseToken != tradeToken &&
+               price >= MIN_PRICE_SIZE &&
+               amount >= MIN_AMOUNT_SIZE &&
+               amount.mul(price).div(PRICE_DENOMINATOR) <= MAX_TOTAL_SIZE;
     }
 
     function transferFundFromUser(address sender, address token, uint amount)
