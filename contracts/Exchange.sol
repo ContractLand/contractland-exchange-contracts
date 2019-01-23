@@ -71,6 +71,8 @@ contract Exchange is Initializable, Pausable {
 
     /* --- START OF V1 VARIABLES --- */
 
+    uint64 public MIN_PRICE_SIZE;
+
     uint128 public MAX_ORDER_SIZE;
 
     uint64 public MIN_ORDER_SIZE;
@@ -96,6 +98,7 @@ contract Exchange is Initializable, Pausable {
         public
         isInitializer
     {
+        MIN_PRICE_SIZE = 0.00000001 ether;
         MAX_ORDER_SIZE = 1000000000 ether;
         MIN_ORDER_SIZE = 0.00001 ether;
 
@@ -247,6 +250,13 @@ contract Exchange is Initializable, Pausable {
         return orderbooks[baseToken][tradeToken].bids.getOrders();
     }
 
+    function setMinPriceSize(uint64 newMin)
+        external
+        onlyOwner
+    {
+        MIN_PRICE_SIZE = newMin;
+    }
+
     function setMaxOrderSize(uint128 newMax)
         external
         onlyOwner
@@ -273,11 +283,11 @@ contract Exchange is Initializable, Pausable {
         view
         returns (bool)
     {
-        return tradeTokenAmount != 0 &&
+        return baseToken != tradeToken &&
+               price >= MIN_PRICE_SIZE &&
+               tradeTokenAmount != 0 &&
                tradeTokenAmount <= MAX_ORDER_SIZE &&
                tradeTokenAmount >= MIN_ORDER_SIZE &&
-               price != 0 &&
-               baseToken != tradeToken &&
                tradeTokenAmount.mul(price).div(PRICE_DENOMINATOR) != 0 &&
                tradeTokenAmount.mul(price).div(PRICE_DENOMINATOR) <= MAX_ORDER_SIZE &&
                tradeTokenAmount.mul(price).div(PRICE_DENOMINATOR) >= MIN_ORDER_SIZE;
