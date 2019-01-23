@@ -257,18 +257,18 @@ contract Exchange is Initializable, Pausable {
         MIN_PRICE_SIZE = newMin;
     }
 
-    function setMaxTotalSize(uint128 newMax)
-        external
-        onlyOwner
-    {
-        MAX_TOTAL_SIZE = newMax;
-    }
-
     function setMinAmountSize(uint64 newMin)
         external
         onlyOwner
     {
         MIN_AMOUNT_SIZE = newMin;
+    }
+
+    function setMaxTotalSize(uint128 newMax)
+        external
+        onlyOwner
+    {
+        MAX_TOTAL_SIZE = newMax;
     }
 
     /* --- INTERNAL / PRIVATE METHODS --- */
