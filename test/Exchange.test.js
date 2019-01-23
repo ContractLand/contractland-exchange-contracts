@@ -12,14 +12,14 @@ const ExchangeProxy = artifacts.require('AdminUpgradeabilityProxy')
 const Token = artifacts.require("./TestToken.sol");
 const FallbackTrap = artifacts.require("./FallbackTrap.sol");
 
-contract("Exchange", () => {
+contract.only("Exchange", () => {
     const [deployer, buyer, seller, proxyOwner, exchangeOwner, notExchangeOwner] = web3.eth.accounts;
     let exchange, exchangeProxy, baseToken, tradeToken, orderId, fallbackTrap;
     const etherAddress = '0x0000000000000000000000000000000000000000'
     const invalidToken = '0x1111111111111111111111111111111111111111'
     const MIN_PRICE_SIZE = toWei(0.00000001)
+    const MIN_AMOUNT_SIZE = toWei(0.0001)
     const MAX_ORDER_SIZE = toWei(1000000000)
-    const MIN_ORDER_SIZE = toWei(0.00001)
     const tokenDepositAmount = MAX_ORDER_SIZE.times(2);
 
     beforeEach(async () => {
@@ -203,11 +203,11 @@ contract("Exchange", () => {
             await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it("should not be able to create sell order with tradeToken amount less than MIN_ORDER_SIZE", async () => {
+        it("should not be able to create sell order with tradeToken amount less than MIN_AMOUNT_SIZE", async () => {
             const order = {
               'baseToken': baseToken.address,
               'tradeToken': tradeToken.address,
-              'amount': MIN_ORDER_SIZE.minus(1),
+              'amount': MIN_AMOUNT_SIZE.minus(1),
               'price': toWei(1),
               'from': seller
             }
@@ -216,12 +216,12 @@ contract("Exchange", () => {
             await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it("should not be able to create sell order with baseToken amount less than MIN_ORDER_SIZE", async () => {
+        it("should not be able to create sell order with baseToken amount less than MIN_AMOUNT_SIZE", async () => {
             const order = {
               'baseToken': baseToken.address,
               'tradeToken': tradeToken.address,
               'amount': toWei(1),
-              'price': MIN_ORDER_SIZE.minus(1),
+              'price': MIN_AMOUNT_SIZE.minus(1),
               'from': seller
             }
 
@@ -229,11 +229,11 @@ contract("Exchange", () => {
             await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it("should not be able to create buy order with tradeToken amount less than MIN_ORDER_SIZE", async () => {
+        it("should not be able to create buy order with tradeToken amount less than MIN_AMOUNT_SIZE", async () => {
             const order = {
               'baseToken': baseToken.address,
               'tradeToken': tradeToken.address,
-              'amount': MIN_ORDER_SIZE.minus(1),
+              'amount': MIN_AMOUNT_SIZE.minus(1),
               'price': toWei(1),
               'from': buyer
             }
@@ -242,12 +242,12 @@ contract("Exchange", () => {
             await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it("should not be able to create buy order with baseToken amount less than MIN_ORDER_SIZE", async () => {
+        it("should not be able to create buy order with baseToken amount less than MIN_AMOUNT_SIZE", async () => {
             const order = {
               'baseToken': baseToken.address,
               'tradeToken': tradeToken.address,
               'amount': toWei(1),
-              'price': MIN_ORDER_SIZE.minus(1),
+              'price': MIN_AMOUNT_SIZE.minus(1),
               'from': buyer
             }
 
@@ -894,13 +894,13 @@ contract("Exchange", () => {
             })
 
             it("should only allow owner to set min order size", async () => {
-                const currentMin = await exchange.MIN_ORDER_SIZE()
+                const currentMin = await exchange.MIN_AMOUNT_SIZE()
                 const newMin = currentMin.times(2)
 
-                await exchange.setMinOrderSize(newMin, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
-                await exchange.setMinOrderSize(newMin, { from: exchangeOwner }).should.be.fulfilled
+                await exchange.setMinAmountSize(newMin, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+                await exchange.setMinAmountSize(newMin, { from: exchangeOwner }).should.be.fulfilled
 
-                const actualMin = await exchange.MIN_ORDER_SIZE()
+                const actualMin = await exchange.MIN_AMOUNT_SIZE()
                 assert(actualMin.toString(), newMin.toString())
             })
         })
