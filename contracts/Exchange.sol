@@ -75,7 +75,7 @@ contract Exchange is Initializable, Pausable {
 
     uint64 public MIN_AMOUNT_SIZE;
 
-    uint128 public MAX_ORDER_SIZE;
+    uint128 public MAX_TOTAL_SIZE;
 
     uint64 constant PRICE_DENOMINATOR = 1000000000000000000; // 18 decimal places. This assumes all tokens trading in exchange has 18 decimal places
 
@@ -100,7 +100,7 @@ contract Exchange is Initializable, Pausable {
     {
         MIN_PRICE_SIZE = 0.00000001 ether;
         MIN_AMOUNT_SIZE = 0.0001 ether;
-        MAX_ORDER_SIZE = 1000000000 ether;
+        MAX_TOTAL_SIZE = 1000000000 ether;
 
         owner = msg.sender; // initialize owner for admin functionalities
     }
@@ -257,11 +257,11 @@ contract Exchange is Initializable, Pausable {
         MIN_PRICE_SIZE = newMin;
     }
 
-    function setMaxOrderSize(uint128 newMax)
+    function setMaxTotalSize(uint128 newMax)
         external
         onlyOwner
     {
-        MAX_ORDER_SIZE = newMax;
+        MAX_TOTAL_SIZE = newMax;
     }
 
     function setMinAmountSize(uint64 newMin)
@@ -286,10 +286,7 @@ contract Exchange is Initializable, Pausable {
         return baseToken != tradeToken &&
                price >= MIN_PRICE_SIZE &&
                amount >= MIN_AMOUNT_SIZE &&
-               amount <= MAX_ORDER_SIZE &&
-               amount.mul(price).div(PRICE_DENOMINATOR) != 0 &&
-               amount.mul(price).div(PRICE_DENOMINATOR) <= MAX_ORDER_SIZE &&
-               amount.mul(price).div(PRICE_DENOMINATOR) >= MIN_AMOUNT_SIZE;
+               amount.mul(price).div(PRICE_DENOMINATOR) <= MAX_TOTAL_SIZE;
     }
 
     function transferFundFromUser(address sender, address token, uint amount)

@@ -12,15 +12,15 @@ const ExchangeProxy = artifacts.require('AdminUpgradeabilityProxy')
 const Token = artifacts.require("./TestToken.sol");
 const FallbackTrap = artifacts.require("./FallbackTrap.sol");
 
-contract.only("Exchange", () => {
+contract("Exchange", () => {
     const [deployer, buyer, seller, proxyOwner, exchangeOwner, notExchangeOwner] = web3.eth.accounts;
     let exchange, exchangeProxy, baseToken, tradeToken, orderId, fallbackTrap;
     const etherAddress = '0x0000000000000000000000000000000000000000'
     const invalidToken = '0x1111111111111111111111111111111111111111'
     const MIN_PRICE_SIZE = toWei(0.00000001)
     const MIN_AMOUNT_SIZE = toWei(0.0001)
-    const MAX_ORDER_SIZE = toWei(1000000000)
-    const tokenDepositAmount = MAX_ORDER_SIZE.times(2);
+    const MAX_TOTAL_SIZE = toWei(1000000000)
+    const tokenDepositAmount = MAX_TOTAL_SIZE.times(2);
 
     beforeEach(async () => {
         orderId = 1;
@@ -151,11 +151,11 @@ contract.only("Exchange", () => {
           await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it("should not be able to create sell order with tradeToken amount greater than MAX_ORDER_SIZE", async () => {
+        it("should not be able to create sell order with total amount greater than MAX_TOTAL_SIZE", async () => {
             const order = {
               'baseToken': baseToken.address,
               'tradeToken': tradeToken.address,
-              'amount': MAX_ORDER_SIZE.plus(1),
+              'amount': MAX_TOTAL_SIZE.plus(1),
               'price': 1,
               'from': seller
             }
@@ -164,24 +164,11 @@ contract.only("Exchange", () => {
             await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it("should not be able to create sell order with baseToken amount greater than MAX_ORDER_SIZE", async () => {
+        it("should not be able to create buy order with total amount greater than MAX_TOTAL_SIZE", async () => {
             const order = {
               'baseToken': baseToken.address,
               'tradeToken': tradeToken.address,
-              'amount': toWei(1),
-              'price': MAX_ORDER_SIZE.plus(1),
-              'from': seller
-            }
-
-            await tradeToken.approve(exchange.address, order.amount, { from: order.from })
-            await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
-        })
-
-        it("should not be able to create buy order with tradeToken amount greater than MAX_ORDER_SIZE", async () => {
-            const order = {
-              'baseToken': baseToken.address,
-              'tradeToken': tradeToken.address,
-              'amount': MAX_ORDER_SIZE.plus(1),
+              'amount': MAX_TOTAL_SIZE.plus(1),
               'price': 1,
               'from': buyer
             }
@@ -190,20 +177,7 @@ contract.only("Exchange", () => {
             await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it("should not be able to create buy order with baseToken amount greater than MAX_ORDER_SIZE", async () => {
-            const order = {
-              'baseToken': baseToken.address,
-              'tradeToken': tradeToken.address,
-              'amount': toWei(1),
-              'price': MAX_ORDER_SIZE.plus(1),
-              'from': buyer
-            }
-
-            await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
-            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
-        })
-
-        it("should not be able to create sell order with tradeToken amount less than MIN_AMOUNT_SIZE", async () => {
+        it("should not be able to create sell order with amount less than MIN_AMOUNT_SIZE", async () => {
             const order = {
               'baseToken': baseToken.address,
               'tradeToken': tradeToken.address,
@@ -216,38 +190,12 @@ contract.only("Exchange", () => {
             await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
         })
 
-        it("should not be able to create sell order with baseToken amount less than MIN_AMOUNT_SIZE", async () => {
-            const order = {
-              'baseToken': baseToken.address,
-              'tradeToken': tradeToken.address,
-              'amount': toWei(1),
-              'price': MIN_AMOUNT_SIZE.minus(1),
-              'from': seller
-            }
-
-            await tradeToken.approve(exchange.address, order.amount, { from: order.from })
-            await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
-        })
-
-        it("should not be able to create buy order with tradeToken amount less than MIN_AMOUNT_SIZE", async () => {
+        it("should not be able to create buy order with amount less than MIN_AMOUNT_SIZE", async () => {
             const order = {
               'baseToken': baseToken.address,
               'tradeToken': tradeToken.address,
               'amount': MIN_AMOUNT_SIZE.minus(1),
               'price': toWei(1),
-              'from': buyer
-            }
-
-            await baseToken.approve(exchange.address, order.amount * order.price, { from: order.from })
-            await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, {from: order.from}).should.be.rejectedWith(EVMRevert)
-        })
-
-        it("should not be able to create buy order with baseToken amount less than MIN_AMOUNT_SIZE", async () => {
-            const order = {
-              'baseToken': baseToken.address,
-              'tradeToken': tradeToken.address,
-              'amount': toWei(1),
-              'price': MIN_AMOUNT_SIZE.minus(1),
               'from': buyer
             }
 
@@ -883,13 +831,13 @@ contract.only("Exchange", () => {
             })
 
             it("should only allow owner to set max order size", async () => {
-                const currentMax = await exchange.MAX_ORDER_SIZE()
+                const currentMax = await exchange.MAX_TOTAL_SIZE()
                 const newMax = currentMax.times(2)
 
-                await exchange.setMaxOrderSize(newMax, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
-                await exchange.setMaxOrderSize(newMax, { from: exchangeOwner }).should.be.fulfilled
+                await exchange.setMaxTotalSize(newMax, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+                await exchange.setMaxTotalSize(newMax, { from: exchangeOwner }).should.be.fulfilled
 
-                const actualMax = await exchange.MAX_ORDER_SIZE()
+                const actualMax = await exchange.MAX_TOTAL_SIZE()
                 assert(actualMax.toString(), newMax.toString())
             })
 
