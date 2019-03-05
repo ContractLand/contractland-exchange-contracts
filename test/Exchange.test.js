@@ -979,7 +979,7 @@ contract("Exchange", () => {
               .then(() => placeOrder(sell10))
               .then(() => placeOrder(sell10))
               .then(() => placeOrder(buy10))
-              .then(() => checkTradeHistory([
+              .then(() => checkTrades([
                 {id: 4, price: sell10.price, amount: sell10.amount.mul(2), isSell: false},
                 {id: 4, price: sell9.price, amount: sell9.amount, isSell: false}
               ]))
@@ -993,7 +993,7 @@ contract("Exchange", () => {
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(sell10))
-              .then(() => checkTradeHistory([
+              .then(() => checkTrades([
                 {id: 4, price: buy10.price, amount: buy10.amount.mul(2), isSell: true},
                 {id: 4, price: buy11.price, amount: buy11.amount, isSell: true}
               ]))
@@ -1124,8 +1124,8 @@ contract("Exchange", () => {
             })
     }
 
-    function checkTradeHistory(expectedTrades) {
-        return exchange.getTradeHistory(baseToken.address, tradeToken.address)
+    function checkTrades(expectedTrades) {
+        return exchange.getTrades(baseToken.address, tradeToken.address)
             .then(result => {
                 const trades = parseTradeResult(result)
                 for (let i = 0; i < expectedTrades.length; i++) {

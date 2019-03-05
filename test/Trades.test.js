@@ -1,10 +1,10 @@
-const TestTradeHistory = artifacts.require("TestTradeHistory")
+const TestTrades = artifacts.require("TestTrades")
 
-contract('TradeHistory',  async(accounts) => {
+contract('Trades',  async(accounts) => {
   let tradeHistoryTest;
 
   beforeEach(async () => {
-    tradeHistoryTest = await TestTradeHistory.new()
+    tradeHistoryTest = await TestTrades.new()
   })
 
   describe("Trades", async() => {
@@ -23,7 +23,7 @@ contract('TradeHistory',  async(accounts) => {
       tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp)
       tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp)
 
-      await checkTradeHistory([trade3, trade2, trade1])
+      await checkTrades([trade3, trade2, trade1])
     })
 
     it("should consolidate trades with same order id and price", async() => {
@@ -39,11 +39,11 @@ contract('TradeHistory',  async(accounts) => {
         {id: 2, price: 2, amount: 5, isSell: true, timestamp: 2},
         trade1
       ]
-      await checkTradeHistory(expectedTrades)
+      await checkTrades(expectedTrades)
     })
   })
 
-  async function checkTradeHistory(expectedTrades) {
+  async function checkTrades(expectedTrades) {
       const result = await tradeHistoryTest.getTrades()
       const actualTrades = parseTradeResult(result)
       for (let i = 0; i < expectedTrades.length; i++) {

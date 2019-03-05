@@ -9,7 +9,7 @@ import "./interfaces/ERC20.sol";
 import "./libraries/OrderNode.sol";
 import "./libraries/AskHeap.sol";
 import "./libraries/BidHeap.sol";
-import "./libraries/TradeHistory.sol";
+import "./libraries/Trades.sol";
 
 import "./DestructibleTransfer.sol";
 
@@ -17,7 +17,7 @@ contract Exchange is Initializable, Pausable {
     using SafeMath for uint;
     using AskHeap for AskHeap.Tree;
     using BidHeap for BidHeap.Tree;
-    using TradeHistory for TradeHistory.List;
+    using Trades for Trades.List;
 
     /* --- STRUCTS --- */
 
@@ -93,7 +93,7 @@ contract Exchange is Initializable, Pausable {
     mapping(address => mapping (address => uint)) public reserved;
 
     // Mapping of base token to trade token to trade history
-    mapping(address => mapping(address => TradeHistory.List)) tradeHistorys;
+    mapping(address => mapping(address => Trades.List)) trades;
 
     /* --- END OF V1 VARIABLES --- */
 
@@ -255,12 +255,12 @@ contract Exchange is Initializable, Pausable {
         return orderbooks[baseToken][tradeToken].bids.getOrders();
     }
 
-    function getTradeHistory(address baseToken, address tradeToken)
+    function getTrades(address baseToken, address tradeToken)
         external
         view
         returns (uint64[], uint[], uint[], bool[], uint64[])
     {
-        return tradeHistorys[baseToken][tradeToken].getTrades();
+        return trades[baseToken][tradeToken].getTrades();
     }
 
     function setMinPriceSize(uint64 newMin)
@@ -354,7 +354,7 @@ contract Exchange is Initializable, Pausable {
 
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
-            tradeHistorys[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true, order.timestamp));
+            trades[order.baseToken][order.tradeToken].add(Trades.Trade(order.id, matchingOrder.price, tradeAmount, true, order.timestamp));
 
             if (matchingOrder.amount != 0) {
                 bids.updateAmountById(matchingOrder.id, matchingOrder.amount);
@@ -395,7 +395,7 @@ contract Exchange is Initializable, Pausable {
 
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
-            tradeHistorys[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false, order.timestamp));
+            trades[order.baseToken][order.tradeToken].add(Trades.Trade(order.id, matchingOrder.price, tradeAmount, false, order.timestamp));
 
             if (matchingOrder.amount != 0) {
                 asks.updateAmountById(matchingOrder.id, matchingOrder.amount);
