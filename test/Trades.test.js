@@ -2,6 +2,7 @@ const TestTrades = artifacts.require("TestTrades")
 
 contract('Trades',  async(accounts) => {
   let tradeHistoryTest;
+  const GET_TRADES_LIMIT_DEFAULT = 10
 
   beforeEach(async () => {
     tradeHistoryTest = await TestTrades.new()
@@ -9,7 +10,7 @@ contract('Trades',  async(accounts) => {
 
   describe("Trades", async() => {
     it("should return empty when there are no trades", async() => {
-      const actualTrades = await tradeHistoryTest.getTrades()
+      const actualTrades = await tradeHistoryTest.getTrades(GET_TRADES_LIMIT_DEFAULT)
       const emptyTrades = [ [], [], [], [], [] ]
       assert.deepEqual(actualTrades, emptyTrades)
     })
@@ -23,7 +24,7 @@ contract('Trades',  async(accounts) => {
       tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp)
       tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp)
 
-      await checkTrades([trade3, trade2, trade1])
+      await checkTrades([trade3, trade2, trade1], GET_TRADES_LIMIT_DEFAULT)
     })
 
     it("should consolidate trades with same order id and price", async() => {
@@ -39,12 +40,27 @@ contract('Trades',  async(accounts) => {
         {id: 2, price: 2, amount: 5, isSell: true, timestamp: 2},
         trade1
       ]
-      await checkTrades(expectedTrades)
+      await checkTrades(expectedTrades, GET_TRADES_LIMIT_DEFAULT)
+    })
+
+    it("getTrades should not exceed limit", async() => {
+      const trade = {price: 1, amount: 1, isSell: false, timestamp: 1}
+
+      tradeHistoryTest.add(1, trade.price, trade.amount, trade.isSell, trade.timestamp)
+      tradeHistoryTest.add(2, trade.price, trade.amount, trade.isSell, trade.timestamp)
+      tradeHistoryTest.add(3, trade.price, trade.amount, trade.isSell, trade.timestamp)
+
+      const expectedTrades = [
+        {id: 3, price: 1, amount: 1, isSell: false, timestamp: 1},
+        {id: 2, price: 1, amount: 1, isSell: false, timestamp: 1}
+      ]
+
+      await checkTrades(expectedTrades, 2)
     })
   })
 
-  async function checkTrades(expectedTrades) {
-      const result = await tradeHistoryTest.getTrades()
+  async function checkTrades(expectedTrades, limit) {
+      const result = await tradeHistoryTest.getTrades(limit)
       const actualTrades = parseTradeResult(result)
       for (let i = 0; i < expectedTrades.length; i++) {
           assert.equal(actualTrades.id[i], expectedTrades[i].id)

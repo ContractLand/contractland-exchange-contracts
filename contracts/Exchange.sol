@@ -79,6 +79,8 @@ contract Exchange is Initializable, Pausable {
 
     uint128 public MAX_TOTAL_SIZE;
 
+    uint16 public MAX_GET_TRADES_SIZE;
+
     uint64 constant PRICE_DENOMINATOR = 1000000000000000000; // 18 decimal places. This assumes all tokens trading in exchange has 18 decimal places
 
     uint64 lastOrderId;
@@ -106,6 +108,7 @@ contract Exchange is Initializable, Pausable {
         MIN_PRICE_SIZE = 0.00000001 ether;
         MIN_AMOUNT_SIZE = 0.0001 ether;
         MAX_TOTAL_SIZE = 1000000000 ether;
+        MAX_GET_TRADES_SIZE = 1000;
 
         owner = msg.sender; // initialize owner for admin functionalities
     }
@@ -255,12 +258,13 @@ contract Exchange is Initializable, Pausable {
         return orderbooks[baseToken][tradeToken].bids.getOrders();
     }
 
-    function getTrades(address baseToken, address tradeToken)
+    function getTrades(address baseToken, address tradeToken, uint16 limit)
         external
         view
         returns (uint64[], uint[], uint[], bool[], uint64[])
     {
-        return trades[baseToken][tradeToken].getTrades();
+        uint16 getLimit = limit < MAX_GET_TRADES_SIZE ? limit : MAX_GET_TRADES_SIZE;
+        return trades[baseToken][tradeToken].getTrades(getLimit);
     }
 
     function setMinPriceSize(uint64 newMin)
@@ -282,6 +286,13 @@ contract Exchange is Initializable, Pausable {
         onlyOwner
     {
         MAX_TOTAL_SIZE = newMax;
+    }
+
+    function setMaxGetTradesSize(uint16 newMax)
+        external
+        onlyOwner
+    {
+        MAX_GET_TRADES_SIZE = newMax;
     }
 
     /* --- INTERNAL / PRIVATE METHODS --- */

@@ -33,23 +33,36 @@ library Trades {
     self.trades.push(n);
   }
 
-  function getTrades(List storage self)
+  function getTrades(List storage self, uint16 limit)
     internal
     view
     returns (uint64[], uint[], uint[], bool[], uint64[])
   {
-    uint64[] memory ids = new uint64[](self.trades.length);
-    uint[] memory prices = new uint[](self.trades.length);
-    uint[] memory amounts = new uint[](self.trades.length);
-    bool[] memory isSells = new bool[](self.trades.length);
-    uint64[] memory timestamps = new uint64[](self.trades.length);
+    uint retSize = self.trades.length < limit ? self.trades.length : limit;
 
-    for (uint i = 0; i < self.trades.length; i++) {
-        ids[i] = self.trades[self.trades.length - 1 - i].id;
-        prices[i] = self.trades[self.trades.length - 1 - i].price;
-        amounts[i] = self.trades[self.trades.length - 1 - i].amount;
-        isSells[i] = self.trades[self.trades.length - 1 - i].isSell;
-        timestamps[i] = self.trades[self.trades.length - 1 - i].timestamp;
+    if (retSize == 0) {
+      return;
+    }
+
+    uint64[] memory ids = new uint64[](retSize);
+    uint[] memory prices = new uint[](retSize);
+    uint[] memory amounts = new uint[](retSize);
+    bool[] memory isSells = new bool[](retSize);
+    uint64[] memory timestamps = new uint64[](retSize);
+
+    uint count = 0;
+    for (uint i = self.trades.length - 1; i >= 0; i--) {
+      if (count >= retSize) {
+        break;
+      }
+
+      ids[count] = self.trades[i].id;
+      prices[count] = self.trades[i].price;
+      amounts[count] = self.trades[i].amount;
+      isSells[count] = self.trades[i].isSell;
+      timestamps[count] = self.trades[i].timestamp;
+
+      count++;
     }
 
     return (ids, prices, amounts, isSells, timestamps);

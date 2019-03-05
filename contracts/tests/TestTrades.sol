@@ -11,7 +11,7 @@ contract TestTrades {
     data.add(Trades.Trade(id, price, amount, isSell, timestamp));
   }
 
-  function getTrades() public view returns (uint64[], uint[], uint[], bool[], uint64[]) {
-    return data.getTrades();
+  function getTrades(uint16 limit) public view returns (uint64[], uint[], uint[], bool[], uint64[]) {
+    return data.getTrades(limit);
   }
 }
