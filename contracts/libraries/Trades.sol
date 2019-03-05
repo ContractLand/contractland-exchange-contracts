@@ -16,6 +16,14 @@ library Trades {
     Trade[] trades;
   }
 
+  struct GetTradesResult {
+    uint64[] ids;
+    uint[] prices;
+    uint[] amounts;
+    bool[] isSells;
+    uint64[] timestamps;
+  }
+
   /* --- PUBLIC --- */
 
   function add(List storage self, Trade memory n)
@@ -44,11 +52,12 @@ library Trades {
       return;
     }
 
-    uint64[] memory ids = new uint64[](retSize);
-    uint[] memory prices = new uint[](retSize);
-    uint[] memory amounts = new uint[](retSize);
-    bool[] memory isSells = new bool[](retSize);
-    uint64[] memory timestamps = new uint64[](retSize);
+    GetTradesResult memory results;
+    results.ids = new uint64[](retSize);
+    results.prices = new uint[](retSize);
+    results.amounts = new uint[](retSize);
+    results.isSells = new bool[](retSize);
+    results.timestamps = new uint64[](retSize);
 
     uint count = 0;
     for (uint i = self.trades.length - 1; i >= 0; i--) {
@@ -56,15 +65,15 @@ library Trades {
         break;
       }
 
-      ids[count] = self.trades[i].id;
-      prices[count] = self.trades[i].price;
-      amounts[count] = self.trades[i].amount;
-      isSells[count] = self.trades[i].isSell;
-      timestamps[count] = self.trades[i].timestamp;
+      results.ids[count] = self.trades[i].id;
+      results.prices[count] = self.trades[i].price;
+      results.amounts[count] = self.trades[i].amount;
+      results.isSells[count] = self.trades[i].isSell;
+      results.timestamps[count] = self.trades[i].timestamp;
 
       count++;
     }
 
-    return (ids, prices, amounts, isSells, timestamps);
+    return (results.ids, results.prices, results.amounts, results.isSells, results.timestamps);
   }
 }
