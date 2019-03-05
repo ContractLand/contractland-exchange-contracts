@@ -970,6 +970,37 @@ contract("Exchange", () => {
         })
     })
 
+    describe("Trade History", () => {
+        it("should return consolidated buy trades", () => {
+          let buy10 = buy(10, 3)
+          let sell9 = sell(9, 1)
+          let sell10 = sell(10, 1)
+          return placeOrder(sell9)
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(buy10))
+              .then(() => checkTradeHistory([
+                {id: 4, price: sell10.price, amount: sell10.amount.mul(2), isSell: false},
+                {id: 4, price: sell9.price, amount: sell9.amount, isSell: false}
+              ]))
+        })
+
+        it("should return consolidated sell trades", () => {
+          let sell10 = sell(10, 3)
+          let buy11 = buy(11, 1)
+          let buy10 = buy(10, 1)
+          return placeOrder(buy11)
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(sell10))
+              .then(() => checkTradeHistory([
+                {id: 4, price: buy10.price, amount: buy10.amount.mul(2), isSell: true},
+                {id: 4, price: buy11.price, amount: buy11.amount, isSell: true}
+              ]))
+
+        })
+    })
+
     async function deployExchange() {
         baseToken = await Token.new()
         tradeToken = await Token.new()
@@ -1093,6 +1124,19 @@ contract("Exchange", () => {
             })
     }
 
+    function checkTradeHistory(expectedTrades) {
+        return exchange.getTradeHistory(baseToken.address, tradeToken.address)
+            .then(result => {
+                const trades = parseTradeResult(result)
+                for (let i = 0; i < expectedTrades.length; i++) {
+                    assert.equal(trades.id[i], expectedTrades[i].id)
+                    assert.equal(trades.price[i], expectedTrades[i].price)
+                    assert.equal(trades.amount[i], expectedTrades[i].amount)
+                    assert.equal(trades.isSell[i], expectedTrades[i].isSell)
+                }
+            })
+    }
+
     function checkTradeEvents(watcher, eventsState) {
         let events = watcher.get();
         assert.equal(events.length, eventsState.length);
@@ -1176,6 +1220,15 @@ contract("Exchange", () => {
             price: result[2].map(t => t.toNumber()),
             originalAmount: result[3].map(t => t.toNumber()),
             amount: result[4].map(t => t.toNumber())
+        }
+    }
+
+    function parseTradeResult(result) {
+        return {
+            id: result[0].map(t => t.toNumber()),
+            price: result[1].map(t => t.toNumber()),
+            amount: result[2].map(t => t.toNumber()),
+            isSell: result[3]
         }
     }
 
