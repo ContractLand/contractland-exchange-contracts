@@ -1,0 +1,104 @@
+const TestOpenOrder = artifacts.require("TestOpenOrder")
+
+contract.only('OpenOrder',  async(accounts) => {
+  let openOrderTest;
+
+  beforeEach(async () => {
+    openOrderTest = await TestOpenOrder.new()
+  })
+
+  describe("Adding orders", async() => {
+    const order1 = {id: 1, price: 1, originalAmount: 1, amount: 1, isSell: false, timestamp: 1}
+    const order2 = {id: 2, price: 2, originalAmount: 2, amount: 2, isSell: true, timestamp: 2}
+    const order3 = {id: 3, price: 3, originalAmount: 3, amount: 3, isSell: true, timestamp: 3}
+
+    beforeEach(async () => {
+      openOrderTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.timestamp)
+      openOrderTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.timestamp)
+      openOrderTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.timestamp)
+    })
+
+    it("should add new order to end of list", async() => {
+      await checkOrders([order1, order2, order3])
+    })
+
+    describe("Updating existing order", async() => {
+      it("should update order amount", async() => {
+        const newAmount = 5
+        openOrderTest.update(order1.id, newAmount)
+
+        await checkOrders([
+          {id: order1.id, price: order1.price, originalAmount: order1.originalAmount, amount: newAmount, isSell: order1.isSell, timestamp: order1.timestamp},
+          order2,
+          order3
+        ])
+      })
+    })
+
+    describe("Removing existing order", async() => {
+      it("should remove order from middle list", async() => {
+        openOrderTest.remove(order2.id)
+
+        await checkOrders([
+          order1,
+          order3
+        ])
+      })
+
+      it("should remove order from beginning of list", async() => {
+        openOrderTest.remove(order1.id)
+
+        await checkOrders([
+          order2,
+          order3
+        ])
+      })
+
+      it.only("should remove order from end of list", async() => {
+        openOrderTest.remove(order3.id)
+
+        await checkOrders([
+          order1,
+          order2
+        ])
+      })
+
+      it("should be able to remove all orders from list", async() => {
+        openOrderTest.remove(order1.id)
+        openOrderTest.remove(order2.id)
+        openOrderTest.remove(order3.id)
+
+        await checkOrders([])
+        const actualOrders = await openOrderTest.getOrders()
+        const emptyOrders = [ [], [], [], [], [], [] ]
+        assert.deepEqual(actualOrders, emptyOrders)
+      })
+    })
+  })
+
+  async function checkOrders(expectedOrders) {
+      const result = await openOrderTest.getOrders()
+      const actualOrders = parseOrderResult(result)
+      console.log(actualOrders)
+      assert.equal(actualOrders.id.length, expectedOrders.length)
+      for (let i = 0; i < expectedOrders.length; i++) {
+          assert.equal(actualOrders.id[i], expectedOrders[i].id)
+          assert.equal(actualOrders.price[i], expectedOrders[i].price)
+          assert.equal(actualOrders.originalAmount[i], expectedOrders[i].originalAmount)
+          assert.equal(actualOrders.amount[i], expectedOrders[i].amount)
+          assert.equal(actualOrders.isSell[i], expectedOrders[i].isSell)
+          assert.equal(actualOrders.timestamp[i], expectedOrders[i].timestamp)
+      }
+  }
+
+  function parseOrderResult(result) {
+      return {
+          id: result[0].map(t => t.toNumber()),
+          price: result[1].map(t => t.toNumber()),
+          originalAmount: result[2].map(t => t.toNumber()),
+          amount: result[3].map(t => t.toNumber()),
+          isSell: result[4],
+          timestamp: result[5].map(t => t.toNumber())
+      }
+  }
+})
