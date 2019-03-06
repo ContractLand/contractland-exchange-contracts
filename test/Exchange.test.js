@@ -21,6 +21,7 @@ contract("Exchange", () => {
     const MIN_AMOUNT_SIZE = toWei(0.0001)
     const MAX_TOTAL_SIZE = toWei(1000000000)
     const MAX_GET_TRADES_SIZE = 3
+    const DEFAULT_GET_TRADES_TIME_RANGE = [0, 100]
     const tokenDepositAmount = MAX_TOTAL_SIZE.times(2);
 
     beforeEach(async () => {
@@ -994,7 +995,7 @@ contract("Exchange", () => {
               .then(() => checkTrades([
                 {id: 4, price: sell10.price, amount: sell10.amount.mul(2), isSell: false},
                 {id: 4, price: sell9.price, amount: sell9.amount, isSell: false}
-              ], MAX_GET_TRADES_SIZE))
+              ], DEFAULT_GET_TRADES_TIME_RANGE, MAX_GET_TRADES_SIZE))
         })
 
         it("should return consolidated sell trades", () => {
@@ -1008,13 +1009,14 @@ contract("Exchange", () => {
               .then(() => checkTrades([
                 {id: 4, price: buy10.price, amount: buy10.amount.mul(2), isSell: true},
                 {id: 4, price: buy11.price, amount: buy11.amount, isSell: true}
-              ], MAX_GET_TRADES_SIZE))
+              ], DEFAULT_GET_TRADES_TIME_RANGE, MAX_GET_TRADES_SIZE))
 
         })
 
         it("getTrades should not exceed MAX_GET_TRADES_SIZE", async() => {
           let sell10 = sell(10, 1)
           let buy10 = buy(10, 1)
+          const exceededLimit = 5
           return placeOrder(sell10)
               .then(() => placeOrder(sell10))
               .then(() => placeOrder(sell10))
@@ -1029,7 +1031,7 @@ contract("Exchange", () => {
                 {id: 10, price: buy10.price, amount: buy10.amount, isSell: false},
                 {id: 9, price: buy10.price, amount: buy10.amount, isSell: false},
                 {id: 8, price: buy10.price, amount: buy10.amount, isSell: false}
-              ], 5))
+              ], DEFAULT_GET_TRADES_TIME_RANGE, exceededLimit))
         })
     })
 
@@ -1159,8 +1161,8 @@ contract("Exchange", () => {
             })
     }
 
-    function checkTrades(expectedTrades, limit) {
-        return exchange.getTrades(baseToken.address, tradeToken.address, limit)
+    function checkTrades(expectedTrades, timeRange, limit) {
+        return exchange.getTrades(baseToken.address, tradeToken.address, timeRange, limit)
             .then(result => {
                 const trades = parseTradeResult(result)
                 assert.equal(trades.id.length, expectedTrades.length)

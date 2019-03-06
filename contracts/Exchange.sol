@@ -258,13 +258,13 @@ contract Exchange is Initializable, Pausable {
         return orderbooks[baseToken][tradeToken].bids.getOrders();
     }
 
-    function getTrades(address baseToken, address tradeToken, uint16 limit)
+    function getTrades(address baseToken, address tradeToken, uint64[] timeRange, uint16 limit)
         external
         view
         returns (uint64[], uint[], uint[], bool[], uint64[])
     {
         uint16 getLimit = limit < MAX_GET_TRADES_SIZE ? limit : MAX_GET_TRADES_SIZE;
-        return trades[baseToken][tradeToken].getTrades(getLimit);
+        return trades[baseToken][tradeToken].getTrades(timeRange, getLimit);
     }
 
     function setMinPriceSize(uint64 newMin)
@@ -365,7 +365,7 @@ contract Exchange is Initializable, Pausable {
 
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
-            trades[order.baseToken][order.tradeToken].add(Trades.Trade(order.id, matchingOrder.price, tradeAmount, true, order.timestamp));
+            trades[order.baseToken][order.tradeToken].add(Trades.Trade(order.id, matchingOrder.price, tradeAmount, true), order.timestamp);
 
             if (matchingOrder.amount != 0) {
                 bids.updateAmountById(matchingOrder.id, matchingOrder.amount);
@@ -406,7 +406,7 @@ contract Exchange is Initializable, Pausable {
 
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
-            trades[order.baseToken][order.tradeToken].add(Trades.Trade(order.id, matchingOrder.price, tradeAmount, false, order.timestamp));
+            trades[order.baseToken][order.tradeToken].add(Trades.Trade(order.id, matchingOrder.price, tradeAmount, false), order.timestamp);
 
             if (matchingOrder.amount != 0) {
                 asks.updateAmountById(matchingOrder.id, matchingOrder.amount);
