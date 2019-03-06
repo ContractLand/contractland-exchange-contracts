@@ -21,7 +21,7 @@ contract("Exchange", () => {
     const MIN_AMOUNT_SIZE = toWei(0.0001)
     const MAX_TOTAL_SIZE = toWei(1000000000)
     const MAX_GET_TRADES_SIZE = 3
-    const DEFAULT_GET_TRADES_TIME_RANGE = [0, 100]
+    const DEFAULT_GET_TRADES_TIME_RANGE = [0, 9999999999999]
     const tokenDepositAmount = MAX_TOTAL_SIZE.times(2);
 
     beforeEach(async () => {

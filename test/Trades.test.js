@@ -9,7 +9,7 @@ contract('Trades',  async(accounts) => {
     tradeHistoryTest = await TestTrades.new()
   })
 
-  describe.only("Trades", async() => {
+  describe("Trades", async() => {
     it("should return empty when there are no trades", async() => {
       const actualTrades = await tradeHistoryTest.getTrades(TIME_RANGE_DEFAULT, GET_TRADES_LIMIT_DEFAULT)
       const emptyTrades = [ [], [], [], [], [] ]
