@@ -3,7 +3,7 @@ pragma solidity 0.4.24;
 import "./Math.sol";
 import "./Arrays.sol";
 
-library Trades {
+library TradeHistory {
   using Arrays for uint64[];
 
   /* --- STRUCTS --- */
@@ -15,7 +15,7 @@ library Trades {
     bool isSell;
   }
 
-  struct List {
+  struct Trades {
     Trade[] trades;
     uint64[] timestamps;
   }
@@ -30,7 +30,7 @@ library Trades {
 
   /* --- PUBLIC --- */
 
-  function add(List storage self, Trade memory n, uint64 timestamp)
+  function add(Trades storage self, Trade memory n, uint64 timestamp)
     internal
   {
     uint numOfTrades = self.trades.length;
@@ -51,7 +51,7 @@ library Trades {
    * @param timeRange The unix time range to get. timeRange[0] = startTime, timeRange[1] = endTime.
    * @param limit The size limit for the get.
    */
-  function getTrades(List storage self, uint64[] timeRange, uint16 limit)
+  function getTrades(Trades storage self, uint64[] timeRange, uint16 limit)
     internal
     view
     returns (uint64[], uint[], uint[], bool[], uint64[])

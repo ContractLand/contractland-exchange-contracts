@@ -1,15 +1,15 @@
-const TestTrades = artifacts.require("TestTrades")
+const TestTradeHistory = artifacts.require("TestTradeHistory")
 
-contract('Trades',  async(accounts) => {
+contract('TradeHistory',  async(accounts) => {
   let tradeHistoryTest;
   const GET_TRADES_LIMIT_DEFAULT = 10
   const TIME_RANGE_DEFAULT = [0, 10]
 
   beforeEach(async () => {
-    tradeHistoryTest = await TestTrades.new()
+    tradeHistoryTest = await TestTradeHistory.new()
   })
 
-  describe("Trades", async() => {
+  describe("Add", async() => {
     it("should return empty when there are no trades", async() => {
       const actualTrades = await tradeHistoryTest.getTrades(TIME_RANGE_DEFAULT, GET_TRADES_LIMIT_DEFAULT)
       const emptyTrades = [ [], [], [], [], [] ]
@@ -43,8 +43,10 @@ contract('Trades',  async(accounts) => {
       ]
       await checkTrades(expectedTrades, TIME_RANGE_DEFAULT, GET_TRADES_LIMIT_DEFAULT)
     })
+  })
 
-    it("getTrades should not exceed limit", async() => {
+  describe("GetTrades", async() => {
+    it("should not exceed limit", async() => {
       const trade = {price: 1, amount: 1, isSell: false, timestamp: 1}
 
       tradeHistoryTest.add(1, trade.price, trade.amount, trade.isSell, trade.timestamp)
@@ -59,7 +61,7 @@ contract('Trades',  async(accounts) => {
       await checkTrades(expectedTrades, TIME_RANGE_DEFAULT, 2)
     })
 
-    it("getTrades should return empty if startEnd is greater than endTime", async() => {
+    it("should return empty if startEnd is greater than endTime", async() => {
       const trade1 = {id: 1, price: 1, amount: 1, isSell: false, timestamp: 1}
 
       tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp)
@@ -69,7 +71,7 @@ contract('Trades',  async(accounts) => {
       assert.deepEqual(actualTrades, emptyTrades)
     })
 
-    it("getTrades should return empty if startTime is equal to endTime", async() => {
+    it("should return empty if startTime is equal to endTime", async() => {
       const trade1 = {id: 1, price: 1, amount: 1, isSell: false, timestamp: 1}
 
       tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp)
@@ -79,7 +81,7 @@ contract('Trades',  async(accounts) => {
       assert.deepEqual(actualTrades, emptyTrades)
     })
 
-    it("getTrades should return all trades up to endTime when startTime == 0", async() => {
+    it("should return all trades up to endTime when startTime == 0", async() => {
       const trade1 = {id: 1, price: 1, amount: 1, isSell: false, timestamp: 1}
       const trade2 = {id: 2, price: 2, amount: 2, isSell: true, timestamp: 2}
       const trade3 = {id: 3, price: 3, amount: 3, isSell: false, timestamp: 3}
@@ -95,7 +97,7 @@ contract('Trades',  async(accounts) => {
       await checkTrades(expectedTrades, [0,2], GET_TRADES_LIMIT_DEFAULT)
     })
 
-    it("getTrades should return all trades from startTime when endTime > latest", async() => {
+    it("should return all trades from startTime when endTime > latest", async() => {
       const trade1 = {id: 1, price: 1, amount: 1, isSell: false, timestamp: 1}
       const trade2 = {id: 2, price: 2, amount: 2, isSell: true, timestamp: 2}
       const trade3 = {id: 3, price: 3, amount: 3, isSell: false, timestamp: 3}
@@ -112,7 +114,7 @@ contract('Trades',  async(accounts) => {
       await checkTrades(expectedTrades, [1,4], GET_TRADES_LIMIT_DEFAULT)
     })
 
-    it("getTrades should return all trades within time range when endTime and startTime are found", async() => {
+    it("should return all trades within time range when endTime and startTime are found", async() => {
       const trade1 = {id: 1, price: 1, amount: 1, isSell: false, timestamp: 1}
       const trade2 = {id: 2, price: 2, amount: 2, isSell: true, timestamp: 2}
       const trade3 = {id: 3, price: 3, amount: 3, isSell: false, timestamp: 3}
@@ -133,7 +135,7 @@ contract('Trades',  async(accounts) => {
       await checkTrades(expectedTrades, [2,4], GET_TRADES_LIMIT_DEFAULT)
     })
 
-    it("getTrades should return all trades within time range when endTime and startTime are not found", async() => {
+    it("should return all trades within time range when endTime and startTime are not found", async() => {
       const trade1 = {id: 1, price: 1, amount: 1, isSell: false, timestamp: 1}
       const trade3 = {id: 3, price: 3, amount: 3, isSell: false, timestamp: 3}
       const trade4 = {id: 4, price: 4, amount: 4, isSell: true, timestamp: 4}
