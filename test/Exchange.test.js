@@ -20,6 +20,8 @@ contract("Exchange", () => {
     const MIN_PRICE_SIZE = toWei(0.00000001)
     const MIN_AMOUNT_SIZE = toWei(0.0001)
     const MAX_TOTAL_SIZE = toWei(1000000000)
+    const MAX_GET_TRADES_SIZE = 3
+    const DEFAULT_GET_TRADES_TIME_RANGE = [0, 9999999999999]
     const tokenDepositAmount = MAX_TOTAL_SIZE.times(2);
 
     beforeEach(async () => {
@@ -818,7 +820,7 @@ contract("Exchange", () => {
             })
         })
 
-        describe("Set Order Limits", () => {
+        describe("Set Limits", () => {
             it("should only allow owner to set min price size", async () => {
                 const currentMin = await exchange.MIN_PRICE_SIZE()
                 const newMin = currentMin.times(2)
@@ -850,6 +852,17 @@ contract("Exchange", () => {
 
                 const actualMin = await exchange.MIN_AMOUNT_SIZE()
                 assert(actualMin.toString(), newMin.toString())
+            })
+
+            it("should only allow owner to set max get trades size", async () => {
+                const currentMax = await exchange.MAX_GET_TRADES_SIZE()
+                const newMax = currentMax.times(2)
+
+                await exchange.setMaxGetTradesSize(newMax, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+                await exchange.setMaxGetTradesSize(newMax, { from: exchangeOwner }).should.be.fulfilled
+
+                const actualMax = await exchange.MIN_AMOUNT_SIZE()
+                assert(actualMax.toString(), newMax.toString())
             })
         })
     })
@@ -970,6 +983,58 @@ contract("Exchange", () => {
         })
     })
 
+    describe("Trade History", () => {
+        it("should return consolidated buy trades", () => {
+          let buy10 = buy(10, 3)
+          let sell9 = sell(9, 1)
+          let sell10 = sell(10, 1)
+          return placeOrder(sell9)
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(buy10))
+              .then(() => checkTrades([
+                {id: 4, price: sell10.price, amount: sell10.amount.mul(2), isSell: false},
+                {id: 4, price: sell9.price, amount: sell9.amount, isSell: false}
+              ], DEFAULT_GET_TRADES_TIME_RANGE, MAX_GET_TRADES_SIZE))
+        })
+
+        it("should return consolidated sell trades", () => {
+          let sell10 = sell(10, 3)
+          let buy11 = buy(11, 1)
+          let buy10 = buy(10, 1)
+          return placeOrder(buy11)
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(sell10))
+              .then(() => checkTrades([
+                {id: 4, price: buy10.price, amount: buy10.amount.mul(2), isSell: true},
+                {id: 4, price: buy11.price, amount: buy11.amount, isSell: true}
+              ], DEFAULT_GET_TRADES_TIME_RANGE, MAX_GET_TRADES_SIZE))
+
+        })
+
+        it("getTrades should not exceed MAX_GET_TRADES_SIZE", async() => {
+          let sell10 = sell(10, 1)
+          let buy10 = buy(10, 1)
+          const exceededLimit = 5
+          return placeOrder(sell10)
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => checkTrades([
+                {id: 10, price: buy10.price, amount: buy10.amount, isSell: false},
+                {id: 9, price: buy10.price, amount: buy10.amount, isSell: false},
+                {id: 8, price: buy10.price, amount: buy10.amount, isSell: false}
+              ], DEFAULT_GET_TRADES_TIME_RANGE, exceededLimit))
+        })
+    })
+
     async function deployExchange() {
         baseToken = await Token.new()
         tradeToken = await Token.new()
@@ -977,6 +1042,9 @@ contract("Exchange", () => {
         exchangeProxy = await ExchangeProxy.new(exchangeInstance.address, { from: proxyOwner })
         exchange = await Exchange.at(exchangeProxy.address)
         await exchange.initialize({ from: exchangeOwner })
+
+        // Set Limits
+        await exchange.setMaxGetTradesSize(MAX_GET_TRADES_SIZE, { from: exchangeOwner }).should.be.fulfilled
     }
 
     async function deployFallbackTrap() {
@@ -1093,6 +1161,20 @@ contract("Exchange", () => {
             })
     }
 
+    function checkTrades(expectedTrades, timeRange, limit) {
+        return exchange.getTrades(baseToken.address, tradeToken.address, timeRange, limit)
+            .then(result => {
+                const trades = parseTradeResult(result)
+                assert.equal(trades.id.length, expectedTrades.length)
+                for (let i = 0; i < expectedTrades.length; i++) {
+                    assert.equal(trades.id[i], expectedTrades[i].id)
+                    assert.equal(trades.price[i], expectedTrades[i].price)
+                    assert.equal(trades.amount[i], expectedTrades[i].amount)
+                    assert.equal(trades.isSell[i], expectedTrades[i].isSell)
+                }
+            })
+    }
+
     function checkTradeEvents(watcher, eventsState) {
         let events = watcher.get();
         assert.equal(events.length, eventsState.length);
@@ -1176,6 +1258,15 @@ contract("Exchange", () => {
             price: result[2].map(t => t.toNumber()),
             originalAmount: result[3].map(t => t.toNumber()),
             amount: result[4].map(t => t.toNumber())
+        }
+    }
+
+    function parseTradeResult(result) {
+        return {
+            id: result[0].map(t => t.toNumber()),
+            price: result[1].map(t => t.toNumber()),
+            amount: result[2].map(t => t.toNumber()),
+            isSell: result[3]
         }
     }
 

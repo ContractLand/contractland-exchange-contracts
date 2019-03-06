@@ -9,6 +9,7 @@ import "./interfaces/ERC20.sol";
 import "./libraries/OrderNode.sol";
 import "./libraries/AskHeap.sol";
 import "./libraries/BidHeap.sol";
+import "./libraries/TradeHistory.sol";
 
 import "./DestructibleTransfer.sol";
 
@@ -16,6 +17,7 @@ contract Exchange is Initializable, Pausable {
     using SafeMath for uint;
     using AskHeap for AskHeap.Tree;
     using BidHeap for BidHeap.Tree;
+    using TradeHistory for TradeHistory.Trades;
 
     /* --- STRUCTS --- */
 
@@ -77,6 +79,8 @@ contract Exchange is Initializable, Pausable {
 
     uint128 public MAX_TOTAL_SIZE;
 
+    uint16 public MAX_GET_TRADES_SIZE;
+
     uint64 constant PRICE_DENOMINATOR = 1000000000000000000; // 18 decimal places. This assumes all tokens trading in exchange has 18 decimal places
 
     uint64 lastOrderId;
@@ -88,7 +92,10 @@ contract Exchange is Initializable, Pausable {
     mapping(address => mapping(address => OrderBook)) orderbooks;
 
     // Mapping of user address to mapping of token address to reserved balance in orderbook
-    mapping (address => mapping (address => uint)) public reserved;
+    mapping(address => mapping (address => uint)) public reserved;
+
+    // Mapping of base token to trade token to trade history
+    mapping(address => mapping(address => TradeHistory.Trades)) trades;
 
     /* --- END OF V1 VARIABLES --- */
 
@@ -101,6 +108,7 @@ contract Exchange is Initializable, Pausable {
         MIN_PRICE_SIZE = 0.00000001 ether;
         MIN_AMOUNT_SIZE = 0.0001 ether;
         MAX_TOTAL_SIZE = 1000000000 ether;
+        MAX_GET_TRADES_SIZE = 1000;
 
         owner = msg.sender; // initialize owner for admin functionalities
     }
@@ -250,6 +258,15 @@ contract Exchange is Initializable, Pausable {
         return orderbooks[baseToken][tradeToken].bids.getOrders();
     }
 
+    function getTrades(address baseToken, address tradeToken, uint64[] timeRange, uint16 limit)
+        external
+        view
+        returns (uint64[], uint[], uint[], bool[], uint64[])
+    {
+        uint16 getLimit = limit < MAX_GET_TRADES_SIZE ? limit : MAX_GET_TRADES_SIZE;
+        return trades[baseToken][tradeToken].getTrades(timeRange, getLimit);
+    }
+
     function setMinPriceSize(uint64 newMin)
         external
         onlyOwner
@@ -269,6 +286,13 @@ contract Exchange is Initializable, Pausable {
         onlyOwner
     {
         MAX_TOTAL_SIZE = newMax;
+    }
+
+    function setMaxGetTradesSize(uint16 newMax)
+        external
+        onlyOwner
+    {
+        MAX_GET_TRADES_SIZE = newMax;
     }
 
     /* --- INTERNAL / PRIVATE METHODS --- */
@@ -341,6 +365,7 @@ contract Exchange is Initializable, Pausable {
 
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
+            trades[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), order.timestamp);
 
             if (matchingOrder.amount != 0) {
                 bids.updateAmountById(matchingOrder.id, matchingOrder.amount);
@@ -381,6 +406,7 @@ contract Exchange is Initializable, Pausable {
 
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
+            trades[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), order.timestamp);
 
             if (matchingOrder.amount != 0) {
                 asks.updateAmountById(matchingOrder.id, matchingOrder.amount);
