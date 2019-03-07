@@ -78,7 +78,6 @@ library TradeHistory {
     }
 
     uint retSize = Math.min(endIndex - startIndex + 1, limit);
-
     GetTradesResult memory results;
     results.ids = new uint64[](retSize);
     results.prices = new uint[](retSize);
@@ -87,17 +86,12 @@ library TradeHistory {
     results.timestamps = new uint64[](retSize);
 
     uint count = 0;
-    while (startIndex <= endIndex) {
-      if (count >= retSize) {
-        break;
-      }
-
+    while (startIndex <= endIndex && count < retSize) {
       results.ids[count] = self.trades[endIndex].id;
       results.prices[count] = self.trades[endIndex].price;
       results.amounts[count] = self.trades[endIndex].amount;
       results.isSells[count] = self.trades[endIndex].isSell;
       results.timestamps[count] = self.timestamps[endIndex];
-
       endIndex--;
       count++;
     }
