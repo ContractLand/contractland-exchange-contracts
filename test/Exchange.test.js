@@ -874,7 +874,7 @@ contract("Exchange", () => {
             await placeOrder(sellOrder)
 
             // THEN
-            const newExchange = await Exchange.new({ gas: 10000000 })
+            const newExchange = await Exchange.new({ gas: 15000000 })
             await exchangeProxy.upgradeTo(newExchange.address, { from: proxyOwner })
 
             // EXPECT
@@ -983,13 +983,13 @@ contract("Exchange", () => {
         })
     })
 
-    describe.only("User Order History", () => {
+    describe("User Order History", () => {
         it("should return user buy orders", () => {
           let buyOrder = buy(10, 1)
           return placeOrder(buyOrder)
               .then(() => placeOrder(buyOrder))
               .then(() => placeOrder(buyOrder))
-              .then(() => checkOrders([
+              .then(() => checkUserOrders([
                 {id: 3, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: true},
                 {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: true},
                 {id: 1, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: true}
@@ -1001,7 +1001,7 @@ contract("Exchange", () => {
           return placeOrder(sellOrder)
               .then(() => placeOrder(sellOrder))
               .then(() => placeOrder(sellOrder))
-              .then(() => checkOrders([
+              .then(() => checkUserOrders([
                 {id: 3, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: true},
                 {id: 2, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: true},
                 {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: true}
@@ -1015,7 +1015,7 @@ contract("Exchange", () => {
           return placeOrder(buy1)
               .then(() => placeOrder(buy2))
               .then(() => placeOrder(sell2))
-              .then(() => checkOrders([
+              .then(() => checkUserOrders([
                 {id: 2, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false, isActive: true},
                 {id: 1, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false, isActive: false}
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
@@ -1028,7 +1028,7 @@ contract("Exchange", () => {
           return placeOrder(buy2)
               .then(() => placeOrder(sell1))
               .then(() => placeOrder(sell2))
-              .then(() => checkOrders([
+              .then(() => checkUserOrders([
                 {id: 3, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true, isActive: true},
                 {id: 2, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true, isActive: false}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
@@ -1041,7 +1041,7 @@ contract("Exchange", () => {
           return placeOrder(sell1)
               .then(() => placeOrder(sell2))
               .then(() => placeOrder(buy2))
-              .then(() => checkOrders([
+              .then(() => checkUserOrders([
                 {id: 2, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true, isActive: true},
                 {id: 1, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true, isActive: false}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
@@ -1054,7 +1054,7 @@ contract("Exchange", () => {
           return placeOrder(sell2)
               .then(() => placeOrder(buy1))
               .then(() => placeOrder(buy2))
-              .then(() => checkOrders([
+              .then(() => checkUserOrders([
                 {id: 3, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false, isActive: true},
                 {id: 2, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false, isActive: false}
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
@@ -1067,10 +1067,10 @@ contract("Exchange", () => {
               .then(() => placeOrder(buyOrder))
               .then(() => cancelOrder(1, seller))
               .then(() => cancelOrder(2, buyer))
-              .then(() => checkOrders([
+              .then(() => checkUserOrders([
                 {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: false}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
-              .then(() => checkOrders([
+              .then(() => checkUserOrders([
                 {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: false},
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
         })
@@ -1083,10 +1083,61 @@ contract("Exchange", () => {
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
-              .then(() => checkOrders([
+              .then(() => checkUserOrders([
                 {id: 5, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false, isActive: true},
                 {id: 4, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false, isActive: true},
                 {id: 3, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false, isActive: true}
+              ], buyer, DEFAULT_GET_TIME_RANGE, exceededLimit))
+        })
+    })
+
+    describe("User Trade History", () => {
+        it("should return consolidated buy trades", () => {
+          let buy10 = buy(10, 3)
+          let sell9 = sell(9, 1)
+          let sell10 = sell(10, 1)
+          return placeOrder(sell9)
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(buy10))
+              .then(() => checkUserTrades([
+                {id: 4, price: sell10.price, amount: sell10.amount.mul(2), isSell: false},
+                {id: 4, price: sell9.price, amount: sell9.amount, isSell: false}
+              ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+        })
+
+        it("should return consolidated sell trades", () => {
+          let sell10 = sell(10, 3)
+          let buy11 = buy(11, 1)
+          let buy10 = buy(10, 1)
+          return placeOrder(buy11)
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(sell10))
+              .then(() => checkUserTrades([
+                {id: 4, price: buy10.price, amount: buy10.amount.mul(2), isSell: true},
+                {id: 4, price: buy11.price, amount: buy11.amount, isSell: true}
+              ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+        })
+
+        it("should not exceed MAX_GET_RETURN_SIZE", async() => {
+          let sell10 = sell(10, 1)
+          let buy10 = buy(10, 1)
+          const exceededLimit = 5
+          return placeOrder(sell10)
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => checkUserTrades([
+                {id: 10, price: sell10.price, amount: sell10.amount, isSell: false},
+                {id: 9, price: sell10.price, amount: sell10.amount, isSell: false},
+                {id: 8, price: sell10.price, amount: sell10.amount, isSell: false}
               ], buyer, DEFAULT_GET_TIME_RANGE, exceededLimit))
         })
     })
@@ -1118,7 +1169,6 @@ contract("Exchange", () => {
                 {id: 4, price: buy10.price, amount: buy10.amount.mul(2), isSell: true},
                 {id: 4, price: buy11.price, amount: buy11.amount, isSell: true}
               ], DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
-
         })
 
         it("should not exceed MAX_GET_RETURN_SIZE", async() => {
@@ -1136,9 +1186,9 @@ contract("Exchange", () => {
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => checkTrades([
-                {id: 10, price: buy10.price, amount: buy10.amount, isSell: false},
-                {id: 9, price: buy10.price, amount: buy10.amount, isSell: false},
-                {id: 8, price: buy10.price, amount: buy10.amount, isSell: false}
+                {id: 10, price: sell10.price, amount: sell10.amount, isSell: false},
+                {id: 9, price: sell10.price, amount: sell10.amount, isSell: false},
+                {id: 8, price: sell10.price, amount: sell10.amount, isSell: false}
               ], DEFAULT_GET_TIME_RANGE, exceededLimit))
         })
     })
@@ -1283,7 +1333,21 @@ contract("Exchange", () => {
             })
     }
 
-    function checkOrders(expectedOrders, user, timeRange, limit) {
+    function checkUserTrades(expectedTrades, user, timeRange, limit) {
+        return exchange.getUserTrades(limit, timeRange, user, tradeToken.address, baseToken.address)
+            .then(result => {
+                const trades = parseTradeResult(result)
+                assert.equal(trades.id.length, expectedTrades.length)
+                for (let i = 0; i < expectedTrades.length; i++) {
+                    assert.equal(trades.id[i], expectedTrades[i].id)
+                    assert.equal(trades.price[i], expectedTrades[i].price)
+                    assert.equal(trades.amount[i], expectedTrades[i].amount)
+                    assert.equal(trades.isSell[i], expectedTrades[i].isSell)
+                }
+            })
+    }
+
+    function checkUserOrders(expectedOrders, user, timeRange, limit) {
         return exchange.getUserOrders(limit, timeRange, user, tradeToken.address, baseToken.address)
             .then(result => {
                 const orders = parseOrderResult(result)
