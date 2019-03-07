@@ -1,6 +1,6 @@
 const TestOrderHistory = artifacts.require("TestOrderHistory")
 
-contract.only('OrderHistory',  async(accounts) => {
+contract('OrderHistory',  async(accounts) => {
   let orderHistoryTest;
   const GET_ORDERS_LIMIT_DEFAULT = 10
   const TIME_RANGE_DEFAULT = [0, 10]

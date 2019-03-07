@@ -20,8 +20,8 @@ contract("Exchange", () => {
     const MIN_PRICE_SIZE = toWei(0.00000001)
     const MIN_AMOUNT_SIZE = toWei(0.0001)
     const MAX_TOTAL_SIZE = toWei(1000000000)
-    const MAX_GET_TRADES_SIZE = 3
-    const DEFAULT_GET_TRADES_TIME_RANGE = [0, 9999999999999]
+    const MAX_GET_RETURN_SIZE = 3
+    const DEFAULT_GET_TIME_RANGE = [0, 9999999999999]
     const tokenDepositAmount = MAX_TOTAL_SIZE.times(2);
 
     beforeEach(async () => {
@@ -855,7 +855,7 @@ contract("Exchange", () => {
             })
 
             it("should only allow owner to set max get trades size", async () => {
-                const currentMax = await exchange.MAX_GET_TRADES_SIZE()
+                const currentMax = await exchange.MAX_GET_RETURN_SIZE()
                 const newMax = currentMax.times(2)
 
                 await exchange.setMaxGetTradesSize(newMax, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
@@ -983,6 +983,114 @@ contract("Exchange", () => {
         })
     })
 
+    describe.only("User Order History", () => {
+        it("should return user buy orders", () => {
+          let buyOrder = buy(10, 1)
+          return placeOrder(buyOrder)
+              .then(() => placeOrder(buyOrder))
+              .then(() => placeOrder(buyOrder))
+              .then(() => checkOrders([
+                {id: 3, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: true},
+                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: true},
+                {id: 1, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: true}
+              ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+        })
+
+        it("should return user sell orders", () => {
+          let sellOrder = sell(10, 1)
+          return placeOrder(sellOrder)
+              .then(() => placeOrder(sellOrder))
+              .then(() => placeOrder(sellOrder))
+              .then(() => checkOrders([
+                {id: 3, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: true},
+                {id: 2, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: true},
+                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: true}
+              ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+        })
+
+        it("should update maker buy orders amounts on matchSell, and mark inactive on fill", () => {
+          let buy1 = buy(10, 1)
+          let buy2 = buy(10, 2)
+          let sell2 = sell(10, 2)
+          return placeOrder(buy1)
+              .then(() => placeOrder(buy2))
+              .then(() => placeOrder(sell2))
+              .then(() => checkOrders([
+                {id: 2, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false, isActive: true},
+                {id: 1, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false, isActive: false}
+              ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+        })
+
+        it("should update taker sell orders amounts on matchSell, and mark inactive on fill", () => {
+          let buy2 = buy(10, 2)
+          let sell1 = sell(10, 1)
+          let sell2 = sell(10, 2)
+          return placeOrder(buy2)
+              .then(() => placeOrder(sell1))
+              .then(() => placeOrder(sell2))
+              .then(() => checkOrders([
+                {id: 3, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true, isActive: true},
+                {id: 2, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true, isActive: false}
+              ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+        })
+
+        it("should update maker sell orders amounts on matchBuy, and mark inactive on fill", () => {
+          let sell1 = sell(10, 1)
+          let sell2 = sell(10, 2)
+          let buy2 = buy(10, 2)
+          return placeOrder(sell1)
+              .then(() => placeOrder(sell2))
+              .then(() => placeOrder(buy2))
+              .then(() => checkOrders([
+                {id: 2, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true, isActive: true},
+                {id: 1, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true, isActive: false}
+              ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+        })
+
+        it("should update taker buy orders amounts on matchBuy, and mark inactive on fill", () => {
+          let sell2 = sell(10, 2)
+          let buy1 = buy(10, 1)
+          let buy2 = buy(10, 2)
+          return placeOrder(sell2)
+              .then(() => placeOrder(buy1))
+              .then(() => placeOrder(buy2))
+              .then(() => checkOrders([
+                {id: 3, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false, isActive: true},
+                {id: 2, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false, isActive: false}
+              ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+        })
+
+        it("should mark order inactive once cancelled", () => {
+          let sellOrder = sell(10, 1)
+          let buyOrder = buy(9, 1)
+          return placeOrder(sellOrder)
+              .then(() => placeOrder(buyOrder))
+              .then(() => cancelOrder(1, seller))
+              .then(() => cancelOrder(2, buyer))
+              .then(() => checkOrders([
+                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: false}
+              ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkOrders([
+                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: false},
+              ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+        })
+
+        it("should not exceed MAX_GET_RETURN_SIZE", () => {
+          let buy10 = buy(10, 1)
+          const exceededLimit = 5
+          return placeOrder(buy10)
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => checkOrders([
+                {id: 5, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false, isActive: true},
+                {id: 4, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false, isActive: true},
+                {id: 3, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false, isActive: true}
+              ], buyer, DEFAULT_GET_TIME_RANGE, exceededLimit))
+        })
+    })
+
     describe("Trade History", () => {
         it("should return consolidated buy trades", () => {
           let buy10 = buy(10, 3)
@@ -995,7 +1103,7 @@ contract("Exchange", () => {
               .then(() => checkTrades([
                 {id: 4, price: sell10.price, amount: sell10.amount.mul(2), isSell: false},
                 {id: 4, price: sell9.price, amount: sell9.amount, isSell: false}
-              ], DEFAULT_GET_TRADES_TIME_RANGE, MAX_GET_TRADES_SIZE))
+              ], DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
         })
 
         it("should return consolidated sell trades", () => {
@@ -1009,11 +1117,11 @@ contract("Exchange", () => {
               .then(() => checkTrades([
                 {id: 4, price: buy10.price, amount: buy10.amount.mul(2), isSell: true},
                 {id: 4, price: buy11.price, amount: buy11.amount, isSell: true}
-              ], DEFAULT_GET_TRADES_TIME_RANGE, MAX_GET_TRADES_SIZE))
+              ], DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
 
         })
 
-        it("getTrades should not exceed MAX_GET_TRADES_SIZE", async() => {
+        it("should not exceed MAX_GET_RETURN_SIZE", async() => {
           let sell10 = sell(10, 1)
           let buy10 = buy(10, 1)
           const exceededLimit = 5
@@ -1031,20 +1139,20 @@ contract("Exchange", () => {
                 {id: 10, price: buy10.price, amount: buy10.amount, isSell: false},
                 {id: 9, price: buy10.price, amount: buy10.amount, isSell: false},
                 {id: 8, price: buy10.price, amount: buy10.amount, isSell: false}
-              ], DEFAULT_GET_TRADES_TIME_RANGE, exceededLimit))
+              ], DEFAULT_GET_TIME_RANGE, exceededLimit))
         })
     })
 
     async function deployExchange() {
         baseToken = await Token.new()
         tradeToken = await Token.new()
-        let exchangeInstance = await Exchange.new({ gas: 10000000 })
+        let exchangeInstance = await Exchange.new({ gas: 15000000 })
         exchangeProxy = await ExchangeProxy.new(exchangeInstance.address, { from: proxyOwner })
         exchange = await Exchange.at(exchangeProxy.address)
         await exchange.initialize({ from: exchangeOwner })
 
         // Set Limits
-        await exchange.setMaxGetTradesSize(MAX_GET_TRADES_SIZE, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setMaxGetTradesSize(MAX_GET_RETURN_SIZE, { from: exchangeOwner }).should.be.fulfilled
     }
 
     async function deployFallbackTrap() {
@@ -1175,6 +1283,22 @@ contract("Exchange", () => {
             })
     }
 
+    function checkOrders(expectedOrders, user, timeRange, limit) {
+        return exchange.getUserOrders(limit, timeRange, user, tradeToken.address, baseToken.address)
+            .then(result => {
+                const orders = parseOrderResult(result)
+                assert.equal(orders.id.length, expectedOrders.length)
+                for (let i = 0; i < expectedOrders.length; i++) {
+                    assert.equal(orders.id[i], expectedOrders[i].id)
+                    assert.equal(orders.price[i], expectedOrders[i].price)
+                    assert.equal(orders.originalAmount[i], expectedOrders[i].originalAmount.toString())
+                    assert.equal(orders.amount[i], expectedOrders[i].amount.toString())
+                    assert.equal(orders.isSell[i], expectedOrders[i].isSell)
+                    assert.equal(orders.isActive[i], expectedOrders[i].isActive)
+                }
+            })
+    }
+
     function checkTradeEvents(watcher, eventsState) {
         let events = watcher.get();
         assert.equal(events.length, eventsState.length);
@@ -1267,6 +1391,17 @@ contract("Exchange", () => {
             price: result[1].map(t => t.toNumber()),
             amount: result[2].map(t => t.toNumber()),
             isSell: result[3]
+        }
+    }
+
+    function parseOrderResult(result) {
+        return {
+            id: result[0].map(t => t.toNumber()),
+            price: result[1].map(t => t.toNumber()),
+            originalAmount: result[2].map(t => t.toNumber()),
+            amount: result[3].map(t => t.toNumber()),
+            isSell: result[4],
+            isActive: result[5]
         }
     }
 
