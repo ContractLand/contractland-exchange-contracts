@@ -21,9 +21,9 @@ contract('OrderHistory',  async(accounts) => {
       const order2 = {id: 2, price: 2, originalAmount: 2, amount: 2, isSell: true, isActive: true, timestamp: 2}
       const order3 = {id: 3, price: 3, originalAmount: 3, amount: 3, isSell: true, isActive: true, timestamp: 3}
 
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
-      orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp)
-      orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp).should.be.fulfilled
 
       await checkOrders([order3, order2, order1], TIME_RANGE_DEFAULT, GET_ORDERS_LIMIT_DEFAULT)
     })
@@ -34,12 +34,12 @@ contract('OrderHistory',  async(accounts) => {
       const order1 = {id: 1, price: 1, originalAmount: 1, amount: 1, isSell: false, isActive: false, timestamp: 1}
       const order2 = {id: 2, price: 2, originalAmount: 2, amount: 2, isSell: true, isActive: true, timestamp: 2}
       const order3 = {id: 3, price: 3, originalAmount: 3, amount: 3, isSell: true, isActive: true, timestamp: 3}
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
-      orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp)
-      orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp).should.be.fulfilled
 
       const newAmount = 5
-      orderHistoryTest.updateAmount(order2.id, newAmount)
+      await orderHistoryTest.updateAmount(order2.id, newAmount).should.be.fulfilled
 
       await checkOrders([
         order3,
@@ -52,12 +52,12 @@ contract('OrderHistory',  async(accounts) => {
       const order1 = {id: 1, price: 1, originalAmount: 1, amount: 1, isSell: false, isActive: false, timestamp: 1}
       const order2 = {id: 2, price: 2, originalAmount: 2, amount: 2, isSell: true, isActive: true, timestamp: 2}
       const order3 = {id: 3, price: 3, originalAmount: 3, amount: 3, isSell: true, isActive: true, timestamp: 3}
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
-      orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp)
-      orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp).should.be.fulfilled
 
       const unknownId = 4
-      orderHistoryTest.updateAmount(unknownId, 10)
+      await orderHistoryTest.updateAmount(unknownId, 10).should.be.fulfilled
 
       await checkOrders([
         order3,
@@ -70,12 +70,12 @@ contract('OrderHistory',  async(accounts) => {
       const order1 = {id: 1, price: 1, originalAmount: 1, amount: 1, isSell: false, isActive: false, timestamp: 1}
       const order2 = {id: 2, price: 2, originalAmount: 2, amount: 2, isSell: true, isActive: true, timestamp: 2}
       const order3 = {id: 3, price: 3, originalAmount: 3, amount: 3, isSell: true, isActive: true, timestamp: 3}
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
-      orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp)
-      orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp).should.be.fulfilled
 
       const newAmount = 5
-      orderHistoryTest.updateAmount(order1.id, 5)
+      await orderHistoryTest.updateAmount(order1.id, 5).should.be.fulfilled
 
       await checkOrders([
         order3,
@@ -90,11 +90,11 @@ contract('OrderHistory',  async(accounts) => {
       const order1 = {id: 1, price: 1, originalAmount: 1, amount: 1, isSell: false, isActive: true, timestamp: 1}
       const order2 = {id: 2, price: 2, originalAmount: 2, amount: 2, isSell: true, isActive: true, timestamp: 2}
       const order3 = {id: 3, price: 3, originalAmount: 3, amount: 3, isSell: true, isActive: true, timestamp: 3}
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
-      orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp)
-      orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp).should.be.fulfilled
 
-      orderHistoryTest.markInactive(order2.id)
+      await orderHistoryTest.markInactive(order2.id).should.be.fulfilled
 
       await checkOrders([
         order3,
@@ -107,12 +107,12 @@ contract('OrderHistory',  async(accounts) => {
       const order1 = {id: 1, price: 1, originalAmount: 1, amount: 1, isSell: false, isActive: true, timestamp: 1}
       const order2 = {id: 2, price: 2, originalAmount: 2, amount: 2, isSell: true, isActive: true, timestamp: 2}
       const order3 = {id: 3, price: 3, originalAmount: 3, amount: 3, isSell: true, isActive: true, timestamp: 3}
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
-      orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp)
-      orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp).should.be.fulfilled
 
       const unknownId = 4
-      orderHistoryTest.markInactive(unknownId)
+      await orderHistoryTest.markInactive(unknownId).should.be.fulfilled
 
       await checkOrders([
         order3,
@@ -125,11 +125,11 @@ contract('OrderHistory',  async(accounts) => {
       const order1 = {id: 1, price: 1, originalAmount: 1, amount: 1, isSell: true, isActive: false, timestamp: 1}
       const order2 = {id: 2, price: 2, originalAmount: 2, amount: 2, isSell: true, isActive: true, timestamp: 2}
       const order3 = {id: 3, price: 3, originalAmount: 3, amount: 3, isSell: true, isActive: true, timestamp: 3}
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
-      orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp)
-      orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp).should.be.fulfilled
 
-      orderHistoryTest.markInactive(order1.id)
+      await orderHistoryTest.markInactive(order1.id).should.be.fulfilled
 
       await checkOrders([
         order3,
@@ -143,9 +143,9 @@ contract('OrderHistory',  async(accounts) => {
     it("should not exceed limit", async() => {
       const order = {price: 1, originalAmount: 1, amount: 1, isSell: false, isActive: false, timestamp: 1}
 
-      orderHistoryTest.add(1, order.price, order.originalAmount, order.amount, order.isSell, order.isActive, order.timestamp)
-      orderHistoryTest.add(2, order.price, order.originalAmount, order.amount, order.isSell, order.isActive, order.timestamp)
-      orderHistoryTest.add(3, order.price, order.originalAmount, order.amount, order.isSell, order.isActive, order.timestamp)
+      await orderHistoryTest.add(1, order.price, order.originalAmount, order.amount, order.isSell, order.isActive, order.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(2, order.price, order.originalAmount, order.amount, order.isSell, order.isActive, order.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(3, order.price, order.originalAmount, order.amount, order.isSell, order.isActive, order.timestamp).should.be.fulfilled
 
       const expectedOrders = [
         {id: 3, price: 1, originalAmount: 1, amount: 1, isSell: false, isActive: false, timestamp: 1},
@@ -158,7 +158,7 @@ contract('OrderHistory',  async(accounts) => {
     it("should return empty if startEnd is greater than endTime", async() => {
       const order1 = {id: 1, price: 1, originalAmount: 1, amount: 1, isSell: false, isActive: false, timestamp: 1}
 
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
 
       const actualOrders = await orderHistoryTest.getOrders([1,0], GET_ORDERS_LIMIT_DEFAULT)
       const emptyOrders = [ [], [], [], [], [], [], [] ]
@@ -168,7 +168,7 @@ contract('OrderHistory',  async(accounts) => {
     it("should return empty if startTime is equal to endTime", async() => {
       const order1 = {id: 1, price: 1, originalAmount: 1, amount: 1, isSell: false, isActive: false, timestamp: 1}
 
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
 
       const actualOrders = await orderHistoryTest.getOrders([1,1], GET_ORDERS_LIMIT_DEFAULT)
       const emptyOrders = [ [], [], [], [], [], [], [] ]
@@ -180,9 +180,9 @@ contract('OrderHistory',  async(accounts) => {
       const order2 = {id: 2, price: 2, originalAmount: 2, amount: 2, isSell: true, isActive: true, timestamp: 2}
       const order3 = {id: 3, price: 3, originalAmount: 3, amount: 3, isSell: false, isActive: false, timestamp: 3}
 
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
-      orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp)
-      orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp).should.be.fulfilled
 
       const expectedOrders = [
         order2,
@@ -196,9 +196,9 @@ contract('OrderHistory',  async(accounts) => {
       const order2 = {id: 2, price: 2, originalAmount: 2, amount: 2, isSell: true, isActive: true, timestamp: 2}
       const order3 = {id: 3, price: 3, originalAmount: 3, amount: 3, isSell: false, isActive: false, timestamp: 3}
 
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
-      orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp)
-      orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp).should.be.fulfilled
 
       const expectedOrders = [
         order3,
@@ -215,11 +215,11 @@ contract('OrderHistory',  async(accounts) => {
       const order4 = {id: 4, price: 4, originalAmount: 4, amount: 4, isSell: true, isActive: true, timestamp: 4}
       const order5 = {id: 5, price: 5, originalAmount: 5, amount: 5, isSell: true, isActive: true, timestamp: 5}
 
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
-      orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp)
-      orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp)
-      orderHistoryTest.add(order4.id, order4.price, order4.originalAmount, order4.amount, order4.isSell, order4.isActive, order4.timestamp)
-      orderHistoryTest.add(order5.id, order5.price, order5.originalAmount, order5.amount, order5.isSell, order5.isActive, order5.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.isActive, order2.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order4.id, order4.price, order4.originalAmount, order4.amount, order4.isSell, order4.isActive, order4.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order5.id, order5.price, order5.originalAmount, order5.amount, order5.isSell, order5.isActive, order5.timestamp).should.be.fulfilled
 
       const expectedOrders = [
         order4,
@@ -235,10 +235,10 @@ contract('OrderHistory',  async(accounts) => {
       const order4 = {id: 4, price: 4, originalAmount: 4, amount: 4, isSell: true, isActive: true, timestamp: 4}
       const order6 = {id: 6, price: 6, originalAmount: 6, amount: 6, isSell: true, isActive: true, timestamp: 6}
 
-      orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp)
-      orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp)
-      orderHistoryTest.add(order4.id, order4.price, order4.originalAmount, order4.amount, order4.isSell, order4.isActive, order4.timestamp)
-      orderHistoryTest.add(order6.id, order6.price, order6.originalAmount, order6.amount, order6.isSell, order6.isActive, order6.timestamp)
+      await orderHistoryTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.isActive, order1.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.isActive, order3.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order4.id, order4.price, order4.originalAmount, order4.amount, order4.isSell, order4.isActive, order4.timestamp).should.be.fulfilled
+      await orderHistoryTest.add(order6.id, order6.price, order6.originalAmount, order6.amount, order6.isSell, order6.isActive, order6.timestamp).should.be.fulfilled
 
       const expectedOrders = [
         order4,
