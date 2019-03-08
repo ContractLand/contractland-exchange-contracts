@@ -1,6 +1,6 @@
 const TestOpenOrder = artifacts.require("TestOpenOrder")
 
-contract.only('OpenOrder',  async(accounts) => {
+contract('OpenOrder',  async(accounts) => {
   let openOrderTest;
 
   beforeEach(async () => {
@@ -13,19 +13,19 @@ contract.only('OpenOrder',  async(accounts) => {
     const order3 = {id: 3, price: 3, originalAmount: 3, amount: 3, isSell: true, timestamp: 3}
 
     beforeEach(async () => {
-      openOrderTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.timestamp)
-      openOrderTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.timestamp)
-      openOrderTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.timestamp)
+      await openOrderTest.add(order1.id, order1.price, order1.originalAmount, order1.amount, order1.isSell, order1.timestamp).should.be.fulfilled
+      await openOrderTest.add(order2.id, order2.price, order2.originalAmount, order2.amount, order2.isSell, order2.timestamp).should.be.fulfilled
+      await openOrderTest.add(order3.id, order3.price, order3.originalAmount, order3.amount, order3.isSell, order3.timestamp).should.be.fulfilled
     })
 
     it("should add new order to end of list", async() => {
       await checkOrders([order1, order2, order3])
     })
 
-    describe("Updating existing order", async() => {
+    describe("Updating order", async() => {
       it("should update order amount", async() => {
         const newAmount = 5
-        openOrderTest.update(order1.id, newAmount)
+        await openOrderTest.update(order1.id, newAmount).should.be.fulfilled
 
         await checkOrders([
           {id: order1.id, price: order1.price, originalAmount: order1.originalAmount, amount: newAmount, isSell: order1.isSell, timestamp: order1.timestamp},
@@ -33,11 +33,21 @@ contract.only('OpenOrder',  async(accounts) => {
           order3
         ])
       })
+
+      it("should do nothing if order does not exist", async() => {
+        await openOrderTest.update(4, 100).should.be.fulfilled
+
+        await checkOrders([
+          order1,
+          order2,
+          order3
+        ])
+      })
     })
 
-    describe("Removing existing order", async() => {
+    describe("Removing order", async() => {
       it("should remove order from middle list", async() => {
-        openOrderTest.remove(order2.id)
+        await openOrderTest.remove(order2.id).should.be.fulfilled
 
         await checkOrders([
           order1,
@@ -46,16 +56,16 @@ contract.only('OpenOrder',  async(accounts) => {
       })
 
       it("should remove order from beginning of list", async() => {
-        openOrderTest.remove(order1.id)
+        await openOrderTest.remove(order1.id).should.be.fulfilled
 
         await checkOrders([
-          order2,
-          order3
+          order3,
+          order2
         ])
       })
 
-      it.only("should remove order from end of list", async() => {
-        openOrderTest.remove(order3.id)
+      it("should remove order from end of list", async() => {
+        await openOrderTest.remove(order3.id).should.be.fulfilled
 
         await checkOrders([
           order1,
@@ -63,15 +73,46 @@ contract.only('OpenOrder',  async(accounts) => {
         ])
       })
 
-      it("should be able to remove all orders from list", async() => {
-        openOrderTest.remove(order1.id)
-        openOrderTest.remove(order2.id)
-        openOrderTest.remove(order3.id)
+      it("should be able to remove all orders from list oldest to newest", async() => {
+        await openOrderTest.remove(order1.id).should.be.fulfilled
+        await openOrderTest.remove(order2.id).should.be.fulfilled
+        await openOrderTest.remove(order3.id).should.be.fulfilled
 
         await checkOrders([])
         const actualOrders = await openOrderTest.getOrders()
         const emptyOrders = [ [], [], [], [], [], [] ]
         assert.deepEqual(actualOrders, emptyOrders)
+      })
+
+      it("should be able to remove all orders from list newest to oldest", async() => {
+        await openOrderTest.remove(order3.id).should.be.fulfilled
+        await openOrderTest.remove(order2.id).should.be.fulfilled
+        await openOrderTest.remove(order1.id).should.be.fulfilled
+
+        await checkOrders([])
+        const actualOrders = await openOrderTest.getOrders()
+        const emptyOrders = [ [], [], [], [], [], [] ]
+        assert.deepEqual(actualOrders, emptyOrders)
+      })
+
+      it("should do nothing if order does not exist", async() => {
+        await openOrderTest.remove(4).should.be.fulfilled
+
+        await checkOrders([
+          order1,
+          order2,
+          order3
+        ])
+      })
+
+      it("should do nothing if order is already removed", async() => {
+        await openOrderTest.remove(3).should.be.fulfilled
+        await openOrderTest.remove(3).should.be.fulfilled
+
+        await checkOrders([
+          order1,
+          order2
+        ])
       })
     })
   })
@@ -79,7 +120,6 @@ contract.only('OpenOrder',  async(accounts) => {
   async function checkOrders(expectedOrders) {
       const result = await openOrderTest.getOrders()
       const actualOrders = parseOrderResult(result)
-      console.log(actualOrders)
       assert.equal(actualOrders.id.length, expectedOrders.length)
       for (let i = 0; i < expectedOrders.length; i++) {
           assert.equal(actualOrders.id[i], expectedOrders[i].id)
