@@ -36,3 +36,9 @@ The orderbook is built with a combination of maps and tree (Heap Tree) to optimi
 - Get Orderbook
 
 - Get Order
+
+- Get Trades
+
+- Get User Trades
+
+- Get User Orders

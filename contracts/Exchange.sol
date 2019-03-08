@@ -96,11 +96,14 @@ contract Exchange is Initializable, Pausable {
     // Mapping of user address to mapping of token address to reserved balance in orderbook
     mapping(address => mapping (address => uint)) public reserved;
 
+    // Mapping of base token to trade token to user address to order history
+    mapping(address => mapping(address => mapping(address => OrderHistory.Orders))) userOrders;
+
     // Mapping of base token to trade token to trade history
     mapping(address => mapping(address => TradeHistory.Trades)) trades;
 
     // Mapping of base token to trade token to user address to order history
-    mapping(address => mapping(address => mapping(address => OrderHistory.Orders))) orders;
+    mapping(address => mapping(address => mapping(address => TradeHistory.Trades))) userTrades;
 
     /* --- END OF V1 VARIABLES --- */
 
@@ -141,12 +144,12 @@ contract Exchange is Initializable, Pausable {
 
         // Record new sell order creation
         emit NewOrder(baseToken, tradeToken, orderOwner, id, true, price, amount, order.timestamp);
-        orders[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, amount, true, true), order.timestamp);
+        userOrders[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, amount, true, true), order.timestamp);
 
         matchSell(order);
 
         // Update order amount in user order history after match
-        orders[baseToken][tradeToken][orderOwner].updateAmount(id, order.amount);
+        userOrders[baseToken][tradeToken][orderOwner].updateAmount(id, order.amount);
 
         if (order.amount != 0) {
             // Add remaining order to orderbook
@@ -154,7 +157,7 @@ contract Exchange is Initializable, Pausable {
             orderInfoMap[id] = OrderInfo(orderOwner, baseToken, tradeToken, true);
         } else {
             // Mark filled order inactive in user order history
-            orders[baseToken][tradeToken][orderOwner].markInactive(id);
+            userOrders[baseToken][tradeToken][orderOwner].markInactive(id);
         }
 
         return id;
@@ -182,12 +185,12 @@ contract Exchange is Initializable, Pausable {
 
         // Record new sell order creation
         emit NewOrder(baseToken, tradeToken, orderOwner, id, false, price, amount, order.timestamp);
-        orders[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, amount, false, true), order.timestamp);
+        userOrders[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, amount, false, true), order.timestamp);
 
         matchBuy(order);
 
         // Update order amount in user order history after match
-        orders[baseToken][tradeToken][orderOwner].updateAmount(id, order.amount);
+        userOrders[baseToken][tradeToken][orderOwner].updateAmount(id, order.amount);
 
         if (order.amount != 0) {
             // Add remaining maker order to orderbook
@@ -195,7 +198,7 @@ contract Exchange is Initializable, Pausable {
             orderInfoMap[id] = OrderInfo(orderOwner, baseToken, tradeToken, false);
         } else {
             // Mark filled order inactive in user order history
-            orders[baseToken][tradeToken][orderOwner].markInactive(id);
+            userOrders[baseToken][tradeToken][orderOwner].markInactive(id);
         }
 
         return id;
@@ -222,7 +225,7 @@ contract Exchange is Initializable, Pausable {
 
         emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, orderToCancel.price, orderToCancel.amount, uint64(block.timestamp));
         // Mark cancelled order inactive in user order history
-        orders[orderToCancel.baseToken][orderToCancel.tradeToken][orderToCancel.owner].markInactive(id);
+        userOrders[orderToCancel.baseToken][orderToCancel.tradeToken][orderToCancel.owner].markInactive(id);
         delete orderInfoMap[id];
     }
 
@@ -293,8 +296,22 @@ contract Exchange is Initializable, Pausable {
         view
         returns (uint64[], uint[], uint[], bool[], uint64[])
     {
-        uint16 getLimit = limit < MAX_GET_RETURN_SIZE ? limit : MAX_GET_RETURN_SIZE;
-        return trades[baseToken][tradeToken].getTrades(timeRange, getLimit);
+        return trades[baseToken][tradeToken].getTrades(timeRange, getLimit(limit));
+    }
+
+    // Input parameters are in reverse order to avoid stack too deep error
+    function getUserTrades(
+        uint16 limit,
+        uint64[] timeRange,
+        address user,
+        address tradeToken,
+        address baseToken
+    )
+        external
+        view
+        returns (uint64[], uint[], uint[], bool[], uint64[])
+    {
+        return userTrades[baseToken][tradeToken][user].getTrades(timeRange, getLimit(limit));
     }
 
     // Input parameters are in reverse order to avoid stack too deep error
@@ -309,8 +326,7 @@ contract Exchange is Initializable, Pausable {
         view
         returns (uint64[], uint[], uint[], uint[], bool[], bool[], uint64[])
     {
-        uint16 getLimit = limit < MAX_GET_RETURN_SIZE ? limit : MAX_GET_RETURN_SIZE;
-        return orders[baseToken][tradeToken][user].getOrders(timeRange, getLimit);
+        return userOrders[baseToken][tradeToken][user].getOrders(timeRange, getLimit(limit));
     }
 
     function setMinPriceSize(uint64 newMin)
@@ -342,6 +358,14 @@ contract Exchange is Initializable, Pausable {
     }
 
     /* --- INTERNAL / PRIVATE METHODS --- */
+
+    function getLimit(uint16 limit)
+        private
+        view
+        returns (uint16)
+    {
+        return limit < MAX_GET_RETURN_SIZE ? limit : MAX_GET_RETURN_SIZE;
+    }
 
     function isValidOrder(
         address baseToken,
@@ -413,9 +437,10 @@ contract Exchange is Initializable, Pausable {
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
             trades[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), order.timestamp);
+            userTrades[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), order.timestamp);
 
             // Update order amount in user order history
-            orders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].updateAmount(matchingOrder.id, matchingOrder.amount);
+            userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].updateAmount(matchingOrder.id, matchingOrder.amount);
             // Upate amount for remaining order in orderbook
             if (matchingOrder.amount != 0) {
                 bids.updateAmountById(matchingOrder.id, matchingOrder.amount);
@@ -425,7 +450,7 @@ contract Exchange is Initializable, Pausable {
             // Remove filled order from orderbook
             bids.pop();
             // Mark filled order inactive in user order history
-            orders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].markInactive(matchingOrder.id);
+            userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].markInactive(matchingOrder.id);
             // Delete record from orderInfoMap
             delete orderInfoMap[matchingOrder.id];
         }
@@ -462,9 +487,10 @@ contract Exchange is Initializable, Pausable {
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
             trades[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), order.timestamp);
+            userTrades[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), order.timestamp);
 
             // Update order amount in user order history
-            orders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].updateAmount(matchingOrder.id, matchingOrder.amount);
+            userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].updateAmount(matchingOrder.id, matchingOrder.amount);
             // Upate amount for remaining order in orderbook
             if (matchingOrder.amount != 0) {
                 asks.updateAmountById(matchingOrder.id, matchingOrder.amount);
@@ -474,7 +500,7 @@ contract Exchange is Initializable, Pausable {
             // Remove filled order from orderbook
             asks.pop();
             // Mark filled order inactive in user order history
-            orders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].markInactive(matchingOrder.id);
+            userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].markInactive(matchingOrder.id);
             // Delete record from orderInfoMap
             delete orderInfoMap[matchingOrder.id];
         }

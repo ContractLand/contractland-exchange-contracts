@@ -210,7 +210,7 @@ contract('AskHeap',  async(accounts) => {
       assertNodeEqual(rightChild, nodes[2])
     })
 
-    it("should do nothing is newPrice is same", async() => {
+    it("should do nothing if newPrice is same", async() => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 100, amount: 0, timestamp: 0},
         {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 10, amount: 0, timestamp: 0},
@@ -234,14 +234,38 @@ contract('AskHeap',  async(accounts) => {
       const rightChild = await heap.getByIndex.call(3)
       assertNodeEqual(rightChild, nodes[1])
     })
-    
+
+    it("should not update price if order does not exist", async() => {
+      const nodes = [
+        {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 100, amount: 0, timestamp: 0},
+        {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 10, amount: 0, timestamp: 0},
+        {id: 3, owner: accounts[6], baseToken: accounts[7], tradeToken: accounts[8], price: 1, amount: 0, timestamp: 0}
+      ]
+
+      await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
+      await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
+      await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
+
+      const nonExistingId = 4
+      await heap.updatePriceById(nonExistingId, 20)
+
+      const root = await heap.getByIndex.call(1)
+      assertNodeEqual(root, nodes[2])
+
+      const leftChild = await heap.getByIndex.call(2)
+      assertNodeEqual(leftChild, nodes[0])
+
+      const rightChild = await heap.getByIndex.call(3)
+      assertNodeEqual(rightChild, nodes[1])
+    })
+
     it("should update amount", async() => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0}
       ]
 
       await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
-      
+
       const newAmount = 10
       await heap.updateAmountById(1, newAmount)
 
@@ -266,6 +290,30 @@ contract('AskHeap',  async(accounts) => {
 
       const result = await heap.getById.call(2)
       assertNodeEqual(result, EMPTY_NODE)
+    })
+
+    it("should not remove if order not found", async () => {
+      const nodes = [
+        {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 100, amount: 0, timestamp: 0},
+        {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 10, amount: 0, timestamp: 0},
+        {id: 3, owner: accounts[6], baseToken: accounts[7], tradeToken: accounts[8], price: 1, amount: 0, timestamp: 0}
+      ]
+
+      await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
+      await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
+      await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
+
+      const nonExistingId = 4
+      await heap.removeById(4)
+
+      const root = await heap.getByIndex.call(1)
+      assertNodeEqual(root, nodes[2])
+
+      const leftChild = await heap.getByIndex.call(2)
+      assertNodeEqual(leftChild, nodes[0])
+
+      const rightChild = await heap.getByIndex.call(3)
+      assertNodeEqual(rightChild, nodes[1])
     })
   })
 
