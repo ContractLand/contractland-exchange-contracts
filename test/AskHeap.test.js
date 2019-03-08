@@ -292,7 +292,7 @@ contract('AskHeap',  async(accounts) => {
       assertNodeEqual(result, EMPTY_NODE)
     })
 
-    it.only("should not remove if order not found", async () => {
+    it("should not remove if order not found", async () => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 100, amount: 0, timestamp: 0},
         {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 10, amount: 0, timestamp: 0},

@@ -36,7 +36,7 @@ library BidHeap {
   {
     uint i = self.idToIndex[id];
 
-    if (newPrice == self.nodes[i].price) {
+    if (!OrderNode.isValid(self.nodes[i]) || newPrice == self.nodes[i].price) {
       return;
     }
 
@@ -53,7 +53,9 @@ library BidHeap {
     internal
   {
     uint i = self.idToIndex[id];
-    self.nodes[i].amount = newAmount;
+    if (OrderNode.isValid(self.nodes[i])) {
+      self.nodes[i].amount = newAmount;
+    }
   }
 
   function pop(Tree storage self)
@@ -87,9 +89,11 @@ library BidHeap {
     returns (OrderNode.Node)
   {
     uint i = self.idToIndex[id];
-    self.nodes[i].price = UINT256_MAX;
-    _bubbleUp(self, i);
-    return pop(self);
+    if (OrderNode.isValid(self.nodes[i])) {
+      self.nodes[i].price = UINT256_MAX;
+      _bubbleUp(self, i);
+      return pop(self);
+    }
   }
 
   function peak(Tree storage self)
