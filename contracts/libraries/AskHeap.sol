@@ -36,7 +36,7 @@ library AskHeap {
   {
     uint i = self.idToIndex[id];
 
-    if (newPrice == self.nodes[i].price) {
+    if(!OrderNode.isValid(self.nodes[i]) || newPrice == self.nodes[i].price) {
       return;
     }
 
@@ -53,7 +53,9 @@ library AskHeap {
     internal
   {
     uint i = self.idToIndex[id];
-    self.nodes[i].amount = newAmount;
+    if (OrderNode.isValid(self.nodes[i])) {
+      self.nodes[i].amount = newAmount;
+    }
   }
 
   function pop(Tree storage self)
@@ -87,9 +89,11 @@ library AskHeap {
     returns (OrderNode.Node)
   {
     uint i = self.idToIndex[id];
-    self.nodes[i].price = UINT256_MIN;
-    _bubbleUp(self, i);
-    return pop(self);
+    if (OrderNode.isValid(self.nodes[i])) {
+      self.nodes[i].price = UINT256_MIN;
+      _bubbleUp(self, i);
+      return pop(self);
+    }
   }
 
   function peak(Tree storage self)
