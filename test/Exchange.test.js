@@ -930,7 +930,7 @@ contract("Exchange", () => {
         })
     });
 
-    describe("Get Orders", () => {
+    describe("Get Orderbook", () => {
         it("should return 0 asks when empty", () => {
             return checkGetAsks([])
         })
@@ -984,7 +984,7 @@ contract("Exchange", () => {
         })
     })
 
-    describe.only("User Open Orders and History", () => {
+    describe("User Open Orders and History", () => {
         it("should return user buy orders", () => {
           let buyOrder = buy(10, 1)
           return placeOrder(buyOrder)

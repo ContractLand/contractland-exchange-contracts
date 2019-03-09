@@ -447,8 +447,8 @@ contract Exchange is Initializable, Pausable {
             // Record new trade
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
-            tradeHistory[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), order.timestamp);
-            userTradeHistory[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), order.timestamp);
+            tradeHistory[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), uint64(block.timestamp));
+            userTradeHistory[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), uint64(block.timestamp));
 
             // Upate amount for remaining order in orderbook and user open orders
             if (matchingOrder.amount != 0) {
@@ -498,8 +498,8 @@ contract Exchange is Initializable, Pausable {
             // Record new trade
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
-            tradeHistory[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), order.timestamp);
-            userTradeHistory[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), order.timestamp);
+            tradeHistory[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), uint64(block.timestamp));
+            userTradeHistory[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), uint64(block.timestamp));
 
             // Upate amount for remaining order in orderbook and user open orders
             if (matchingOrder.amount != 0) {
