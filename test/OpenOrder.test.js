@@ -2,6 +2,7 @@ const TestOpenOrder = artifacts.require("TestOpenOrder")
 
 contract('OpenOrder',  async(accounts) => {
   let openOrderTest;
+  const GET_ORDERS_LIMIT_DEFAULT = 10
 
   beforeEach(async () => {
     openOrderTest = await TestOpenOrder.new()
@@ -19,7 +20,7 @@ contract('OpenOrder',  async(accounts) => {
     })
 
     it("should add new order to end of list", async() => {
-      await checkOrders([order1, order2, order3])
+      await checkOrders([order1, order2, order3], GET_ORDERS_LIMIT_DEFAULT)
     })
 
     describe("Updating order", async() => {
@@ -31,7 +32,7 @@ contract('OpenOrder',  async(accounts) => {
           {id: order1.id, price: order1.price, originalAmount: order1.originalAmount, amount: newAmount, isSell: order1.isSell, timestamp: order1.timestamp},
           order2,
           order3
-        ])
+        ], GET_ORDERS_LIMIT_DEFAULT)
       })
 
       it("should do nothing if order does not exist", async() => {
@@ -41,7 +42,7 @@ contract('OpenOrder',  async(accounts) => {
           order1,
           order2,
           order3
-        ])
+        ], GET_ORDERS_LIMIT_DEFAULT)
       })
     })
 
@@ -52,7 +53,7 @@ contract('OpenOrder',  async(accounts) => {
         await checkOrders([
           order1,
           order3
-        ])
+        ], GET_ORDERS_LIMIT_DEFAULT)
       })
 
       it("should remove order from beginning of list", async() => {
@@ -61,7 +62,7 @@ contract('OpenOrder',  async(accounts) => {
         await checkOrders([
           order3,
           order2
-        ])
+        ], GET_ORDERS_LIMIT_DEFAULT)
       })
 
       it("should remove order from end of list", async() => {
@@ -70,7 +71,7 @@ contract('OpenOrder',  async(accounts) => {
         await checkOrders([
           order1,
           order2
-        ])
+        ], GET_ORDERS_LIMIT_DEFAULT)
       })
 
       it("should be able to remove all orders from list oldest to newest", async() => {
@@ -78,8 +79,7 @@ contract('OpenOrder',  async(accounts) => {
         await openOrderTest.remove(order2.id).should.be.fulfilled
         await openOrderTest.remove(order3.id).should.be.fulfilled
 
-        await checkOrders([])
-        const actualOrders = await openOrderTest.getOrders()
+        const actualOrders = await openOrderTest.getOrders(GET_ORDERS_LIMIT_DEFAULT)
         const emptyOrders = [ [], [], [], [], [], [] ]
         assert.deepEqual(actualOrders, emptyOrders)
       })
@@ -89,8 +89,7 @@ contract('OpenOrder',  async(accounts) => {
         await openOrderTest.remove(order2.id).should.be.fulfilled
         await openOrderTest.remove(order1.id).should.be.fulfilled
 
-        await checkOrders([])
-        const actualOrders = await openOrderTest.getOrders()
+        const actualOrders = await openOrderTest.getOrders(GET_ORDERS_LIMIT_DEFAULT)
         const emptyOrders = [ [], [], [], [], [], [] ]
         assert.deepEqual(actualOrders, emptyOrders)
       })
@@ -102,7 +101,7 @@ contract('OpenOrder',  async(accounts) => {
           order1,
           order2,
           order3
-        ])
+        ], GET_ORDERS_LIMIT_DEFAULT)
       })
 
       it("should do nothing if order is already removed", async() => {
@@ -112,13 +111,22 @@ contract('OpenOrder',  async(accounts) => {
         await checkOrders([
           order1,
           order2
-        ])
+        ], GET_ORDERS_LIMIT_DEFAULT)
+      })
+    })
+
+    describe("Get Orders", async() => {
+      it("should not exceed limit", async() => {
+        await checkOrders([
+          order1,
+          order2
+        ], 2)
       })
     })
   })
 
-  async function checkOrders(expectedOrders) {
-      const result = await openOrderTest.getOrders()
+  async function checkOrders(expectedOrders, limit) {
+      const result = await openOrderTest.getOrders(limit)
       const actualOrders = parseOrderResult(result)
       assert.equal(actualOrders.id.length, expectedOrders.length)
       for (let i = 0; i < expectedOrders.length; i++) {

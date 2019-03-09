@@ -19,7 +19,7 @@ contract TestOpenOrder {
     data.remove(id);
   }
 
-  function getOrders() public view returns (uint64[], uint[], uint[], uint[], bool[], uint64[]) {
-    return data.getOrders();
+  function getOrders(uint16 limit) public view returns (uint64[], uint[], uint[], uint[], bool[], uint64[]) {
+    return data.getOrders(limit);
   }
 }

@@ -323,7 +323,7 @@ contract Exchange is Initializable, Pausable {
         view
         returns (uint64[], uint[], uint[], uint[], bool[], uint64[])
     {
-        return userOrders[baseToken][tradeToken][user].getOrders();
+        return userOrders[baseToken][tradeToken][user].getOrders(MAX_GET_RETURN_SIZE);
     }
 
     function getUserOrderHistory(

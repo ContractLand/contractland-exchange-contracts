@@ -1137,6 +1137,21 @@ contract("Exchange", () => {
               .then(() => checkUserOrders([], seller))
               .then(() => checkUserOrders([], buyer))
         })
+
+        it("should not exceed MAX_GET_RETURN_SIZE when getting open orders", () => {
+          let buy10 = buy(10, 1)
+          const exceededLimit = 5
+          return placeOrder(buy10)
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => checkUserOrders([
+                {id: 1, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false},
+                {id: 2, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false},
+                {id: 3, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false}
+              ], buyer))
+        })
     })
 
     describe("User Trade History", () => {

@@ -1,5 +1,7 @@
 pragma solidity 0.4.24;
 
+import "./Math.sol";
+
 library OpenOrder {
 
   /* --- CONSTANTS --- */
@@ -85,20 +87,21 @@ library OpenOrder {
     return self.orders.length > 0 ? self.orders.length - 1 : 0;
   }
 
-  function getOrders(Orders storage self)
+  function getOrders(Orders storage self, uint16 limit)
     internal
     view
     returns (uint64[], uint[], uint[], uint[], bool[], uint64[])
   {
+    uint retSize = Math.min(size(self), limit);
     GetOrdersResult memory results;
-    results.ids = new uint64[](size(self));
-    results.prices = new uint[](size(self));
-    results.originalAmounts = new uint[](size(self));
-    results.amounts = new uint[](size(self));
-    results.isSells = new bool[](size(self));
-    results.timestamps = new uint64[](size(self));
+    results.ids = new uint64[](retSize);
+    results.prices = new uint[](retSize);
+    results.originalAmounts = new uint[](retSize);
+    results.amounts = new uint[](retSize);
+    results.isSells = new bool[](retSize);
+    results.timestamps = new uint64[](retSize);
 
-    for (uint i = 0; i < size(self); i++) {
+    for (uint i = 0; i < retSize; i++) {
       results.ids[i] = self.orders[ROOT_INDEX + i].id;
       results.prices[i] = self.orders[ROOT_INDEX + i].price;
       results.originalAmounts[i] = self.orders[ROOT_INDEX + i].originalAmount;
