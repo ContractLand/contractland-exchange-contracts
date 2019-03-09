@@ -438,17 +438,58 @@ contract Exchange is Initializable, Pausable {
                 matchingOrder.amount = 0;
             }
 
+            // Substract tradeToken from taker reserve
             reserved[order.tradeToken][order.owner] = reserved[order.tradeToken][order.owner].sub(tradeAmount);
+            // Transfer tradeToken to maker
             transferFundToUser(matchingOrder.owner, order.tradeToken, tradeAmount);
+            // Transfer baseToken to taker (maker order price is used)
             uint baseTokenAmount = tradeAmount.mul(matchingOrder.price).div(PRICE_DENOMINATOR);
             transferFundToUser(order.owner, order.baseToken, baseTokenAmount);
+            // Substract baseToken from maker reserve
             reserved[order.baseToken][matchingOrder.owner] = reserved[order.baseToken][matchingOrder.owner].sub(baseTokenAmount);
 
-            // Record new trade
+            // Log new trade
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
-            emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
-            tradeHistory[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), uint64(block.timestamp));
-            userTradeHistory[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), uint64(block.timestamp));
+            emit NewTrade(tokenPairHash,
+              order.owner,
+              matchingOrder.owner,
+              order.id,
+              matchingOrder.id,
+              true,
+              tradeAmount,
+              matchingOrder.price,
+              uint64(block.timestamp)
+            );
+            // Add to trade history
+            tradeHistory[order.baseToken][order.tradeToken].add(
+              TradeHistory.Trade(
+                order.id,
+                matchingOrder.price,
+                tradeAmount,
+                true
+              ),
+              uint64(block.timestamp)
+            );
+            // Add to taker trade history
+            userTradeHistory[order.baseToken][order.tradeToken][order.owner].add(
+              TradeHistory.Trade(
+                order.id,
+                matchingOrder.price,
+                tradeAmount,
+                true
+              ),
+              uint64(block.timestamp)
+            );
+            // Add to maker trade history
+            userTradeHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(
+              TradeHistory.Trade(
+                matchingOrder.id,
+                matchingOrder.price,
+                tradeAmount,
+                true
+              ),
+              uint64(block.timestamp)
+            );
 
             // Upate amount for remaining order in orderbook and user open orders
             if (matchingOrder.amount != 0) {
@@ -464,7 +505,17 @@ contract Exchange is Initializable, Pausable {
             // Delete record from orderInfoMap
             delete orderInfoMap[matchingOrder.id];
             // Add filled order to user order history
-            userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(OrderHistory.Order(matchingOrder.id, matchingOrder.price, matchingOrder.originalAmount, 0, matchingOrder.isSell, 0), matchingOrder.timestamp);
+            userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(
+              OrderHistory.Order(
+                matchingOrder.id,
+                matchingOrder.price,
+                matchingOrder.originalAmount,
+                0,
+                matchingOrder.isSell,
+                0
+              ),
+              matchingOrder.timestamp
+            );
         }
     }
 
@@ -489,17 +540,59 @@ contract Exchange is Initializable, Pausable {
                 matchingOrder.amount = 0;
             }
 
+            // Substract baseToken from taker reserve
             reserved[order.baseToken][order.owner] = reserved[order.baseToken][order.owner].sub(tradeAmount.mul(order.price).div(PRICE_DENOMINATOR));
+            // Transfer the difference between taker and maker price to taker
             transferFundToUser(order.owner, order.baseToken, tradeAmount.mul(order.price.sub(matchingOrder.price)).div(PRICE_DENOMINATOR));
+            // Substract tradeToken from maker reserve
             reserved[order.tradeToken][matchingOrder.owner] = reserved[order.tradeToken][matchingOrder.owner].sub(tradeAmount);
+            // Transfer baseToken to maker (based on maker price)
             transferFundToUser(matchingOrder.owner, order.baseToken, tradeAmount.mul(matchingOrder.price).div(PRICE_DENOMINATOR));
+            // Transfer tradeToken to taker
             transferFundToUser(order.owner, order.tradeToken, tradeAmount);
 
-            // Record new trade
+            // Log new trade
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
-            emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
-            tradeHistory[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), uint64(block.timestamp));
-            userTradeHistory[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), uint64(block.timestamp));
+            emit NewTrade(
+              tokenPairHash,
+              order.owner,
+              matchingOrder.owner,
+              order.id,
+              matchingOrder.id,
+              false,
+              tradeAmount,
+              matchingOrder.price,
+              uint64(block.timestamp)
+            );
+            // Add to trade history
+            tradeHistory[order.baseToken][order.tradeToken].add(
+              TradeHistory.Trade(
+                order.id,
+                matchingOrder.price,
+                tradeAmount,
+                false
+              ),
+              uint64(block.timestamp)
+            );
+            // Add to taker trade history
+            userTradeHistory[order.baseToken][order.tradeToken][order.owner].add(
+              TradeHistory.Trade(
+                order.id,
+                matchingOrder.price,
+                tradeAmount,
+                false
+              ),
+              uint64(block.timestamp)
+            );
+            // Add to maker trade history
+            userTradeHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(
+              TradeHistory.Trade(matchingOrder.id,
+                matchingOrder.price,
+                tradeAmount,
+                false
+              ),
+              uint64(block.timestamp)
+            );
 
             // Upate amount for remaining order in orderbook and user open orders
             if (matchingOrder.amount != 0) {
@@ -515,7 +608,16 @@ contract Exchange is Initializable, Pausable {
             // Delete record from orderInfoMap
             delete orderInfoMap[matchingOrder.id];
             // Add filled order to user order history
-            userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(OrderHistory.Order(matchingOrder.id, matchingOrder.price, matchingOrder.originalAmount, 0, matchingOrder.isSell, 0), matchingOrder.timestamp);
+            userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(
+              OrderHistory.Order(matchingOrder.id,
+                matchingOrder.price,
+                matchingOrder.originalAmount,
+                0,
+                matchingOrder.isSell,
+                0
+              ),
+              matchingOrder.timestamp
+            );
         }
     }
 }

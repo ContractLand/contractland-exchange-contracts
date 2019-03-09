@@ -1110,6 +1110,30 @@ contract("Exchange", () => {
               .then(() => checkUserOrders([], seller))
         })
 
+        it("should not exceed input limit when getting order history", async () => {
+          let buy10 = buy(10, 1)
+          let sell10 = sell(10, 1)
+          const getLimit = 2
+          return placeOrder(buy10)
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => checkUserOrderHistory([
+                {id: 5, price: buy10.price, originalAmount: buy10.amount, amount: 0, isSell: false, timeCancelled: 0},
+                {id: 4, price: buy10.price, originalAmount: buy10.amount, amount: 0, isSell: false, timeCancelled: 0},
+              ], buyer, DEFAULT_GET_TIME_RANGE, getLimit))
+              .then(() => checkUserOrderHistory([
+                {id: 10, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true, timeCancelled: 0},
+                {id: 9, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true, timeCancelled: 0},
+              ], seller, DEFAULT_GET_TIME_RANGE, getLimit))
+        })
+
         it("should not exceed MAX_GET_RETURN_SIZE when getting order history", () => {
           let buy10 = buy(10, 1)
           let sell10 = sell(10, 1)
@@ -1134,23 +1158,32 @@ contract("Exchange", () => {
                 {id: 9, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true, timeCancelled: 0},
                 {id: 8, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true, timeCancelled: 0}
               ], seller, DEFAULT_GET_TIME_RANGE, exceededLimit))
-              .then(() => checkUserOrders([], seller))
-              .then(() => checkUserOrders([], buyer))
         })
 
         it("should not exceed MAX_GET_RETURN_SIZE when getting open orders", () => {
           let buy10 = buy(10, 1)
+          let sell11 = sell(11, 1)
           const exceededLimit = 5
           return placeOrder(buy10)
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
+              .then(() => placeOrder(sell11))
+              .then(() => placeOrder(sell11))
+              .then(() => placeOrder(sell11))
+              .then(() => placeOrder(sell11))
+              .then(() => placeOrder(sell11))
               .then(() => checkUserOrders([
                 {id: 1, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false},
                 {id: 2, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false},
                 {id: 3, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false}
               ], buyer))
+              .then(() => checkUserOrders([
+                {id: 6, price: sell11.price, originalAmount: sell11.amount, amount: sell11.amount, isSell: true},
+                {id: 7, price: sell11.price, originalAmount: sell11.amount, amount: sell11.amount, isSell: true},
+                {id: 8, price: sell11.price, originalAmount: sell11.amount, amount: sell11.amount, isSell: true}
+              ], seller))
         })
     })
 
@@ -1167,6 +1200,11 @@ contract("Exchange", () => {
                 {id: 4, price: sell10.price, amount: sell10.amount.mul(2), isSell: false},
                 {id: 4, price: sell9.price, amount: sell9.amount, isSell: false}
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkUserTradeHistory([
+                {id: 3, price: sell10.price, amount: sell10.amount, isSell: false},
+                {id: 2, price: sell10.price, amount: sell10.amount, isSell: false},
+                {id: 1, price: sell9.price, amount: sell9.amount, isSell: false}
+              ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
         })
 
         it("should return consolidated sell trades", () => {
@@ -1181,6 +1219,35 @@ contract("Exchange", () => {
                 {id: 4, price: buy10.price, amount: buy10.amount.mul(2), isSell: true},
                 {id: 4, price: buy11.price, amount: buy11.amount, isSell: true}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkUserTradeHistory([
+                {id: 3, price: sell10.price, amount: buy10.amount, isSell: true},
+                {id: 2, price: sell10.price, amount: buy10.amount, isSell: true},
+                {id: 1, price: buy11.price, amount: buy11.amount, isSell: true}
+              ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+        })
+
+        it("should not exceed input limit when getting user trade history", async () => {
+          let sell10 = sell(10, 1)
+          let buy10 = buy(10, 1)
+          const getLimit = 2
+          return placeOrder(sell10)
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => placeOrder(buy10))
+              .then(() => checkUserTradeHistory([
+                {id: 10, price: buy10.price, amount: buy10.amount, isSell: false},
+                {id: 9, price: buy10.price, amount: buy10.amount, isSell: false},
+              ], buyer, DEFAULT_GET_TIME_RANGE, getLimit))
+              .then(() => checkUserTradeHistory([
+                {id: 5, price: sell10.price, amount: sell10.amount, isSell: false},
+                {id: 4, price: sell10.price, amount: sell10.amount, isSell: false},
+              ], seller, DEFAULT_GET_TIME_RANGE, getLimit))
         })
 
         it("should not exceed MAX_GET_RETURN_SIZE", async() => {
@@ -1198,10 +1265,15 @@ contract("Exchange", () => {
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => checkUserTradeHistory([
-                {id: 10, price: sell10.price, amount: sell10.amount, isSell: false},
-                {id: 9, price: sell10.price, amount: sell10.amount, isSell: false},
-                {id: 8, price: sell10.price, amount: sell10.amount, isSell: false}
+                {id: 10, price: buy10.price, amount: buy10.amount, isSell: false},
+                {id: 9, price: buy10.price, amount: buy10.amount, isSell: false},
+                {id: 8, price: buy10.price, amount: buy10.amount, isSell: false}
               ], buyer, DEFAULT_GET_TIME_RANGE, exceededLimit))
+              .then(() => checkUserTradeHistory([
+                {id: 5, price: sell10.price, amount: sell10.amount, isSell: false},
+                {id: 4, price: sell10.price, amount: sell10.amount, isSell: false},
+                {id: 3, price: sell10.price, amount: sell10.amount, isSell: false}
+              ], seller, DEFAULT_GET_TIME_RANGE, exceededLimit))
         })
     })
 
@@ -1403,7 +1475,7 @@ contract("Exchange", () => {
                 assert.equal(trades.id.length, expectedTrades.length)
                 for (let i = 0; i < expectedTrades.length; i++) {
                     assert.equal(trades.id[i], expectedTrades[i].id)
-                    assert.equal(trades.price[i], expectedTrades[i].price)
+                    assert.equal(trades.price[i], expectedTrades[i].price.toString())
                     assert.equal(trades.amount[i], expectedTrades[i].amount)
                     assert.equal(trades.isSell[i], expectedTrades[i].isSell)
                 }
