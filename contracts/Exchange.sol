@@ -11,6 +11,7 @@ import "./libraries/AskHeap.sol";
 import "./libraries/BidHeap.sol";
 import "./libraries/TradeHistory.sol";
 import "./libraries/OrderHistory.sol";
+import "./libraries/OpenOrder.sol";
 
 import "./DestructibleTransfer.sol";
 
@@ -20,6 +21,7 @@ contract Exchange is Initializable, Pausable {
     using BidHeap for BidHeap.Tree;
     using TradeHistory for TradeHistory.Trades;
     using OrderHistory for OrderHistory.Orders;
+    using OpenOrder for OpenOrder.Orders;
 
     /* --- STRUCTS --- */
 
@@ -96,14 +98,17 @@ contract Exchange is Initializable, Pausable {
     // Mapping of user address to mapping of token address to reserved balance in orderbook
     mapping(address => mapping (address => uint)) public reserved;
 
+    // Mapping of base token to trade token to user address to open orders
+    mapping(address => mapping(address => mapping(address => OpenOrder.Orders))) userOrders;
+
     // Mapping of base token to trade token to user address to order history
-    mapping(address => mapping(address => mapping(address => OrderHistory.Orders))) userOrders;
+    mapping(address => mapping(address => mapping(address => OrderHistory.Orders))) userOrderHistory;
 
     // Mapping of base token to trade token to trade history
-    mapping(address => mapping(address => TradeHistory.Trades)) trades;
+    mapping(address => mapping(address => TradeHistory.Trades)) tradeHistory;
 
-    // Mapping of base token to trade token to user address to order history
-    mapping(address => mapping(address => mapping(address => TradeHistory.Trades))) userTrades;
+    // Mapping of base token to trade token to user address to trade history
+    mapping(address => mapping(address => mapping(address => TradeHistory.Trades))) userTradeHistory;
 
     /* --- END OF V1 VARIABLES --- */
 
@@ -144,20 +149,17 @@ contract Exchange is Initializable, Pausable {
 
         // Record new sell order creation
         emit NewOrder(baseToken, tradeToken, orderOwner, id, true, price, amount, order.timestamp);
-        userOrders[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, amount, true, true), order.timestamp);
 
         matchSell(order);
 
-        // Update order amount in user order history after match
-        userOrders[baseToken][tradeToken][orderOwner].updateAmount(id, order.amount);
-
         if (order.amount != 0) {
-            // Add remaining order to orderbook
+            // Add remaining order to orderbook and open orders
             orderbooks[baseToken][tradeToken].asks.add(order);
             orderInfoMap[id] = OrderInfo(orderOwner, baseToken, tradeToken, true);
+            userOrders[baseToken][tradeToken][orderOwner].add(OpenOrder.Order(id, price, amount, order.amount, order.isSell, order.timestamp));
         } else {
-            // Mark filled order inactive in user order history
-            userOrders[baseToken][tradeToken][orderOwner].markInactive(id);
+            // Add filled order to order history
+            userOrderHistory[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, 0, order.isSell, false), order.timestamp);
         }
 
         return id;
@@ -185,20 +187,17 @@ contract Exchange is Initializable, Pausable {
 
         // Record new sell order creation
         emit NewOrder(baseToken, tradeToken, orderOwner, id, false, price, amount, order.timestamp);
-        userOrders[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, amount, false, true), order.timestamp);
 
         matchBuy(order);
 
-        // Update order amount in user order history after match
-        userOrders[baseToken][tradeToken][orderOwner].updateAmount(id, order.amount);
-
         if (order.amount != 0) {
-            // Add remaining maker order to orderbook
+            // Add remaining maker order to orderbook and open orders
             orderbooks[baseToken][tradeToken].bids.add(order);
             orderInfoMap[id] = OrderInfo(orderOwner, baseToken, tradeToken, false);
+            userOrders[baseToken][tradeToken][orderOwner].add(OpenOrder.Order(id, price, amount, order.amount, order.isSell, order.timestamp));
         } else {
-            // Mark filled order inactive in user order history
-            userOrders[baseToken][tradeToken][orderOwner].markInactive(id);
+          // Add filled order to order history
+          userOrderHistory[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, 0, order.isSell, false), order.timestamp);
         }
 
         return id;
@@ -224,8 +223,8 @@ contract Exchange is Initializable, Pausable {
         }
 
         emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, orderToCancel.price, orderToCancel.amount, uint64(block.timestamp));
-        // Mark cancelled order inactive in user order history
-        userOrders[orderToCancel.baseToken][orderToCancel.tradeToken][orderToCancel.owner].markInactive(id);
+        // Add cancelled order to user order history
+        userOrderHistory[orderToCancel.baseToken][orderToCancel.tradeToken][orderToCancel.owner].add(OrderHistory.Order(orderToCancel.id, orderToCancel.price, orderToCancel.originalAmount, orderToCancel.amount, orderToCancel.isSell, false), orderToCancel.timestamp);
         delete orderInfoMap[id];
     }
 
@@ -286,7 +285,7 @@ contract Exchange is Initializable, Pausable {
         return orderbooks[baseToken][tradeToken].bids.getOrders();
     }
 
-    function getTrades(
+    function getTradeHistory(
         address baseToken,
         address tradeToken,
         uint64[] timeRange,
@@ -296,11 +295,11 @@ contract Exchange is Initializable, Pausable {
         view
         returns (uint64[], uint[], uint[], bool[], uint64[])
     {
-        return trades[baseToken][tradeToken].getTrades(timeRange, getLimit(limit));
+        return tradeHistory[baseToken][tradeToken].getTrades(timeRange, getLimit(limit));
     }
 
     // Input parameters are in reverse order to avoid stack too deep error
-    function getUserTrades(
+    function getUserTradeHistory(
         uint16 limit,
         uint64[] timeRange,
         address user,
@@ -311,11 +310,23 @@ contract Exchange is Initializable, Pausable {
         view
         returns (uint64[], uint[], uint[], bool[], uint64[])
     {
-        return userTrades[baseToken][tradeToken][user].getTrades(timeRange, getLimit(limit));
+        return userTradeHistory[baseToken][tradeToken][user].getTrades(timeRange, getLimit(limit));
+    }
+
+    function getUserOrders(
+        address user,
+        address tradeToken,
+        address baseToken
+    )
+        external
+        view
+        returns (uint64[], uint[], uint[], uint[], bool[], uint64[])
+    {
+        return userOrders[baseToken][tradeToken][user].getOrders();
     }
 
     // Input parameters are in reverse order to avoid stack too deep error
-    function getUserOrders(
+    function getUserOrderHistory(
         uint16 limit,
         uint64[] timeRange,
         address user,
@@ -326,7 +337,7 @@ contract Exchange is Initializable, Pausable {
         view
         returns (uint64[], uint[], uint[], uint[], bool[], bool[], uint64[])
     {
-        return userOrders[baseToken][tradeToken][user].getOrders(timeRange, getLimit(limit));
+        return userOrderHistory[baseToken][tradeToken][user].getOrders(timeRange, getLimit(limit));
     }
 
     function setMinPriceSize(uint64 newMin)
@@ -436,23 +447,24 @@ contract Exchange is Initializable, Pausable {
             // Record new trade
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, true, tradeAmount, matchingOrder.price, uint64(block.timestamp));
-            trades[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), order.timestamp);
-            userTrades[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), order.timestamp);
+            tradeHistory[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), order.timestamp);
+            userTradeHistory[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, true), order.timestamp);
 
-            // Update order amount in user order history
-            userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].updateAmount(matchingOrder.id, matchingOrder.amount);
-            // Upate amount for remaining order in orderbook
+            // Upate amount for remaining order in orderbook and user open orders
             if (matchingOrder.amount != 0) {
                 bids.updateAmountById(matchingOrder.id, matchingOrder.amount);
+                userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].update(matchingOrder.id, matchingOrder.amount);
                 break;
             }
 
             // Remove filled order from orderbook
             bids.pop();
-            // Mark filled order inactive in user order history
-            userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].markInactive(matchingOrder.id);
+            // Remove filled order from user open orders
+            userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].remove(matchingOrder.id);
             // Delete record from orderInfoMap
             delete orderInfoMap[matchingOrder.id];
+            // Add filled order to user order history
+            userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(OrderHistory.Order(matchingOrder.id, matchingOrder.price, matchingOrder.originalAmount, 0, matchingOrder.isSell, false), matchingOrder.timestamp);
         }
     }
 
@@ -486,23 +498,24 @@ contract Exchange is Initializable, Pausable {
             // Record new trade
             bytes32 tokenPairHash = keccak256(abi.encodePacked(order.baseToken, order.tradeToken));
             emit NewTrade(tokenPairHash, order.owner, matchingOrder.owner, order.id, matchingOrder.id, false, tradeAmount, matchingOrder.price, uint64(block.timestamp));
-            trades[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), order.timestamp);
-            userTrades[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), order.timestamp);
+            tradeHistory[order.baseToken][order.tradeToken].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), order.timestamp);
+            userTradeHistory[order.baseToken][order.tradeToken][order.owner].add(TradeHistory.Trade(order.id, matchingOrder.price, tradeAmount, false), order.timestamp);
 
-            // Update order amount in user order history
-            userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].updateAmount(matchingOrder.id, matchingOrder.amount);
-            // Upate amount for remaining order in orderbook
+            // Upate amount for remaining order in orderbook and user open orders
             if (matchingOrder.amount != 0) {
                 asks.updateAmountById(matchingOrder.id, matchingOrder.amount);
+                userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].update(matchingOrder.id, matchingOrder.amount);
                 break;
             }
 
             // Remove filled order from orderbook
             asks.pop();
-            // Mark filled order inactive in user order history
-            userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].markInactive(matchingOrder.id);
+            // Remove filled order from user open orders
+            userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].remove(matchingOrder.id);
             // Delete record from orderInfoMap
             delete orderInfoMap[matchingOrder.id];
+            // Add filled order to user order history
+            userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(OrderHistory.Order(matchingOrder.id, matchingOrder.price, matchingOrder.originalAmount, 0, matchingOrder.isSell, false), matchingOrder.timestamp);
         }
     }
 }

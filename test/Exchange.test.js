@@ -983,17 +983,17 @@ contract("Exchange", () => {
         })
     })
 
-    describe("User Order History", () => {
+    describe("User Open Orders and History", () => {
         it("should return user buy orders", () => {
           let buyOrder = buy(10, 1)
           return placeOrder(buyOrder)
               .then(() => placeOrder(buyOrder))
               .then(() => placeOrder(buyOrder))
               .then(() => checkUserOrders([
-                {id: 3, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: true},
-                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: true},
-                {id: 1, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: true}
-              ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+                {id: 1, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false},
+                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false},
+                {id: 3, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false}
+              ], buyer))
         })
 
         it("should return user sell orders", () => {
@@ -1002,92 +1002,123 @@ contract("Exchange", () => {
               .then(() => placeOrder(sellOrder))
               .then(() => placeOrder(sellOrder))
               .then(() => checkUserOrders([
-                {id: 3, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: true},
-                {id: 2, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: true},
-                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: true}
-              ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true},
+                {id: 2, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true},
+                {id: 3, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true}
+              ], seller))
         })
 
-        it("should update maker buy orders amounts on matchSell, and mark inactive on fill", () => {
+        it("should update maker buy orders amounts on matchSell, and add to history on fill", () => {
           let buy1 = buy(10, 1)
           let buy2 = buy(10, 2)
           let sell2 = sell(10, 2)
           return placeOrder(buy1)
               .then(() => placeOrder(buy2))
               .then(() => placeOrder(sell2))
-              .then(() => checkUserOrders([
-                {id: 2, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false, isActive: true},
-                {id: 1, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false, isActive: false}
+              .then(() => checkUserOrderHistory([
+                {id: 1, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false}
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkUserOrderHistory([
+                {id: 3, price: sell2.price, originalAmount: sell2.amount, amount: 0, isSell: true}
+              ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkUserOrders([
+                {id: 2, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false}
+              ], buyer))
         })
 
-        it("should update taker sell orders amounts on matchSell, and mark inactive on fill", () => {
+        it("should update taker sell orders amounts on matchSell, and add to history on fill", () => {
           let buy2 = buy(10, 2)
           let sell1 = sell(10, 1)
           let sell2 = sell(10, 2)
           return placeOrder(buy2)
               .then(() => placeOrder(sell1))
               .then(() => placeOrder(sell2))
-              .then(() => checkUserOrders([
-                {id: 3, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true, isActive: true},
-                {id: 2, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true, isActive: false}
+              .then(() => checkUserOrderHistory([
+                {id: 2, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkUserOrderHistory([
+                {id: 1, price: buy2.price, originalAmount: buy2.amount, amount: 0, isSell: false}
+              ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkUserOrders([
+                {id: 3, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true}
+              ], seller))
         })
 
-        it("should update maker sell orders amounts on matchBuy, and mark inactive on fill", () => {
+        it("should update maker sell orders amounts on matchBuy, and add to history on fill", () => {
           let sell1 = sell(10, 1)
           let sell2 = sell(10, 2)
           let buy2 = buy(10, 2)
           return placeOrder(sell1)
               .then(() => placeOrder(sell2))
               .then(() => placeOrder(buy2))
-              .then(() => checkUserOrders([
-                {id: 2, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true, isActive: true},
-                {id: 1, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true, isActive: false}
+              .then(() => checkUserOrderHistory([
+                {id: 1, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkUserOrderHistory([
+                {id: 3, price: buy2.price, originalAmount: buy2.amount, amount: 0, isSell: false}
+              ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkUserOrders([
+                {id: 2, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true}
+              ], seller))
         })
 
-        it("should update taker buy orders amounts on matchBuy, and mark inactive on fill", () => {
+        it("should update taker buy orders amounts on matchBuy, and add to history on fill", () => {
           let sell2 = sell(10, 2)
           let buy1 = buy(10, 1)
           let buy2 = buy(10, 2)
           return placeOrder(sell2)
               .then(() => placeOrder(buy1))
               .then(() => placeOrder(buy2))
-              .then(() => checkUserOrders([
-                {id: 3, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false, isActive: true},
-                {id: 2, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false, isActive: false}
+              .then(() => checkUserOrderHistory([
+                {id: 2, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false}
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkUserOrderHistory([
+                {id: 1, price: sell2.price, originalAmount: sell2.amount, amount: 0, isSell: true}
+              ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkUserOrders([
+                {id: 3, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false}
+              ], buyer))
         })
 
-        it("should mark order inactive once cancelled", () => {
+        it("should add to history on cancel", () => {
           let sellOrder = sell(10, 1)
           let buyOrder = buy(9, 1)
           return placeOrder(sellOrder)
               .then(() => placeOrder(buyOrder))
               .then(() => cancelOrder(1, seller))
               .then(() => cancelOrder(2, buyer))
-              .then(() => checkUserOrders([
-                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, isActive: false}
+              .then(() => checkUserOrderHistory([
+                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
-              .then(() => checkUserOrders([
-                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, isActive: false},
+              .then(() => checkUserOrderHistory([
+                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false},
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
         })
 
-        it("should not exceed MAX_GET_RETURN_SIZE", () => {
+        it("should not exceed MAX_GET_RETURN_SIZE when getting order history", () => {
           let buy10 = buy(10, 1)
+          let sell10 = sell(10, 1)
           const exceededLimit = 5
           return placeOrder(buy10)
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
-              .then(() => checkUserOrders([
-                {id: 5, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false, isActive: true},
-                {id: 4, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false, isActive: true},
-                {id: 3, price: buy10.price, originalAmount: buy10.amount, amount: buy10.amount, isSell: false, isActive: true}
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => placeOrder(sell10))
+              .then(() => checkUserOrderHistory([
+                {id: 5, price: buy10.price, originalAmount: buy10.amount, amount: 0, isSell: false},
+                {id: 4, price: buy10.price, originalAmount: buy10.amount, amount: 0, isSell: false},
+                {id: 3, price: buy10.price, originalAmount: buy10.amount, amount: 0, isSell: false}
               ], buyer, DEFAULT_GET_TIME_RANGE, exceededLimit))
+              .then(() => checkUserOrderHistory([
+                {id: 10, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true},
+                {id: 9, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true},
+                {id: 8, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true}
+              ], seller, DEFAULT_GET_TIME_RANGE, exceededLimit))
         })
     })
 
@@ -1100,7 +1131,7 @@ contract("Exchange", () => {
               .then(() => placeOrder(sell10))
               .then(() => placeOrder(sell10))
               .then(() => placeOrder(buy10))
-              .then(() => checkUserTrades([
+              .then(() => checkUserTradeHistory([
                 {id: 4, price: sell10.price, amount: sell10.amount.mul(2), isSell: false},
                 {id: 4, price: sell9.price, amount: sell9.amount, isSell: false}
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
@@ -1114,7 +1145,7 @@ contract("Exchange", () => {
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(sell10))
-              .then(() => checkUserTrades([
+              .then(() => checkUserTradeHistory([
                 {id: 4, price: buy10.price, amount: buy10.amount.mul(2), isSell: true},
                 {id: 4, price: buy11.price, amount: buy11.amount, isSell: true}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
@@ -1134,7 +1165,7 @@ contract("Exchange", () => {
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
-              .then(() => checkUserTrades([
+              .then(() => checkUserTradeHistory([
                 {id: 10, price: sell10.price, amount: sell10.amount, isSell: false},
                 {id: 9, price: sell10.price, amount: sell10.amount, isSell: false},
                 {id: 8, price: sell10.price, amount: sell10.amount, isSell: false}
@@ -1151,7 +1182,7 @@ contract("Exchange", () => {
               .then(() => placeOrder(sell10))
               .then(() => placeOrder(sell10))
               .then(() => placeOrder(buy10))
-              .then(() => checkTrades([
+              .then(() => checkTradeHistory([
                 {id: 4, price: sell10.price, amount: sell10.amount.mul(2), isSell: false},
                 {id: 4, price: sell9.price, amount: sell9.amount, isSell: false}
               ], DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
@@ -1165,7 +1196,7 @@ contract("Exchange", () => {
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(sell10))
-              .then(() => checkTrades([
+              .then(() => checkTradeHistory([
                 {id: 4, price: buy10.price, amount: buy10.amount.mul(2), isSell: true},
                 {id: 4, price: buy11.price, amount: buy11.amount, isSell: true}
               ], DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
@@ -1185,7 +1216,7 @@ contract("Exchange", () => {
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
               .then(() => placeOrder(buy10))
-              .then(() => checkTrades([
+              .then(() => checkTradeHistory([
                 {id: 10, price: sell10.price, amount: sell10.amount, isSell: false},
                 {id: 9, price: sell10.price, amount: sell10.amount, isSell: false},
                 {id: 8, price: sell10.price, amount: sell10.amount, isSell: false}
@@ -1319,8 +1350,8 @@ contract("Exchange", () => {
             })
     }
 
-    function checkTrades(expectedTrades, timeRange, limit) {
-        return exchange.getTrades(baseToken.address, tradeToken.address, timeRange, limit)
+    function checkTradeHistory(expectedTrades, timeRange, limit) {
+        return exchange.getTradeHistory(baseToken.address, tradeToken.address, timeRange, limit)
             .then(result => {
                 const trades = parseTradeResult(result)
                 assert.equal(trades.id.length, expectedTrades.length)
@@ -1333,8 +1364,8 @@ contract("Exchange", () => {
             })
     }
 
-    function checkUserTrades(expectedTrades, user, timeRange, limit) {
-        return exchange.getUserTrades(limit, timeRange, user, tradeToken.address, baseToken.address)
+    function checkUserTradeHistory(expectedTrades, user, timeRange, limit) {
+        return exchange.getUserTradeHistory(limit, timeRange, user, tradeToken.address, baseToken.address)
             .then(result => {
                 const trades = parseTradeResult(result)
                 assert.equal(trades.id.length, expectedTrades.length)
@@ -1347,8 +1378,8 @@ contract("Exchange", () => {
             })
     }
 
-    function checkUserOrders(expectedOrders, user, timeRange, limit) {
-        return exchange.getUserOrders(limit, timeRange, user, tradeToken.address, baseToken.address)
+    function checkUserOrders(expectedOrders, user) {
+        return exchange.getUserOrders(user, tradeToken.address, baseToken.address)
             .then(result => {
                 const orders = parseOrderResult(result)
                 assert.equal(orders.id.length, expectedOrders.length)
@@ -1358,7 +1389,21 @@ contract("Exchange", () => {
                     assert.equal(orders.originalAmount[i], expectedOrders[i].originalAmount.toString())
                     assert.equal(orders.amount[i], expectedOrders[i].amount.toString())
                     assert.equal(orders.isSell[i], expectedOrders[i].isSell)
-                    assert.equal(orders.isActive[i], expectedOrders[i].isActive)
+                }
+            })
+    }
+
+    function checkUserOrderHistory(expectedOrders, user, timeRange, limit) {
+        return exchange.getUserOrderHistory(limit, timeRange, user, tradeToken.address, baseToken.address)
+            .then(result => {
+                const orders = parseOrderResult(result)
+                assert.equal(orders.id.length, expectedOrders.length)
+                for (let i = 0; i < expectedOrders.length; i++) {
+                    assert.equal(orders.id[i], expectedOrders[i].id)
+                    assert.equal(orders.price[i], expectedOrders[i].price)
+                    assert.equal(orders.originalAmount[i], expectedOrders[i].originalAmount.toString())
+                    assert.equal(orders.amount[i], expectedOrders[i].amount.toString())
+                    assert.equal(orders.isSell[i], expectedOrders[i].isSell)
                 }
             })
     }
@@ -1464,8 +1509,7 @@ contract("Exchange", () => {
             price: result[1].map(t => t.toNumber()),
             originalAmount: result[2].map(t => t.toNumber()),
             amount: result[3].map(t => t.toNumber()),
-            isSell: result[4],
-            isActive: result[5]
+            isSell: result[4]
         }
     }
 
