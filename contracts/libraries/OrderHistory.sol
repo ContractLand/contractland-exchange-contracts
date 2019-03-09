@@ -14,6 +14,7 @@ library OrderHistory {
     uint originalAmount;
     uint amount;
     bool isSell;
+    uint64 timeCancelled;
   }
 
   struct Orders {
@@ -27,6 +28,7 @@ library OrderHistory {
     uint[] originalAmounts;
     uint[] amounts;
     bool[] isSells;
+    uint64[] timeCancelleds;
     uint64[] timestamps;
   }
 
@@ -47,7 +49,7 @@ library OrderHistory {
   function getOrders(Orders storage self, uint64[] timeRange, uint16 limit)
     internal
     view
-    returns (uint64[], uint[], uint[], uint[], bool[], uint64[])
+    returns (uint64[], uint[], uint[], uint[], bool[], uint64[], uint64[])
   {
     if (timeRange[0] >= timeRange[1]) {
       return;
@@ -77,6 +79,7 @@ library OrderHistory {
     results.originalAmounts = new uint[](limit);
     results.amounts = new uint[](limit);
     results.isSells = new bool[](limit);
+    results.timeCancelleds = new uint64[](limit);
     results.timestamps = new uint64[](limit);
 
     uint count = 0;
@@ -86,11 +89,12 @@ library OrderHistory {
       results.originalAmounts[count] = self.orders[endIndex].originalAmount;
       results.amounts[count] = self.orders[endIndex].amount;
       results.isSells[count] = self.orders[endIndex].isSell;
+      results.timeCancelleds[count] = self.orders[endIndex].timeCancelled;
       results.timestamps[count] = self.timestamps[endIndex];
       endIndex--;
       count++;
     }
 
-    return (results.ids, results.prices, results.originalAmounts, results.amounts, results.isSells, results.timestamps);
+    return (results.ids, results.prices, results.originalAmounts, results.amounts, results.isSells, results.timeCancelleds, results.timestamps);
   }
 }

@@ -2,6 +2,7 @@ import { expect } from 'chai'
 import EVMRevert from './helpers/EVMRevert'
 import toWei from './helpers/toWei'
 import fromWei from './helpers/fromWei'
+import time from './helpers/time'
 
 require('chai')
   .use(require('chai-as-promised'))
@@ -983,16 +984,16 @@ contract("Exchange", () => {
         })
     })
 
-    describe("User Open Orders and History", () => {
+    describe.only("User Open Orders and History", () => {
         it("should return user buy orders", () => {
           let buyOrder = buy(10, 1)
           return placeOrder(buyOrder)
               .then(() => placeOrder(buyOrder))
               .then(() => placeOrder(buyOrder))
               .then(() => checkUserOrders([
-                {id: 1, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false},
-                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false},
-                {id: 3, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false}
+                {id: 1, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, timeCancelled: 0},
+                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, timeCancelled: 0},
+                {id: 3, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, timeCancelled: 0}
               ], buyer))
         })
 
@@ -1002,9 +1003,9 @@ contract("Exchange", () => {
               .then(() => placeOrder(sellOrder))
               .then(() => placeOrder(sellOrder))
               .then(() => checkUserOrders([
-                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true},
-                {id: 2, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true},
-                {id: 3, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true}
+                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, timeCancelled: 0},
+                {id: 2, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, timeCancelled: 0},
+                {id: 3, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, timeCancelled: 0}
               ], seller))
         })
 
@@ -1016,13 +1017,13 @@ contract("Exchange", () => {
               .then(() => placeOrder(buy2))
               .then(() => placeOrder(sell2))
               .then(() => checkUserOrderHistory([
-                {id: 1, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false}
+                {id: 1, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false, timeCancelled: 0}
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
               .then(() => checkUserOrderHistory([
-                {id: 3, price: sell2.price, originalAmount: sell2.amount, amount: 0, isSell: true}
+                {id: 3, price: sell2.price, originalAmount: sell2.amount, amount: 0, isSell: true, timeCancelled: 0}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
               .then(() => checkUserOrders([
-                {id: 2, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false}
+                {id: 2, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false, timeCancelled: 0}
               ], buyer))
         })
 
@@ -1034,13 +1035,13 @@ contract("Exchange", () => {
               .then(() => placeOrder(sell1))
               .then(() => placeOrder(sell2))
               .then(() => checkUserOrderHistory([
-                {id: 2, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true}
+                {id: 2, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true, timeCancelled: 0}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
               .then(() => checkUserOrderHistory([
-                {id: 1, price: buy2.price, originalAmount: buy2.amount, amount: 0, isSell: false}
+                {id: 1, price: buy2.price, originalAmount: buy2.amount, amount: 0, isSell: false, timeCancelled: 0}
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
               .then(() => checkUserOrders([
-                {id: 3, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true}
+                {id: 3, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true, timeCancelled: 0}
               ], seller))
         })
 
@@ -1052,13 +1053,13 @@ contract("Exchange", () => {
               .then(() => placeOrder(sell2))
               .then(() => placeOrder(buy2))
               .then(() => checkUserOrderHistory([
-                {id: 1, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true}
+                {id: 1, price: sell1.price, originalAmount: sell1.amount, amount: 0, isSell: true, timeCancelled: 0}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
               .then(() => checkUserOrderHistory([
-                {id: 3, price: buy2.price, originalAmount: buy2.amount, amount: 0, isSell: false}
+                {id: 3, price: buy2.price, originalAmount: buy2.amount, amount: 0, isSell: false, timeCancelled: 0}
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
               .then(() => checkUserOrders([
-                {id: 2, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true}
+                {id: 2, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true, timeCancelled: 0}
               ], seller))
         })
 
@@ -1070,28 +1071,32 @@ contract("Exchange", () => {
               .then(() => placeOrder(buy1))
               .then(() => placeOrder(buy2))
               .then(() => checkUserOrderHistory([
-                {id: 2, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false}
+                {id: 2, price: buy1.price, originalAmount: buy1.amount, amount: 0, isSell: false, timeCancelled: 0}
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
               .then(() => checkUserOrderHistory([
-                {id: 1, price: sell2.price, originalAmount: sell2.amount, amount: 0, isSell: true}
+                {id: 1, price: sell2.price, originalAmount: sell2.amount, amount: 0, isSell: true, timeCancelled: 0}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
               .then(() => checkUserOrders([
-                {id: 3, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false}
+                {id: 3, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false, timeCancelled: 0}
               ], buyer))
         })
 
         it("should add to history on cancel", () => {
           let sellOrder = sell(10, 1)
           let buyOrder = buy(9, 1)
+          let cancelledTime = 0;
           return placeOrder(sellOrder)
               .then(() => placeOrder(buyOrder))
               .then(() => cancelOrder(1, seller))
               .then(() => cancelOrder(2, buyer))
+              .then(async() => {
+                cancelledTime = await time.latest()
+              })
               .then(() => checkUserOrderHistory([
-                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true}
+                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, timeCancelled: cancelledTime}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
               .then(() => checkUserOrderHistory([
-                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false},
+                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, timeCancelled: cancelledTime},
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
         })
 
@@ -1110,14 +1115,14 @@ contract("Exchange", () => {
               .then(() => placeOrder(sell10))
               .then(() => placeOrder(sell10))
               .then(() => checkUserOrderHistory([
-                {id: 5, price: buy10.price, originalAmount: buy10.amount, amount: 0, isSell: false},
-                {id: 4, price: buy10.price, originalAmount: buy10.amount, amount: 0, isSell: false},
-                {id: 3, price: buy10.price, originalAmount: buy10.amount, amount: 0, isSell: false}
+                {id: 5, price: buy10.price, originalAmount: buy10.amount, amount: 0, isSell: false, timeCancelled: 0},
+                {id: 4, price: buy10.price, originalAmount: buy10.amount, amount: 0, isSell: false, timeCancelled: 0},
+                {id: 3, price: buy10.price, originalAmount: buy10.amount, amount: 0, isSell: false, timeCancelled: 0}
               ], buyer, DEFAULT_GET_TIME_RANGE, exceededLimit))
               .then(() => checkUserOrderHistory([
-                {id: 10, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true},
-                {id: 9, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true},
-                {id: 8, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true}
+                {id: 10, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true, timeCancelled: 0},
+                {id: 9, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true, timeCancelled: 0},
+                {id: 8, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true, timeCancelled: 0}
               ], seller, DEFAULT_GET_TIME_RANGE, exceededLimit))
         })
     })
@@ -1381,7 +1386,7 @@ contract("Exchange", () => {
     function checkUserOrders(expectedOrders, user) {
         return exchange.getUserOrders(user, tradeToken.address, baseToken.address)
             .then(result => {
-                const orders = parseOrderResult(result)
+                const orders = parseOpenOrderResult(result)
                 assert.equal(orders.id.length, expectedOrders.length)
                 for (let i = 0; i < expectedOrders.length; i++) {
                     assert.equal(orders.id[i], expectedOrders[i].id)
@@ -1396,7 +1401,7 @@ contract("Exchange", () => {
     function checkUserOrderHistory(expectedOrders, user, timeRange, limit) {
         return exchange.getUserOrderHistory(limit, timeRange, user, tradeToken.address, baseToken.address)
             .then(result => {
-                const orders = parseOrderResult(result)
+                const orders = parseOrderHistoryResult(result)
                 assert.equal(orders.id.length, expectedOrders.length)
                 for (let i = 0; i < expectedOrders.length; i++) {
                     assert.equal(orders.id[i], expectedOrders[i].id)
@@ -1404,6 +1409,7 @@ contract("Exchange", () => {
                     assert.equal(orders.originalAmount[i], expectedOrders[i].originalAmount.toString())
                     assert.equal(orders.amount[i], expectedOrders[i].amount.toString())
                     assert.equal(orders.isSell[i], expectedOrders[i].isSell)
+                    assert.equal(orders.timeCancelled[i], expectedOrders[i].timeCancelled)
                 }
             })
     }
@@ -1503,7 +1509,18 @@ contract("Exchange", () => {
         }
     }
 
-    function parseOrderResult(result) {
+    function parseOrderHistoryResult(result) {
+        return {
+            id: result[0].map(t => t.toNumber()),
+            price: result[1].map(t => t.toNumber()),
+            originalAmount: result[2].map(t => t.toNumber()),
+            amount: result[3].map(t => t.toNumber()),
+            isSell: result[4],
+            timeCancelled: result[5].map(t => t.toNumber())
+        }
+    }
+
+    function parseOpenOrderResult(result) {
         return {
             id: result[0].map(t => t.toNumber()),
             price: result[1].map(t => t.toNumber()),

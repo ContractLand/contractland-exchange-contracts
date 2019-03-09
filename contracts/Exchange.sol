@@ -159,7 +159,7 @@ contract Exchange is Initializable, Pausable {
             userOrders[baseToken][tradeToken][orderOwner].add(OpenOrder.Order(id, price, amount, order.amount, order.isSell, order.timestamp));
         } else {
             // Add filled order to order history
-            userOrderHistory[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, 0, order.isSell), order.timestamp);
+            userOrderHistory[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, 0, order.isSell, 0), order.timestamp);
         }
 
         return id;
@@ -197,7 +197,7 @@ contract Exchange is Initializable, Pausable {
             userOrders[baseToken][tradeToken][orderOwner].add(OpenOrder.Order(id, price, amount, order.amount, order.isSell, order.timestamp));
         } else {
           // Add filled order to order history
-          userOrderHistory[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, 0, order.isSell), order.timestamp);
+          userOrderHistory[baseToken][tradeToken][orderOwner].add(OrderHistory.Order(id, price, amount, 0, order.isSell, 0), order.timestamp);
         }
 
         return id;
@@ -224,7 +224,7 @@ contract Exchange is Initializable, Pausable {
 
         emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, orderToCancel.price, orderToCancel.amount, uint64(block.timestamp));
         // Add cancelled order to user order history
-        userOrderHistory[orderToCancel.baseToken][orderToCancel.tradeToken][orderToCancel.owner].add(OrderHistory.Order(orderToCancel.id, orderToCancel.price, orderToCancel.originalAmount, orderToCancel.amount, orderToCancel.isSell), orderToCancel.timestamp);
+        userOrderHistory[orderToCancel.baseToken][orderToCancel.tradeToken][orderToCancel.owner].add(OrderHistory.Order(orderToCancel.id, orderToCancel.price, orderToCancel.originalAmount, orderToCancel.amount, orderToCancel.isSell, uint64(block.timestamp)), orderToCancel.timestamp);
         delete orderInfoMap[id];
     }
 
@@ -335,7 +335,7 @@ contract Exchange is Initializable, Pausable {
     )
         external
         view
-        returns (uint64[], uint[], uint[], uint[], bool[], uint64[])
+        returns (uint64[], uint[], uint[], uint[], bool[], uint64[], uint64[])
     {
         return userOrderHistory[baseToken][tradeToken][user].getOrders(timeRange, getLimit(limit));
     }
@@ -464,7 +464,7 @@ contract Exchange is Initializable, Pausable {
             // Delete record from orderInfoMap
             delete orderInfoMap[matchingOrder.id];
             // Add filled order to user order history
-            userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(OrderHistory.Order(matchingOrder.id, matchingOrder.price, matchingOrder.originalAmount, 0, matchingOrder.isSell), matchingOrder.timestamp);
+            userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(OrderHistory.Order(matchingOrder.id, matchingOrder.price, matchingOrder.originalAmount, 0, matchingOrder.isSell, 0), matchingOrder.timestamp);
         }
     }
 
@@ -515,7 +515,7 @@ contract Exchange is Initializable, Pausable {
             // Delete record from orderInfoMap
             delete orderInfoMap[matchingOrder.id];
             // Add filled order to user order history
-            userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(OrderHistory.Order(matchingOrder.id, matchingOrder.price, matchingOrder.originalAmount, 0, matchingOrder.isSell), matchingOrder.timestamp);
+            userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(OrderHistory.Order(matchingOrder.id, matchingOrder.price, matchingOrder.originalAmount, 0, matchingOrder.isSell, 0), matchingOrder.timestamp);
         }
     }
 }
