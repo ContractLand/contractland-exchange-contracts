@@ -286,10 +286,10 @@ contract Exchange is Initializable, Pausable {
     }
 
     function getTradeHistory(
-        address baseToken,
-        address tradeToken,
+        uint16 limit,
         uint64[] timeRange,
-        uint16 limit
+        address tradeToken,
+        address baseToken
     )
         external
         view
@@ -298,7 +298,6 @@ contract Exchange is Initializable, Pausable {
         return tradeHistory[baseToken][tradeToken].getTrades(timeRange, getLimit(limit));
     }
 
-    // Input parameters are in reverse order to avoid stack too deep error
     function getUserTradeHistory(
         uint16 limit,
         uint64[] timeRange,
@@ -325,7 +324,6 @@ contract Exchange is Initializable, Pausable {
         return userOrders[baseToken][tradeToken][user].getOrders();
     }
 
-    // Input parameters are in reverse order to avoid stack too deep error
     function getUserOrderHistory(
         uint16 limit,
         uint64[] timeRange,

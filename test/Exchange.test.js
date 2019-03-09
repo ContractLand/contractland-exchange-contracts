@@ -1084,19 +1084,23 @@ contract("Exchange", () => {
         it("should add to history on cancel", () => {
           let sellOrder = sell(10, 1)
           let buyOrder = buy(9, 1)
-          let cancelledTime = 0;
+          let sellOrderCancelledTime = 0;
+          let buyOrderCancelledTime = 0;
           return placeOrder(sellOrder)
               .then(() => placeOrder(buyOrder))
               .then(() => cancelOrder(1, seller))
+              .then(async() => {
+                sellOrderCancelledTime = await time.latest()
+              })
               .then(() => cancelOrder(2, buyer))
               .then(async() => {
-                cancelledTime = await time.latest()
+                buyOrderCancelledTime = await time.latest()
               })
               .then(() => checkUserOrderHistory([
-                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, timeCancelled: cancelledTime}
+                {id: 1, price: sellOrder.price, originalAmount: sellOrder.amount, amount: sellOrder.amount, isSell: true, timeCancelled: sellOrderCancelledTime}
               ], seller, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
               .then(() => checkUserOrderHistory([
-                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, timeCancelled: cancelledTime},
+                {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, timeCancelled: buyOrderCancelledTime},
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
         })
 
@@ -1356,7 +1360,7 @@ contract("Exchange", () => {
     }
 
     function checkTradeHistory(expectedTrades, timeRange, limit) {
-        return exchange.getTradeHistory(baseToken.address, tradeToken.address, timeRange, limit)
+        return exchange.getTradeHistory(limit, timeRange, tradeToken.address, baseToken.address)
             .then(result => {
                 const trades = parseTradeResult(result)
                 assert.equal(trades.id.length, expectedTrades.length)
