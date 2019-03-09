@@ -223,6 +223,8 @@ contract Exchange is Initializable, Pausable {
         }
 
         emit NewCancelOrder(orderInfo.baseToken, orderInfo.tradeToken, orderInfo.owner, id, orderInfo.isSell, orderToCancel.price, orderToCancel.amount, uint64(block.timestamp));
+        // Remove from user open orders
+        userOrders[orderToCancel.baseToken][orderToCancel.tradeToken][orderToCancel.owner].remove(orderToCancel.id);
         // Add cancelled order to user order history
         userOrderHistory[orderToCancel.baseToken][orderToCancel.tradeToken][orderToCancel.owner].add(OrderHistory.Order(orderToCancel.id, orderToCancel.price, orderToCancel.originalAmount, orderToCancel.amount, orderToCancel.isSell, uint64(block.timestamp)), orderToCancel.timestamp);
         delete orderInfoMap[id];

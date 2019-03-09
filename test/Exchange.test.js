@@ -1009,7 +1009,7 @@ contract("Exchange", () => {
               ], seller))
         })
 
-        it("should update maker buy orders amounts on matchSell, and add to history on fill", () => {
+        it("should update maker buy orders amounts on matchSell, and add to history and remove from open orders on fill", () => {
           let buy1 = buy(10, 1)
           let buy2 = buy(10, 2)
           let sell2 = sell(10, 2)
@@ -1025,9 +1025,10 @@ contract("Exchange", () => {
               .then(() => checkUserOrders([
                 {id: 2, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false, timeCancelled: 0}
               ], buyer))
+              .then(() => checkUserOrders([], seller))
         })
 
-        it("should update taker sell orders amounts on matchSell, and add to history on fill", () => {
+        it("should update taker sell orders amounts on matchSell, and add to history and remove from open orders on fill", () => {
           let buy2 = buy(10, 2)
           let sell1 = sell(10, 1)
           let sell2 = sell(10, 2)
@@ -1043,9 +1044,10 @@ contract("Exchange", () => {
               .then(() => checkUserOrders([
                 {id: 3, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true, timeCancelled: 0}
               ], seller))
+              .then(() => checkUserOrders([], buyer))
         })
 
-        it("should update maker sell orders amounts on matchBuy, and add to history on fill", () => {
+        it("should update maker sell orders amounts on matchBuy, and add to history and remove from open orders on fill", () => {
           let sell1 = sell(10, 1)
           let sell2 = sell(10, 2)
           let buy2 = buy(10, 2)
@@ -1061,9 +1063,10 @@ contract("Exchange", () => {
               .then(() => checkUserOrders([
                 {id: 2, price: sell2.price, originalAmount: sell2.amount, amount: sell2.amount.div(2), isSell: true, timeCancelled: 0}
               ], seller))
+              .then(() => checkUserOrders([], buyer))
         })
 
-        it("should update taker buy orders amounts on matchBuy, and add to history on fill", () => {
+        it("should update taker buy orders amounts on matchBuy, and add to history and remove from open orders on fill", () => {
           let sell2 = sell(10, 2)
           let buy1 = buy(10, 1)
           let buy2 = buy(10, 2)
@@ -1079,9 +1082,10 @@ contract("Exchange", () => {
               .then(() => checkUserOrders([
                 {id: 3, price: buy2.price, originalAmount: buy2.amount, amount: buy2.amount.div(2), isSell: false, timeCancelled: 0}
               ], buyer))
+              .then(() => checkUserOrders([], seller))
         })
 
-        it("should add to history on cancel", () => {
+        it("should add to history and remove from open orders on cancel", () => {
           let sellOrder = sell(10, 1)
           let buyOrder = buy(9, 1)
           let sellOrderCancelledTime = 0;
@@ -1102,6 +1106,8 @@ contract("Exchange", () => {
               .then(() => checkUserOrderHistory([
                 {id: 2, price: buyOrder.price, originalAmount: buyOrder.amount, amount: buyOrder.amount, isSell: false, timeCancelled: buyOrderCancelledTime},
               ], buyer, DEFAULT_GET_TIME_RANGE, MAX_GET_RETURN_SIZE))
+              .then(() => checkUserOrders([], buyer))
+              .then(() => checkUserOrders([], seller))
         })
 
         it("should not exceed MAX_GET_RETURN_SIZE when getting order history", () => {
@@ -1128,6 +1134,8 @@ contract("Exchange", () => {
                 {id: 9, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true, timeCancelled: 0},
                 {id: 8, price: sell10.price, originalAmount: sell10.amount, amount: 0, isSell: true, timeCancelled: 0}
               ], seller, DEFAULT_GET_TIME_RANGE, exceededLimit))
+              .then(() => checkUserOrders([], seller))
+              .then(() => checkUserOrders([], buyer))
         })
     })
 
