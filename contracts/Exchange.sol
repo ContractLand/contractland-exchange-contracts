@@ -226,7 +226,17 @@ contract Exchange is Initializable, Pausable {
         // Remove from user open orders
         userOrders[orderToCancel.baseToken][orderToCancel.tradeToken][orderToCancel.owner].remove(orderToCancel.id);
         // Add cancelled order to user order history
-        userOrderHistory[orderToCancel.baseToken][orderToCancel.tradeToken][orderToCancel.owner].add(OrderHistory.Order(orderToCancel.id, orderToCancel.price, orderToCancel.originalAmount, orderToCancel.amount, orderToCancel.isSell, uint64(block.timestamp)), orderToCancel.timestamp);
+        userOrderHistory[orderToCancel.baseToken][orderToCancel.tradeToken][orderToCancel.owner].add(
+          OrderHistory.Order(
+            orderToCancel.id,
+            orderToCancel.price,
+            orderToCancel.originalAmount,
+            orderToCancel.amount,
+            orderToCancel.isSell,
+            uint64(block.timestamp)
+          ),
+          orderToCancel.timestamp
+        );
         delete orderInfoMap[id];
     }
 
@@ -271,20 +281,28 @@ contract Exchange is Initializable, Pausable {
         bestBid = orderbooks[baseToken][tradeToken].bids.peak().id;
     }
 
-    function getAsks(address baseToken, address tradeToken)
+    function getAsks(
+      uint16 limit,
+      address tradeToken,
+      address baseToken
+    )
         external
         view
         returns (uint64[], address[], uint[], uint[], uint[], uint64[])
     {
-        return orderbooks[baseToken][tradeToken].asks.getOrders();
+        return orderbooks[baseToken][tradeToken].asks.getOrders(getLimit(limit));
     }
 
-    function getBids(address baseToken, address tradeToken)
+    function getBids(
+      uint16 limit,
+      address tradeToken,
+      address baseToken
+    )
         external
         view
         returns (uint64[], address[], uint[], uint[], uint[], uint64[])
     {
-        return orderbooks[baseToken][tradeToken].bids.getOrders();
+        return orderbooks[baseToken][tradeToken].bids.getOrders(getLimit(limit));
     }
 
     function getTradeHistory(
@@ -361,7 +379,7 @@ contract Exchange is Initializable, Pausable {
         MAX_TOTAL_SIZE = newMax;
     }
 
-    function setMaxGetTradesSize(uint16 newMax)
+    function setMaxGetSize(uint16 newMax)
         external
         onlyOwner
     {

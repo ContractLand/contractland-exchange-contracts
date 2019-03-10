@@ -2,6 +2,7 @@ pragma solidity 0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./OrderNode.sol";
+import "./Math.sol";
 
 library BidHeap {
   using SafeMath for uint;
@@ -17,6 +18,15 @@ library BidHeap {
   struct Tree{
     OrderNode.Node[] nodes;
     mapping (uint64 => uint) idToIndex;
+  }
+
+  struct GetOrdersResult {
+    uint64[] ids;
+    address[] owners;
+    uint[] prices;
+    uint[] originalAmounts;
+    uint[] amounts;
+    uint64[] timestamps;
   }
 
   /* --- PUBLIC --- */
@@ -128,28 +138,30 @@ library BidHeap {
     return self.nodes.length > 0 ? self.nodes.length - 1 : 0;
   }
 
-  function getOrders(Tree storage self)
+  function getOrders(Tree storage self, uint16 limit)
     internal
     view
     returns (uint64[], address[], uint[], uint[], uint[], uint64[])
   {
-    uint64[] memory ids = new uint64[](size(self));
-    address[] memory owners = new address[](size(self));
-    uint[] memory prices = new uint[](size(self));
-    uint[] memory originalAmounts = new uint[](size(self));
-    uint[] memory amounts = new uint[](size(self));
-    uint64[] memory timestamps = new uint64[](size(self));
+    uint retSize = Math.min(size(self), limit);
+    GetOrdersResult memory results;
+    results.ids = new uint64[](retSize);
+    results.owners = new address[](retSize);
+    results.prices = new uint[](retSize);
+    results.originalAmounts = new uint[](retSize);
+    results.amounts = new uint[](retSize);
+    results.timestamps = new uint64[](retSize);
 
-    for (uint i = 0; i < size(self); i++) {
-        ids[i] = self.nodes[ROOT_INDEX + i].id;
-        owners[i] = self.nodes[ROOT_INDEX + i].owner;
-        prices[i] = self.nodes[ROOT_INDEX + i].price;
-        originalAmounts[i] = self.nodes[ROOT_INDEX + i].originalAmount;
-        amounts[i] = self.nodes[ROOT_INDEX + i].amount;
-        timestamps[i] = self.nodes[ROOT_INDEX + i].timestamp;
+    for (uint i = 0; i < retSize; i++) {
+        results.ids[i] = self.nodes[ROOT_INDEX + i].id;
+        results.owners[i] = self.nodes[ROOT_INDEX + i].owner;
+        results.prices[i] = self.nodes[ROOT_INDEX + i].price;
+        results.originalAmounts[i] = self.nodes[ROOT_INDEX + i].originalAmount;
+        results.amounts[i] = self.nodes[ROOT_INDEX + i].amount;
+        results.timestamps[i] = self.nodes[ROOT_INDEX + i].timestamp;
     }
 
-    return (ids, owners, prices, originalAmounts, amounts, timestamps);
+    return (results.ids, results.owners, results.prices, results.originalAmounts, results.amounts, results.timestamps);
   }
 
   function dump(Tree storage self)
