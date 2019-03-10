@@ -522,7 +522,7 @@ contract Exchange is Initializable, Pausable {
             userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].remove(matchingOrder.id);
             // Delete record from orderInfoMap
             delete orderInfoMap[matchingOrder.id];
-            // Add filled order to user order history
+            // Add filled order to maker order history
             userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(
               OrderHistory.Order(
                 matchingOrder.id,
@@ -625,7 +625,7 @@ contract Exchange is Initializable, Pausable {
             userOrders[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].remove(matchingOrder.id);
             // Delete record from orderInfoMap
             delete orderInfoMap[matchingOrder.id];
-            // Add filled order to user order history
+            // Add filled order to maker order history
             userOrderHistory[matchingOrder.baseToken][matchingOrder.tradeToken][matchingOrder.owner].add(
               OrderHistory.Order(matchingOrder.id,
                 matchingOrder.price,
