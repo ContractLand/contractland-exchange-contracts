@@ -21,9 +21,9 @@ contract('TradeHistory',  async(accounts) => {
       const trade2 = {id: 2, price: 2, amount: 2, isSell: true, timestamp: 2}
       const trade3 = {id: 3, price: 3, amount: 3, isSell: true, timestamp: 3}
 
-      tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp)
-      tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp)
-      tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp)
+      await tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp).should.be.fulfilled
 
       await checkTrades([trade3, trade2, trade1], TIME_RANGE_DEFAULT, GET_TRADES_LIMIT_DEFAULT)
     })
@@ -33,9 +33,9 @@ contract('TradeHistory',  async(accounts) => {
       const trade2 = {id: 2, price: 2, amount: 2, isSell: true, timestamp: 2}
       const trade3 = {id: 2, price: 2, amount: 3, isSell: true, timestamp: 3}
 
-      tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp)
-      tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp)
-      tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp)
+      await tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp).should.be.fulfilled
 
       const expectedTrades = [
         {id: 2, price: 2, amount: 5, isSell: true, timestamp: 2},
@@ -49,9 +49,9 @@ contract('TradeHistory',  async(accounts) => {
     it("should not exceed limit", async() => {
       const trade = {price: 1, amount: 1, isSell: false, timestamp: 1}
 
-      tradeHistoryTest.add(1, trade.price, trade.amount, trade.isSell, trade.timestamp)
-      tradeHistoryTest.add(2, trade.price, trade.amount, trade.isSell, trade.timestamp)
-      tradeHistoryTest.add(3, trade.price, trade.amount, trade.isSell, trade.timestamp)
+      await tradeHistoryTest.add(1, trade.price, trade.amount, trade.isSell, trade.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(2, trade.price, trade.amount, trade.isSell, trade.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(3, trade.price, trade.amount, trade.isSell, trade.timestamp).should.be.fulfilled
 
       const expectedTrades = [
         {id: 3, price: 1, amount: 1, isSell: false, timestamp: 1},
@@ -64,7 +64,7 @@ contract('TradeHistory',  async(accounts) => {
     it("should return empty if startEnd is greater than endTime", async() => {
       const trade1 = {id: 1, price: 1, amount: 1, isSell: false, timestamp: 1}
 
-      tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp)
+      await tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp).should.be.fulfilled
 
       const actualTrades = await tradeHistoryTest.getTrades([1,0], GET_TRADES_LIMIT_DEFAULT)
       const emptyTrades = [ [], [], [], [], [] ]
@@ -74,7 +74,7 @@ contract('TradeHistory',  async(accounts) => {
     it("should return empty if startTime is equal to endTime", async() => {
       const trade1 = {id: 1, price: 1, amount: 1, isSell: false, timestamp: 1}
 
-      tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp)
+      await tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp).should.be.fulfilled
 
       const actualTrades = await tradeHistoryTest.getTrades([1,1], GET_TRADES_LIMIT_DEFAULT)
       const emptyTrades = [ [], [], [], [], [] ]
@@ -86,9 +86,9 @@ contract('TradeHistory',  async(accounts) => {
       const trade2 = {id: 2, price: 2, amount: 2, isSell: true, timestamp: 2}
       const trade3 = {id: 3, price: 3, amount: 3, isSell: false, timestamp: 3}
 
-      tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp)
-      tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp)
-      tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp)
+      await tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp).should.be.fulfilled
 
       const expectedTrades = [
         trade2,
@@ -102,9 +102,9 @@ contract('TradeHistory',  async(accounts) => {
       const trade2 = {id: 2, price: 2, amount: 2, isSell: true, timestamp: 2}
       const trade3 = {id: 3, price: 3, amount: 3, isSell: false, timestamp: 3}
 
-      tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp)
-      tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp)
-      tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp)
+      await tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp).should.be.fulfilled
 
       const expectedTrades = [
         trade3,
@@ -121,11 +121,11 @@ contract('TradeHistory',  async(accounts) => {
       const trade4 = {id: 4, price: 4, amount: 4, isSell: true, timestamp: 4}
       const trade5 = {id: 5, price: 5, amount: 5, isSell: true, timestamp: 5}
 
-      tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp)
-      tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp)
-      tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp)
-      tradeHistoryTest.add(trade4.id, trade4.price, trade4.amount, trade4.isSell, trade4.timestamp)
-      tradeHistoryTest.add(trade5.id, trade5.price, trade5.amount, trade5.isSell, trade5.timestamp)
+      await tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade4.id, trade4.price, trade4.amount, trade4.isSell, trade4.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade5.id, trade5.price, trade5.amount, trade5.isSell, trade5.timestamp).should.be.fulfilled
 
       const expectedTrades = [
         trade4,
@@ -141,10 +141,10 @@ contract('TradeHistory',  async(accounts) => {
       const trade4 = {id: 4, price: 4, amount: 4, isSell: true, timestamp: 4}
       const trade6 = {id: 6, price: 6, amount: 6, isSell: true, timestamp: 6}
 
-      tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp)
-      tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp)
-      tradeHistoryTest.add(trade4.id, trade4.price, trade4.amount, trade4.isSell, trade4.timestamp)
-      tradeHistoryTest.add(trade6.id, trade6.price, trade6.amount, trade6.isSell, trade6.timestamp)
+      await tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade4.id, trade4.price, trade4.amount, trade4.isSell, trade4.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade6.id, trade6.price, trade6.amount, trade6.isSell, trade6.timestamp).should.be.fulfilled
 
       const expectedTrades = [
         trade4,

@@ -61,7 +61,7 @@ contract('BidHeap',  async(accounts) => {
       const rightChild = await heap.getByIndex.call(3)
       assertNodeEqual(rightChild, nodes[0])
     })
-    
+
     it("should order nodes by id (FIFO) when price values are equal", async () => {
       const nodes = [
         {id: 3, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0},
@@ -133,7 +133,7 @@ contract('BidHeap',  async(accounts) => {
       result = await heap.pop.call()
       assertNodeEqual(result, nodes[1])
       await heap.pop()
-      
+
       result = await heap.pop.call()
       assertNodeEqual(result, nodes[0])
       await heap.pop()
@@ -141,7 +141,7 @@ contract('BidHeap',  async(accounts) => {
       const sizeAfterPop = await heap.size.call()
       assert.equal(sizeAfterPop.toNumber(), 0)
     })
-    
+
     it("should remove max key nodes from heap with equal prices", async() => {
       const nodes = [
         {id: 1, owner: accounts[1], baseToken: accounts[1], tradeToken: accounts[1], price: 1, amount: 0, timestamp: 0},
@@ -240,14 +240,14 @@ contract('BidHeap',  async(accounts) => {
       const rightChild = await heap.getByIndex.call(3)
       assertNodeEqual(rightChild, nodes[1])
     })
-    
+
     it("should update amount", async() => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0}
       ]
 
       await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
-      
+
       const newAmount = 10
       await heap.updateAmountById(1, newAmount)
 
@@ -272,6 +272,30 @@ contract('BidHeap',  async(accounts) => {
 
       const result = await heap.getById.call(2)
       assertNodeEqual(result, EMPTY_NODE)
+    })
+
+    it("should not remove if order not found", async () => {
+      const nodes = [
+        {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 1, amount: 0, timestamp: 0},
+        {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 10, amount: 0, timestamp: 0},
+        {id: 3, owner: accounts[6], baseToken: accounts[7], tradeToken: accounts[8], price: 100, amount: 0, timestamp: 0}
+      ]
+
+      await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
+      await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
+      await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
+
+      const nonExistingId = 4
+      await heap.removeById(4)
+
+      const root = await heap.getByIndex.call(1)
+      assertNodeEqual(root, nodes[2])
+
+      const leftChild = await heap.getByIndex.call(2)
+      assertNodeEqual(leftChild, nodes[0])
+
+      const rightChild = await heap.getByIndex.call(3)
+      assertNodeEqual(rightChild, nodes[1])
     })
   })
 
@@ -308,6 +332,52 @@ contract('BidHeap',  async(accounts) => {
       assertNodeEqual(result, nodes[1])
     })
   })
+
+  describe("getOrders", async() => {
+    it("should not exceed get limit", async () => {
+      const nodes = [
+        {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 100, amount: 2, timestamp: 3},
+        {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 10, amount: 20, timestamp: 30},
+        {id: 3, owner: accounts[6], baseToken: accounts[7], tradeToken: accounts[8], price: 1, amount: 200, timestamp: 300}
+      ]
+
+      await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
+      await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
+      await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
+
+      const expectedOrders = [
+        {id: 1, owner: accounts[0], price: 100, originalAmount: 2, amount: 2, timestamp: 3},
+        {id: 2, owner: accounts[3], price: 10, originalAmount: 20, amount: 20, timestamp: 30}
+      ]
+      const limit = 2
+      await checkOrders(expectedOrders, limit)
+    })
+  })
+
+  async function checkOrders(expectedOrders, limit) {
+      const result = await heap.getOrders(limit)
+      const actualOrders = parseOrderResult(result)
+      assert.equal(actualOrders.id.length, expectedOrders.length)
+      for (let i = 0; i < expectedOrders.length; i++) {
+          assert.equal(actualOrders.id[i], expectedOrders[i].id)
+          assert.equal(actualOrders.owner[i], expectedOrders[i].owner)
+          assert.equal(actualOrders.price[i], expectedOrders[i].price)
+          assert.equal(actualOrders.originalAmount[i], expectedOrders[i].originalAmount)
+          assert.equal(actualOrders.amount[i], expectedOrders[i].amount)
+          assert.equal(actualOrders.timestamp[i], expectedOrders[i].timestamp)
+      }
+  }
+
+  function parseOrderResult(result) {
+      return {
+          id: result[0].map(t => t.toNumber()),
+          owner: result[1],
+          price: result[2].map(t => t.toNumber()),
+          originalAmount: result[3].map(t => t.toNumber()),
+          amount: result[4].map(t => t.toNumber()),
+          timestamp: result[5].map(t => t.toNumber())
+      }
+  }
 
   function assertNodeEqual(actualNode, expectedNode) {
     assert.equal(actualNode[0].toNumber(), expectedNode.id)

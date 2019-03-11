@@ -68,6 +68,10 @@ contract TestAskHeap {
     timestamp = n.timestamp;
   }
 
+  function getOrders(uint16 limit) public view returns (uint64[], address[], uint[], uint[], uint[], uint64[]) {
+    return data.getOrders(limit);
+  }
+
   function size() public view returns (uint){
     return data.size();
   }
