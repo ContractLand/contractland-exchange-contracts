@@ -332,7 +332,7 @@ contract Exchange is Initializable, Pausable {
         return userTradeHistory[baseToken][tradeToken][user].getTrades(timeRange, getLimit(limit));
     }
 
-    function getUserOrders(
+    function getUserOpenOrders(
         address user,
         address tradeToken,
         address baseToken

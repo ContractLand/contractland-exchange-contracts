@@ -1549,7 +1549,7 @@ contract("Exchange", () => {
     }
 
     function checkUserOrders(expectedOrders, user) {
-        return exchange.getUserOrders(user, tradeToken.address, baseToken.address)
+        return exchange.getUserOpenOrders(user, tradeToken.address, baseToken.address)
             .then(result => {
                 const orders = parseOpenOrderResult(result)
                 assert.equal(orders.id.length, expectedOrders.length)
