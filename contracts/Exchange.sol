@@ -293,6 +293,18 @@ contract Exchange is Initializable, Pausable {
         return orderbooks[baseToken][tradeToken].asks.getOrders(getLimit(limit));
     }
 
+    function getAggregatedAsks(
+      uint16 limit,
+      address tradeToken,
+      address baseToken
+    )
+        external
+        view
+        returns (uint[], uint[], uint)
+    {
+        return orderbooks[baseToken][tradeToken].asks.getAggregatedOrders(getLimit(limit));
+    }
+
     function getBids(
       uint16 limit,
       address tradeToken,
@@ -303,6 +315,18 @@ contract Exchange is Initializable, Pausable {
         returns (uint64[], address[], uint[], uint[], uint[], uint64[])
     {
         return orderbooks[baseToken][tradeToken].bids.getOrders(getLimit(limit));
+    }
+
+    function getAggregatedBids(
+      uint16 limit,
+      address tradeToken,
+      address baseToken
+    )
+        external
+        view
+        returns (uint[], uint[], uint)
+    {
+        return orderbooks[baseToken][tradeToken].bids.getAggregatedOrders(getLimit(limit));
     }
 
     function getTradeHistory(
