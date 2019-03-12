@@ -167,40 +167,28 @@ library BidHeap {
   function getAggregatedOrders(Tree storage self, uint16 limit)
     internal
     view
-    returns (uint[], uint[], uint)
+    returns (uint[], uint[])
   {
     uint retSize = Math.min(size(self), limit);
-    GetOrdersResult memory results;
-    results.prices = new uint[](retSize);
-    results.amounts = new uint[](retSize);
+    uint[] memory prices = new uint[](retSize);
+    uint[] memory amounts = new uint[](retSize);
 
-    if (retSize == 0) {
-        return (results.prices, results.amounts, 0);
+    uint count = 0;
+    for (uint i = 0; i < size(self); i++) {
+      if (OrderNode.isValid(self.nodes[ROOT_INDEX + i - 1]) &&
+          self.nodes[ROOT_INDEX + i - 1].price != self.nodes[ROOT_INDEX + i].price) {
+          count++;
+      }
+
+      if (count >= retSize) {
+        break;
+      }
+
+      prices[count] = self.nodes[ROOT_INDEX + i].price;
+      amounts[count] += self.nodes[ROOT_INDEX + i].amount;
     }
 
-    results.prices[0] = self.nodes[ROOT_INDEX].price;
-    results.amounts[0] = self.nodes[ROOT_INDEX].amount;
-
-    uint res = 1;
-    uint node = 1;
-    while(node < size(self) && res < retSize) {
-        if (self.nodes[ROOT_INDEX + node].price == results.prices[res - 1]) {
-            results.amounts[res - 1] += self.nodes[ROOT_INDEX + node].amount;
-            node++;
-        } else {
-            results.prices[res] = self.nodes[ROOT_INDEX + node].price;
-            results.amounts[res] = self.nodes[ROOT_INDEX + node].amount;
-            res++;
-            node++;
-        }
-    }
-
-    while(node < size(self) && self.nodes[ROOT_INDEX + node].price == results.prices[res - 1]) {
-        results.amounts[res - 1] += self.nodes[ROOT_INDEX + node].amount;
-        node++;
-    }
-
-    return (results.prices, results.amounts, res);
+    return (prices, amounts);
   }
 
   function dump(Tree storage self)

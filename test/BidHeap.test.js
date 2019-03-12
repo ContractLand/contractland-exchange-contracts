@@ -334,6 +334,26 @@ contract('BidHeap',  async(accounts) => {
   })
 
   describe("getOrders", async() => {
+    it("should get all orders", async () => {
+      const nodes = [
+        {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 100, amount: 2, timestamp: 3},
+        {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 10, amount: 20, timestamp: 30},
+        {id: 3, owner: accounts[6], baseToken: accounts[7], tradeToken: accounts[8], price: 1, amount: 200, timestamp: 300}
+      ]
+
+      await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
+      await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
+      await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
+
+      const expectedOrders = [
+        {id: 1, owner: accounts[0], price: 100, originalAmount: 2, amount: 2, timestamp: 3},
+        {id: 2, owner: accounts[3], price: 10, originalAmount: 20, amount: 20, timestamp: 30},
+        {id: 3, owner: accounts[6], price: 1, originalAmount: 200, amount: 200, timestamp: 300}
+      ]
+      const limit = 10
+      await checkOrders(expectedOrders, limit)
+    })
+
     it("should not exceed get limit", async () => {
       const nodes = [
         {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 100, amount: 2, timestamp: 3},
@@ -354,6 +374,52 @@ contract('BidHeap',  async(accounts) => {
     })
   })
 
+  describe("getAggregatedOrders", async() => {
+    it("should get all orders aggregated by price", async () => {
+      const nodes = [
+        {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 100, amount: 2, timestamp: 3},
+        {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 100, amount: 20, timestamp: 30},
+        {id: 3, owner: accounts[6], baseToken: accounts[7], tradeToken: accounts[8], price: 10, amount: 200, timestamp: 300},
+        {id: 4, owner: accounts[9], baseToken: accounts[8], tradeToken: accounts[7], price: 1, amount: 2000, timestamp: 3000}
+      ]
+
+      await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
+      await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
+      await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
+      await heap.add(nodes[3].id, nodes[3].owner, nodes[3].baseToken, nodes[3].tradeToken, nodes[3].price, nodes[3].amount, nodes[3].timestamp)
+
+      const expectedOrders = [
+        {price: 100, amount: 22},
+        {price: 10, amount: 200},
+        {price: 1, amount: 2000},
+        {price: 0, amount: 0}
+      ]
+      const limit = 10
+      await checkAggregatedOrders(expectedOrders, limit)
+    })
+
+    it("should get aggregated orders by price within limit", async () => {
+      const nodes = [
+        {id: 1, owner: accounts[0], baseToken: accounts[1], tradeToken: accounts[2], price: 100, amount: 2, timestamp: 3},
+        {id: 2, owner: accounts[3], baseToken: accounts[4], tradeToken: accounts[5], price: 100, amount: 20, timestamp: 30},
+        {id: 3, owner: accounts[6], baseToken: accounts[7], tradeToken: accounts[8], price: 10, amount: 200, timestamp: 300},
+        {id: 4, owner: accounts[9], baseToken: accounts[8], tradeToken: accounts[7], price: 1, amount: 2000, timestamp: 3000}
+      ]
+
+      await heap.add(nodes[0].id, nodes[0].owner, nodes[0].baseToken, nodes[0].tradeToken, nodes[0].price, nodes[0].amount, nodes[0].timestamp)
+      await heap.add(nodes[1].id, nodes[1].owner, nodes[1].baseToken, nodes[1].tradeToken, nodes[1].price, nodes[1].amount, nodes[1].timestamp)
+      await heap.add(nodes[2].id, nodes[2].owner, nodes[2].baseToken, nodes[2].tradeToken, nodes[2].price, nodes[2].amount, nodes[2].timestamp)
+      await heap.add(nodes[3].id, nodes[3].owner, nodes[3].baseToken, nodes[3].tradeToken, nodes[3].price, nodes[3].amount, nodes[3].timestamp)
+
+      const expectedOrders = [
+        {price: 100, amount: 22},
+        {price: 10, amount: 200}
+      ]
+      const limit = 2
+      await checkAggregatedOrders(expectedOrders, limit)
+    })
+  })
+
   async function checkOrders(expectedOrders, limit) {
       const result = await heap.getOrders(limit)
       const actualOrders = parseOrderResult(result)
@@ -368,6 +434,16 @@ contract('BidHeap',  async(accounts) => {
       }
   }
 
+  async function checkAggregatedOrders(expectedOrders, limit) {
+      const result = await heap.getAggregatedOrders(limit)
+      const actualOrders = parseAggregatedOrderResult(result)
+      assert.equal(actualOrders.price.length, expectedOrders.length)
+      for (let i = 0; i < expectedOrders.length; i++) {
+          assert.equal(actualOrders.price[i], expectedOrders[i].price)
+          assert.equal(actualOrders.amount[i], expectedOrders[i].amount)
+      }
+  }
+
   function parseOrderResult(result) {
       return {
           id: result[0].map(t => t.toNumber()),
@@ -376,6 +452,13 @@ contract('BidHeap',  async(accounts) => {
           originalAmount: result[3].map(t => t.toNumber()),
           amount: result[4].map(t => t.toNumber()),
           timestamp: result[5].map(t => t.toNumber())
+      }
+  }
+
+  function parseAggregatedOrderResult(result) {
+      return {
+          price: result[0].map(t => t.toNumber()),
+          amount: result[1].map(t => t.toNumber())
       }
   }
 

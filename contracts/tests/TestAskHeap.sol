@@ -72,6 +72,10 @@ contract TestAskHeap {
     return data.getOrders(limit);
   }
 
+  function getAggregatedOrders(uint16 limit) public view returns (uint[], uint[]) {
+    return data.getAggregatedOrders(limit);
+  }
+
   function size() public view returns (uint){
     return data.size();
   }

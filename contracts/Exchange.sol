@@ -300,7 +300,7 @@ contract Exchange is Initializable, Pausable {
     )
         external
         view
-        returns (uint[], uint[], uint)
+        returns (uint[], uint[])
     {
         return orderbooks[baseToken][tradeToken].asks.getAggregatedOrders(getLimit(limit));
     }
@@ -324,7 +324,7 @@ contract Exchange is Initializable, Pausable {
     )
         external
         view
-        returns (uint[], uint[], uint)
+        returns (uint[], uint[])
     {
         return orderbooks[baseToken][tradeToken].bids.getAggregatedOrders(getLimit(limit));
     }
