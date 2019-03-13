@@ -1050,6 +1050,68 @@ contract("Exchange", () => {
         })
     })
 
+    describe("Get Aggregated Orderbook", async() => {
+        it("should get asks aggregated by price bounded by limit", async() => {
+            let [sell10, sell11, sell12] = [sell(10, 1), sell(11, 1), sell(12, 1)]
+            const limit = 2
+            return placeOrder(sell10)
+                .then(() => placeOrder(sell10))
+                .then(() => placeOrder(sell11))
+                .then(() => placeOrder(sell11))
+                .then(() => placeOrder(sell12))
+                .then(() => checkGetAggregatedAsks([
+                  {price: sell10.price, amount: sell10.amount.mul(2)},
+                  {price: sell11.price, amount: sell11.amount.mul(2)}
+                ], limit))
+        })
+
+        it("should get bids aggregated by price bounded by limit", async() => {
+            let [buy13, buy12, buy11] = [buy(13, 1), buy(12, 1), buy(11, 1)]
+            const limit = 2
+            return placeOrder(buy13)
+                .then(() => placeOrder(buy13))
+                .then(() => placeOrder(buy12))
+                .then(() => placeOrder(buy12))
+                .then(() => placeOrder(buy11))
+                .then(() => checkGetAggregatedBids([
+                  {price: buy13.price, amount: buy13.amount.mul(2)},
+                  {price: buy12.price, amount: buy12.amount.mul(2)}
+                ], limit))
+        })
+
+        it("should get asks aggregated by price bounded by MAX_GET_RETURN_SIZE", async() => {
+            let [sell10, sell11, sell12] = [sell(10, 1), sell(11, 1), sell(12, 1)]
+            const limit = 3
+            const maxLimit = 2
+            await exchange.setMaxGetSize(maxLimit, { from: exchangeOwner }).should.be.fulfilled
+            return placeOrder(sell10)
+                .then(() => placeOrder(sell10))
+                .then(() => placeOrder(sell11))
+                .then(() => placeOrder(sell11))
+                .then(() => placeOrder(sell12))
+                .then(() => checkGetAggregatedAsks([
+                  {price: sell10.price, amount: sell10.amount.mul(2)},
+                  {price: sell11.price, amount: sell11.amount.mul(2)}
+                ], limit))
+        })
+
+        it("should get bids aggregated by price bounded by MAX_GET_RETURN_SIZE", async() => {
+            let [buy13, buy12, buy11] = [buy(13, 1), buy(12, 1), buy(11, 1)]
+            const limit = 3
+            const maxLimit = 2
+            await exchange.setMaxGetSize(maxLimit, { from: exchangeOwner }).should.be.fulfilled
+            return placeOrder(buy13)
+                .then(() => placeOrder(buy13))
+                .then(() => placeOrder(buy12))
+                .then(() => placeOrder(buy12))
+                .then(() => placeOrder(buy11))
+                .then(() => checkGetAggregatedBids([
+                  {price: buy13.price, amount: buy13.amount.mul(2)},
+                  {price: buy12.price, amount: buy12.amount.mul(2)}
+                ], limit))
+        })
+    })
+
     describe("User Open Orders and History", () => {
         it("should return user buy orders", () => {
           let buyOrder = buy(10, 1)
@@ -1505,6 +1567,18 @@ contract("Exchange", () => {
             })
     }
 
+    function checkGetAggregatedBids(expectedBids, limit) {
+        return exchange.getAggregatedBids(limit, tradeToken.address, baseToken.address)
+            .then(result => {
+                const bids = parseAggregatedGetResult(result)
+                assert.equal(bids.price.length, expectedBids.length)
+                for (let i = 0; i < expectedBids.length; i++) {
+                    assert.equal(bids.price[i], expectedBids[i].price)
+                    assert.equal(bids.amount[i], expectedBids[i].amount.toString())
+                }
+            })
+    }
+
     function checkGetAsks(expectedAsks, limit) {
         return exchange.getAsks(limit, tradeToken.address, baseToken.address)
             .then(result => {
@@ -1516,6 +1590,18 @@ contract("Exchange", () => {
                     assert.equal(asks.price[i], expectedAsks[i].price)
                     assert.equal(asks.originalAmount[i], expectedAsks[i].originalAmount)
                     assert.equal(asks.amount[i], expectedAsks[i].amount)
+                }
+            })
+    }
+
+    function checkGetAggregatedAsks(expectedAsks, limit) {
+        return exchange.getAggregatedAsks(limit, tradeToken.address, baseToken.address)
+            .then(result => {
+                const asks = parseAggregatedGetResult(result)
+                assert.equal(asks.price.length, expectedAsks.length)
+                for (let i = 0; i < expectedAsks.length; i++) {
+                    assert.equal(asks.price[i], expectedAsks[i].price)
+                    assert.equal(asks.amount[i], expectedAsks[i].amount.toString())
                 }
             })
     }
@@ -1662,6 +1748,13 @@ contract("Exchange", () => {
             price: result[2].map(t => t.toNumber()),
             originalAmount: result[3].map(t => t.toNumber()),
             amount: result[4].map(t => t.toNumber())
+        }
+    }
+
+    function parseAggregatedGetResult(result) {
+        return {
+            price: result[0].map(t => t.toNumber()),
+            amount: result[1].map(t => t.toNumber())
         }
     }
 

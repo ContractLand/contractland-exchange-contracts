@@ -164,6 +164,33 @@ library BidHeap {
     return (results.ids, results.owners, results.prices, results.originalAmounts, results.amounts, results.timestamps);
   }
 
+  function getAggregatedOrders(Tree storage self, uint16 limit)
+    internal
+    view
+    returns (uint[], uint[])
+  {
+    uint retSize = Math.min(size(self), limit);
+    uint[] memory prices = new uint[](retSize);
+    uint[] memory amounts = new uint[](retSize);
+
+    uint count = 0;
+    for (uint i = 0; i < size(self); i++) {
+      if (OrderNode.isValid(self.nodes[ROOT_INDEX + i - 1]) &&
+          self.nodes[ROOT_INDEX + i - 1].price != self.nodes[ROOT_INDEX + i].price) {
+          count++;
+      }
+
+      if (count >= retSize) {
+        break;
+      }
+
+      prices[count] = self.nodes[ROOT_INDEX + i].price;
+      amounts[count] += self.nodes[ROOT_INDEX + i].amount;
+    }
+
+    return (prices, amounts);
+  }
+
   function dump(Tree storage self)
     internal
     view

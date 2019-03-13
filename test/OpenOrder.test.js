@@ -116,6 +116,14 @@ contract('OpenOrder',  async(accounts) => {
     })
 
     describe("Get Orders", async() => {
+      it("should get all orders", async() => {
+        await checkOrders([
+          order1,
+          order2,
+          order3
+        ], 10)
+      })
+
       it("should not exceed limit", async() => {
         await checkOrders([
           order1,
