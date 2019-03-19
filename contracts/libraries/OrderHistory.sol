@@ -51,14 +51,14 @@ library OrderHistory {
     view
     returns (uint64[], uint[], uint[], uint[], bool[], uint64[], uint64[])
   {
-    if (timeRange[0] >= timeRange[1]) {
+    if (timeRange[0] > timeRange[1]) {
       return;
     }
 
     uint startIndex = self.timestamps.findUpperBound(timeRange[0]);
     uint endIndex = self.timestamps.findUpperBound(timeRange[1]);
 
-    if (startIndex >= endIndex) {
+    if (startIndex > endIndex) {
       return;
     }
 
