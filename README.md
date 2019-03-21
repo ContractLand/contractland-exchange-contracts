@@ -15,7 +15,7 @@ The orderbook is built with a combination of maps and tree (Heap Tree) to optimi
 
 ## Install and Deploy via Truffle
 1. `npm install`
-2. In separate window, run `ganache-cli --allowUnlimitedContractSize --gasLimit 10000000` (install ganache-cli globally if not installed). This allows deployment of contract of unlimited size. The gas cost of deploying NewExchange costs around 7000000 units of gas.
+2. In separate window, run `ganache-cli --allowUnlimitedContractSize --gasLimit 100000000` (install ganache-cli globally if not installed). This allows deployment of contract of unlimited size. The gas cost of deploying NewExchange costs around 7000000 units of gas.
 3. run `truffle migrate --reset --network development`
 
 ## Run Tests
@@ -28,11 +28,27 @@ The orderbook is built with a combination of maps and tree (Heap Tree) to optimi
 ## Usage & Interfaces
 
 - Create Sell Order
-
+  - function sell(address baseToken, address tradeToken, address orderOwner, uint amount, uint price)
 - Create Buy Order
+  - function buy(address baseToken, address tradeToken, address orderOwner, uint amount, uint price)
 
 - Cancel Order
+  - function cancelOrder(uint64 id)
 
 - Get Orderbook
+  - function getAsks(uint16 limit, address tradeToken, address baseToken)
+  - function getBids(uint16 limit, address tradeToken, address baseToken)
 
-- Get Order
+- Get Order Detail
+  - getOrder(uint64 id)
+
+- Get Trade History
+
+- Get User Trade History
+  - function getUserTradeHistory(uint16 limit, uint64[] timeRange, address user, address tradeToken, address baseToken)
+
+- Get User Open Orders
+  - function getUserOrders(address user, address tradeToken, address baseToken)
+
+- Get User Order history
+  - function getUserOrderHistory(uint16 limit, uint64[] timeRange, address user, address tradeToken, address baseToken)
