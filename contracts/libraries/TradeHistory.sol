@@ -36,7 +36,10 @@ library TradeHistory {
     uint numOfTrades = self.trades.length;
     if (numOfTrades != 0) {
       Trade memory lastTrade = self.trades[numOfTrades - 1];
-      if (lastTrade.id == n.id && lastTrade.price == n.price) {
+      uint64 lastTimestamp = self.timestamps[numOfTrades - 1];
+      if (lastTrade.id == n.id &&
+          lastTrade.price == n.price &&
+          lastTimestamp == timestamp) {
         self.trades[numOfTrades - 1].amount += n.amount;
         return;
       }
