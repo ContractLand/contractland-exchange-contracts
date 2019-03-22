@@ -28,16 +28,19 @@ contract('TradeHistory',  async(accounts) => {
       await checkTrades([trade3, trade2, trade1], TIME_RANGE_DEFAULT, GET_TRADES_LIMIT_DEFAULT)
     })
 
-    it("should consolidate trades with same order id and price", async() => {
+    it("should consolidate trades with same order id and price and timestamp", async() => {
       const trade1 = {id: 1, price: 1, amount: 1, isSell: false, timestamp: 1}
       const trade2 = {id: 2, price: 2, amount: 2, isSell: true, timestamp: 2}
-      const trade3 = {id: 2, price: 2, amount: 3, isSell: true, timestamp: 3}
+      const trade3 = {id: 2, price: 2, amount: 3, isSell: true, timestamp: 2}
+      const trade4 = {id: 2, price: 2, amount: 4, isSell: true, timestamp: 4}
 
       await tradeHistoryTest.add(trade1.id, trade1.price, trade1.amount, trade1.isSell, trade1.timestamp).should.be.fulfilled
       await tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp).should.be.fulfilled
       await tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade4.id, trade4.price, trade4.amount, trade4.isSell, trade4.timestamp).should.be.fulfilled
 
       const expectedTrades = [
+        trade4,
         {id: 2, price: 2, amount: 5, isSell: true, timestamp: 2},
         trade1
       ]
