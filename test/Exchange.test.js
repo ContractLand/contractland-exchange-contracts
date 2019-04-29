@@ -452,6 +452,48 @@ contract("Exchange", () => {
                 .then(() => exchange.getOrder(bestAsk).then(order => {bestAskPrice = order[3].toFixed()}))
                 .then(() => assert.equal(bestAskPrice, 2000000000000000000))
         });
+
+        it("should reject buy order with price and amount beyound decimal limit", async () => {
+          const invalidPrice = 2.1111111111 // 10 decimal places
+          const invalidAmount = 1.11111 // 5 decimal places
+
+          const order = {
+            'baseToken': etherAddress,
+            'tradeToken': tradeToken.address,
+            'amount': toWei(invalidAmount),
+            'price': toWei(invalidPrice),
+            'from': buyer
+          }
+
+          await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, { from: order.from, value: order.amount * invalidPrice, gasPrice: 0 }).should.be.rejectedWith(EVMRevert)
+
+          const validPrice = 0.00000001 // 8 decimal places
+          const validAmount = 0.0001 // 4 decimal places
+          order.price = toWei(validPrice)
+          order.amount = toWei(validAmount)
+          await exchange.buy(order.baseToken, order.tradeToken, order.from, order.amount, order.price, { from: order.from, value: order.amount * validPrice, gasPrice: 0 }).should.be.fulfilled
+        })
+
+        it("should reject sell order with price and amount beyound decimal limit", async () => {
+          const invalidPrice = 2.1111111111 // 10 decimal places
+          const invalidAmount = 1.11111 // 5 decimal places
+
+          const order = {
+            'baseToken': baseToken.address,
+            'tradeToken': etherAddress,
+            'amount': toWei(invalidAmount),
+            'price': toWei(invalidPrice),
+            'from': seller
+          }
+
+          await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, { from: order.from, value: order.amount, gasPrice: 0 }).should.be.rejectedWith(EVMRevert)
+
+          const validPrice = 0.00000001 // 8 decimal places
+          const validAmount = 0.0001 // 4 decimal places
+          order.price = toWei(validPrice)
+          order.amount = toWei(validAmount)
+          await exchange.sell(order.baseToken, order.tradeToken, order.from, order.amount, order.price, { from: order.from, value: order.amount, gasPrice: 0 }).should.be.fulfilled
+        })
     });
 
     describe("Order Matching", function() {

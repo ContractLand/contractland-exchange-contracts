@@ -432,7 +432,9 @@ contract Exchange is Initializable, Pausable {
     {
         return baseToken != tradeToken &&
                price >= MIN_PRICE_SIZE &&
+               price == (price / MIN_PRICE_SIZE) * MIN_PRICE_SIZE &&
                amount >= MIN_AMOUNT_SIZE &&
+               amount == (amount / MIN_AMOUNT_SIZE) * MIN_AMOUNT_SIZE &&
                amount.mul(price).div(PRICE_DENOMINATOR) <= MAX_TOTAL_SIZE;
     }
 
