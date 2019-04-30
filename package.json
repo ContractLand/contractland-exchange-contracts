@@ -9,6 +9,8 @@
   "scripts": {
     "build": "npm run clear-build && truffle compile",
     "deploy": "node deployment/deploy.js",
+    "upgrade": "node deployment/src/upgrade.js",
+    "build-upgrade": "npm run build && npm run upgrade",
     "build-deploy": "npm run build && npm run deploy",
     "clear-build": "rm -rf build",
     "flatten": "cd scripts && bash flatten.sh",
