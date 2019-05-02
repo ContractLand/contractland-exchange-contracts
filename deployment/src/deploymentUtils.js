@@ -23,19 +23,24 @@ async function deployContract(contractJson, args, {from, network, nonce}) {
     data: contractJson.bytecode,
     arguments: args
   }).encodeABI()
-  const tx = await sendRawTx({
-    data: result,
-    nonce: Web3Utils.toHex(nonce),
-    to: null,
-    privateKey: deploymentPrivateKey,
-    url
-  })
-  if(tx.status != '0x1'){
-    throw new Error('Tx failed');
+
+  try {
+    const tx = await sendRawTx({
+      data: result,
+      nonce: Web3Utils.toHex(nonce),
+      to: null,
+      privateKey: deploymentPrivateKey,
+      url
+    })
+    if(tx.status != '0x1'){
+      throw new Error('Tx failed');
+    }
+    instance.options.address = tx.contractAddress;
+    instance.deployedBlockNumber = tx.blockNumber
+    return instance;
+  } catch (e) {
+    console.log(e)
   }
-  instance.options.address = tx.contractAddress;
-  instance.deployedBlockNumber = tx.blockNumber
-  return instance;
 }
 
 
