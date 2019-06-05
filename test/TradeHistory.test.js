@@ -227,6 +227,16 @@ contract('TradeHistory',  async(accounts) => {
       await checkTrades(expectedTrades, [3,3], GET_TRADES_LIMIT_DEFAULT)
       console.log(`[3,3] is OK`)
     })
+
+    it.only("should return one trade", async() => {
+      const trade2 = {id: 3, price: 3, amount: 3, isSell: false, timestamp: 3}
+      const trade30 = {id: 30, price: 3, amount: 3, isSell: false, timestamp: 30}
+
+      await tradeHistoryTest.add(trade2.id, trade2.price, trade2.amount, trade2.isSell, trade2.timestamp).should.be.fulfilled
+      await tradeHistoryTest.add(trade30.id, trade30.price, trade30.amount, trade30.isSell, trade30.timestamp).should.be.fulfilled
+
+      await checkTrades([trade30], [21,30], GET_TRADES_LIMIT_DEFAULT)
+    })
   })
 
   async function checkTrades(expectedTrades, timeRange, limit) {
