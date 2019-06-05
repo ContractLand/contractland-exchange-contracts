@@ -75,6 +75,18 @@ contract('Arrays', function () {
     })
   })
 
+  describe('Array with duplicates', function () {
+    const WITH_GAP_ARRAY = [11, 12, 13, 13, 13, 13, 14, 15]
+
+    beforeEach(async function () {
+      this.arrays = await TestArrays.new(WITH_GAP_ARRAY)
+    })
+
+    it('should return index of first element in next filled range', async function () {
+      (await this.arrays.findUpperBound(13)).should.be.bignumber.equal(5)
+    })
+  })
+
   describe('Empty array', function () {
     beforeEach(async function () {
       this.arrays = await TestArrays.new([])

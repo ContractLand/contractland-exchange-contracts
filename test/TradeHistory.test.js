@@ -48,7 +48,7 @@ contract('TradeHistory',  async(accounts) => {
     })
   })
 
-  describe.only("GetTrades", async() => {
+  describe("GetTrades", async() => {
     it("should not exceed limit", async() => {
       const trade = {price: 1, amount: 1, isSell: false, timestamp: 1}
 
@@ -156,7 +156,7 @@ contract('TradeHistory',  async(accounts) => {
       await checkTrades(expectedTrades, [2,5], GET_TRADES_LIMIT_DEFAULT)
     })
 
-    it.only("should return two trades", async() => {
+    it("should return two trades", async() => {
       const trade2 = {id: 2, price: 2, amount: 2, isSell: true, timestamp: 2}
       const trade3 = {id: 3, price: 3, amount: 3, isSell: false, timestamp: 3}
 
@@ -169,19 +169,12 @@ contract('TradeHistory',  async(accounts) => {
       ]
 
       await checkTrades(expectedTrades, [1,4], GET_TRADES_LIMIT_DEFAULT)
-      console.log(`[1,4] is OK`)
-
       await checkTrades(expectedTrades, [1,3], GET_TRADES_LIMIT_DEFAULT)
-      console.log('[1,3] is OK')
-
       await checkTrades(expectedTrades, [2,4], GET_TRADES_LIMIT_DEFAULT)
-      console.log(`[2,4] is OK`)
-
       await checkTrades(expectedTrades, [2,3], GET_TRADES_LIMIT_DEFAULT)
-      console.log(`[2,3] is OK`)
     })
 
-    it.only("should return two trades with the same timestamp", async() => {
+    it("should return two trades with the same timestamp", async() => {
       const trade2 = {id: 2, price: 2, amount: 2, isSell: true, timestamp: 3}
       const trade3 = {id: 3, price: 3, amount: 3, isSell: false, timestamp: 3}
 
@@ -194,19 +187,10 @@ contract('TradeHistory',  async(accounts) => {
       ]
 
       await checkTrades(expectedTrades, [1,4], GET_TRADES_LIMIT_DEFAULT)
-      console.log(`[1,4] is OK`)
-
       await checkTrades(expectedTrades, [1,3], GET_TRADES_LIMIT_DEFAULT)
-      console.log(`[1,3] is OK`)
-
-      await checkTrades(expectedTrades, [3,4], GET_TRADES_LIMIT_DEFAULT)
-      console.log(`[3,4] is OK`)
-
-      await checkTrades(expectedTrades, [3,3], GET_TRADES_LIMIT_DEFAULT)
-      console.log(`[3,3] is OK`)
     })
 
-    it.only("should return one trade", async() => {
+    it("should return one trade", async() => {
       const trade3 = {id: 3, price: 3, amount: 3, isSell: false, timestamp: 3}
 
       await tradeHistoryTest.add(trade3.id, trade3.price, trade3.amount, trade3.isSell, trade3.timestamp).should.be.fulfilled
@@ -216,16 +200,8 @@ contract('TradeHistory',  async(accounts) => {
       ]
 
       await checkTrades(expectedTrades, [1,4], GET_TRADES_LIMIT_DEFAULT)
-      console.log(`[1,4] is OK`)
-
       await checkTrades(expectedTrades, [1,3], GET_TRADES_LIMIT_DEFAULT)
-      console.log(`[1,3] is OK`)
-
       await checkTrades(expectedTrades, [3,4], GET_TRADES_LIMIT_DEFAULT)
-      console.log(`[3,4] is OK`)
-
-      await checkTrades(expectedTrades, [3,3], GET_TRADES_LIMIT_DEFAULT)
-      console.log(`[3,3] is OK`)
     })
   })
 

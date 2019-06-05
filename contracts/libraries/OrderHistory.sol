@@ -58,7 +58,7 @@ library OrderHistory {
     uint startIndex = self.timestamps.findUpperBound(timeRange[0]);
     uint endIndex = self.timestamps.findUpperBound(timeRange[1]);
 
-    if (startIndex >= endIndex) {
+    if (startIndex > endIndex) {
       return;
     }
 
