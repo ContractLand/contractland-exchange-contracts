@@ -837,6 +837,20 @@ contract("Exchange", () => {
               {id: 4, owner: seller, price: ask14.price, originalAmount: ask14.amount, amount: ask14.amount}
             ], MAX_GET_RETURN_SIZE))
       })
+
+      it.only("should allow to trade two trades resulting in 0.0001 order", () => {
+        const sellOrderOne = sell(4, 2);
+        const buyOrder = buy(4, '1.9999');
+        return placeOrder(sellOrderOne)
+            .then(() => placeOrder(buyOrder))
+      })
+
+      it.only("should allow to trade two trades resulting in 0.00001 order", () => {
+        const sellOrderOne = sell(4, 2);
+        const buyOrder = buy(4, '1.99999');
+        return placeOrder(sellOrderOne)
+            .then(() => placeOrder(buyOrder))
+      })
     });
 
     describe("Admin", () => {
