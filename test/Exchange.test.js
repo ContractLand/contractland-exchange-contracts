@@ -14,7 +14,7 @@ const Token = artifacts.require("./TestToken.sol");
 const FallbackTrap = artifacts.require("./FallbackTrap.sol");
 
 contract("Exchange", () => {
-    const [deployer, buyer, seller, proxyOwner, exchangeOwner, notExchangeOwner] = web3.eth.accounts;
+    const [deployer, buyer, seller, proxyOwner, exchangeOwner, notExchangeOwner, feeDestination] = web3.eth.accounts;
     let exchange, exchangeProxy, baseToken, tradeToken, orderId, fallbackTrap;
     const etherAddress = '0x0000000000000000000000000000000000000000'
     const invalidToken = '0x1111111111111111111111111111111111111111'
@@ -836,6 +836,378 @@ contract("Exchange", () => {
               {id: 9, owner: seller, price: ask15.price, originalAmount: ask15.amount, amount: ask15.amount},
               {id: 4, owner: seller, price: ask14.price, originalAmount: ask14.amount, amount: ask14.amount}
             ], MAX_GET_RETURN_SIZE))
+      })
+
+      it("should collect fees for buy order", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
+        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(sellOrder)
+            .then(() => placeOrder(buyOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should collect fees for buy orders that arent exact match in price or amount", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(90, 1);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = sellOrder.total * 0.1
+        const buyerTradeTokenFeeAmount = sellOrder.amount * 0.1
+        const expectedBuyerTradeTokenBalance = sellOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total + fromWei(buyOrder.price - sellOrder.price) * sellOrder.amount
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(sellOrder)
+            .then(() => placeOrder(buyOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: buyOrder.total.div(2)}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should collect fees for sell order", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
+        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(buyOrder)
+            .then(() => placeOrder(sellOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should collect fees for sell orders that arent exact match in price or amount", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(90, 1);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = fromWei(buyOrder.price) * sellOrder.amount * 0.1
+        const buyerTradeTokenFeeAmount = sellOrder.amount * 0.1
+        const expectedBuyerTradeTokenBalance = sellOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = fromWei(buyOrder.price) * sellOrder.amount - sellerBaseTokenFeeAmount
+        return placeOrder(buyOrder)
+            .then(() => placeOrder(sellOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: buyOrder.total.div(2)}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should only collect trade token fee for buy order", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = 0
+        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(sellOrder)
+            .then(() => placeOrder(buyOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should only collect base token fee for buy order", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
+        const buyerTradeTokenFeeAmount = 0
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(sellOrder)
+            .then(() => placeOrder(buyOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should only collect trade token fee for sell order", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = 0
+        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(buyOrder)
+            .then(() => placeOrder(sellOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should only collect base token fee for sell order", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
+        const buyerTradeTokenFeeAmount = 0
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(buyOrder)
+            .then(() => placeOrder(sellOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should not collect buy order fees if not set for token", () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const expectedBuyerTradeTokenBalance = buyOrder.amount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total
+        return placeOrder(sellOrder)
+            .then(() => placeOrder(buyOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: 0, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: 0, reserved: 0}))
+      })
+
+      it("should not collect sell order fees if not set for token", () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const expectedBuyerTradeTokenBalance = buyOrder.amount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total
+        return placeOrder(buyOrder)
+            .then(() => placeOrder(sellOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: 0, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: 0, reserved: 0}))
+      })
+
+      it("should not collect trade token fee for buy order for whitelisted addresses", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setFeeWhitelist(buyOrder.from, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
+        const buyerTradeTokenFeeAmount = 0
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(sellOrder)
+            .then(() => placeOrder(buyOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should not collect base token fee for buy order for whitelisted addresses", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setFeeWhitelist(sellOrder.from, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = 0
+        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(sellOrder)
+            .then(() => placeOrder(buyOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should not collect trade token fee for sell order for whitelisted addresses", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setFeeWhitelist(buyOrder.from, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
+        const buyerTradeTokenFeeAmount = 0
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(buyOrder)
+            .then(() => placeOrder(sellOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should not collect base token fee for sell order for whitelisted addresses", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setFeeWhitelist(sellOrder.from, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = 0
+        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(buyOrder)
+            .then(() => placeOrder(sellOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should not collect trade or base token fee for whitelisted seller and buyer on buy order", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setFeeWhitelist(sellOrder.from, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setFeeWhitelist(buyOrder.from, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = 0
+        const buyerTradeTokenFeeAmount = 0
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(sellOrder)
+            .then(() => placeOrder(buyOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should not collect trade or base token fee for whitelisted seller and buyer on sell order", async () => {
+        const buyOrder = buy(100, 2);
+        const sellOrder = sell(100, 2);
+        const feePercentage = 10 // 10%
+        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setFeeWhitelist(sellOrder.from, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setFeeWhitelist(buyOrder.from, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = 0
+        const buyerTradeTokenFeeAmount = 0
+        const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
+        const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
+        const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
+        const expectedSellerBaseTokenBalance = sellOrder.total - sellerBaseTokenFeeAmount
+        return placeOrder(buyOrder)
+            .then(() => placeOrder(sellOrder))
+            .then(() => checkBalance(tradeToken.address, sellOrder.from, {available: expectedSellerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, sellOrder.from, {available: expectedSellerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, buyOrder.from, {available: expectedBuyerTradeTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, buyOrder.from, {available: expectedBuyerBaseTokenBalance, reserved: 0}))
+            .then(() => checkBalance(baseToken.address, exchangeOwner, {available: sellerBaseTokenFeeAmount, reserved: 0}))
+            .then(() => checkBalance(tradeToken.address, exchangeOwner, {available: buyerTradeTokenFeeAmount, reserved: 0}))
+      })
+
+      it("should not allow non-admin to set fee whitelist", async () => {
+        await exchange.setFeeWhitelist(buyer, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+        await exchange.setFeeWhitelist(buyer, { from: exchangeOwner }).should.be.fulfilled
+
+        const isWhitelisted = await exchange.getFeeWhitelist(buyer)
+        assert(isWhitelisted, true)
+      })
+
+      it("should not allow non-admin to set token fees", async () => {
+        const newFee = 10000
+
+        await exchange.setTokenFee(tradeToken.address, newFee, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+        await exchange.setTokenFee(tradeToken.address, newFee, { from: exchangeOwner }).should.be.fulfilled
+
+        const actualFee = await exchange.getTokenFee(tradeToken.address)
+        assert(actualFee.toString(), newFee.toString())
+      })
+
+      it("should not allow non-admin to set exchange fees", async () => {
+        await exchange.setFeeDestination(feeDestination, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+        await exchange.setFeeDestination(feeDestination, { from: exchangeOwner }).should.be.fulfilled
+
+        const actualDestination = await exchange.feeDestination()
+        assert(actualDestination, feeDestination)
       })
     });
 
