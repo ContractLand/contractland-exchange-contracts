@@ -112,6 +112,9 @@ contract Exchange is Initializable, Pausable {
 
     /* --- END OF V1 VARIABLES --- */
 
+    // Mapping of token address to token fee numerator
+    mapping(address => uint) tokenFeeNumerators;
+
     // Mapping of token address to token fee denominator
     mapping(address => uint) tokenFeeDenominators;
 
@@ -422,18 +425,26 @@ contract Exchange is Initializable, Pausable {
         MAX_GET_RETURN_SIZE = newMax;
     }
 
-    function getTokenFee(address token)
+    function getTokenFeeNumerator(address token)
+        external
+        returns (uint)
+    {
+        return tokenFeeNumerators[token];
+    }
+
+    function getTokenFeeDenominator(address token)
         external
         returns (uint)
     {
         return tokenFeeDenominators[token];
     }
 
-    function setTokenFee(address token, uint fee)
+    function setTokenFee(address token, uint feeNumerator, uint feeDenominator)
         external
         onlyOwner
     {
-        tokenFeeDenominators[token] = fee;
+        tokenFeeNumerators[token] = feeNumerator;
+        tokenFeeDenominators[token] = feeDenominator;
     }
 
     function setFeeDestination(address destination)
@@ -539,10 +550,10 @@ contract Exchange is Initializable, Pausable {
             if (tokenFeeDenominators[order.tradeToken] > 0 && !feeWhitelist[matchingOrder.owner]) {
               // Transfer tradeToken to taker
               //    Substract tradeTokenFee from tradeAmount
-              //    tradeAmount.div(tokenFeeDenominators[order.tradeToken])
-              transferFundToUser(matchingOrder.owner, order.tradeToken, tradeAmount.sub(tradeAmount.div(tokenFeeDenominators[order.tradeToken])));
+              //    tradeAmount.div(tokenFeeDenominators[order.tradeToken]).mul(tokenFeeNumerators[order.tradeToken])
+              transferFundToUser(matchingOrder.owner, order.tradeToken, tradeAmount.sub(tradeAmount.div(tokenFeeDenominators[order.tradeToken]).mul(tokenFeeNumerators[order.tradeToken])));
               // Transfer tradeToken fee to feeDestination
-              transferFundToUser(feeDestination, order.tradeToken, tradeAmount.div(tokenFeeDenominators[order.tradeToken]));
+              transferFundToUser(feeDestination, order.tradeToken, tradeAmount.div(tokenFeeDenominators[order.tradeToken]).mul(tokenFeeNumerators[order.tradeToken]));
             } else {
               transferFundToUser(matchingOrder.owner, order.tradeToken, tradeAmount);
             }
@@ -550,10 +561,10 @@ contract Exchange is Initializable, Pausable {
             if (tokenFeeDenominators[order.baseToken] > 0 && !feeWhitelist[order.owner]) {
               // Transfer baseToken to maker (based on maker price).
               //    Substract baseTokenFee from baseAmount
-              //    baseAmount.div(tokenFeeDenominators[order.baseToken])
-              transferFundToUser(order.owner, order.baseToken, baseAmount.sub(baseAmount.div(tokenFeeDenominators[order.baseToken])));
+              //    baseAmount.div(tokenFeeDenominators[order.baseToken]).mul(tokenFeeNumerators[order.baseToken])
+              transferFundToUser(order.owner, order.baseToken, baseAmount.sub(baseAmount.div(tokenFeeDenominators[order.baseToken]).mul(tokenFeeNumerators[order.baseToken])));
               // Transfer baseToken fee to feeDestination
-              transferFundToUser(feeDestination, order.baseToken, baseAmount.div(tokenFeeDenominators[order.baseToken]));
+              transferFundToUser(feeDestination, order.baseToken, baseAmount.div(tokenFeeDenominators[order.baseToken]).mul(tokenFeeNumerators[order.baseToken]));
             } else {
               transferFundToUser(order.owner, order.baseToken, baseAmount);
             }
@@ -663,10 +674,10 @@ contract Exchange is Initializable, Pausable {
             if (tokenFeeDenominators[order.baseToken] > 0 && !feeWhitelist[matchingOrder.owner]) {
               // Transfer baseToken to maker (based on maker price).
               //    Substract baseTokenFee from baseAmount
-              //    baseAmount.div(tokenFeeDenominators[order.baseToken])
-              transferFundToUser(matchingOrder.owner, order.baseToken, baseAmount.sub(baseAmount.div(tokenFeeDenominators[order.baseToken])));
+              //    baseAmount.div(tokenFeeDenominators[order.baseToken]).mul(tokenFeeNumerators[order.baseToken])
+              transferFundToUser(matchingOrder.owner, order.baseToken, baseAmount.sub(baseAmount.div(tokenFeeDenominators[order.baseToken]).mul(tokenFeeNumerators[order.baseToken])));
               // Transfer baseToken fee to feeDestination
-              transferFundToUser(feeDestination, order.baseToken, baseAmount.div(tokenFeeDenominators[order.baseToken]));
+              transferFundToUser(feeDestination, order.baseToken, baseAmount.div(tokenFeeDenominators[order.baseToken]).mul(tokenFeeNumerators[order.baseToken]));
             } else {
               transferFundToUser(matchingOrder.owner, order.baseToken, baseAmount);
             }
@@ -674,10 +685,10 @@ contract Exchange is Initializable, Pausable {
             if (tokenFeeDenominators[order.tradeToken] > 0 && !feeWhitelist[order.owner]) {
               // Transfer tradeToken to taker
               //    Substract tradeTokenFee from tradeAmount
-              //    tradeAmount.div(tokenFeeDenominators[order.tradeToken])
-              transferFundToUser(order.owner, order.tradeToken, tradeAmount.sub(tradeAmount.div(tokenFeeDenominators[order.tradeToken])));
+              //    tradeAmount.div(tokenFeeDenominators[order.tradeToken]).mul(tokenFeeNumerators[order.tradeToken])
+              transferFundToUser(order.owner, order.tradeToken, tradeAmount.sub(tradeAmount.div(tokenFeeDenominators[order.tradeToken]).mul(tokenFeeNumerators[order.tradeToken])));
               // Transfer baseToken fee to feeDestination
-              transferFundToUser(feeDestination, order.tradeToken, tradeAmount.div(tokenFeeDenominators[order.tradeToken]));
+              transferFundToUser(feeDestination, order.tradeToken, tradeAmount.div(tokenFeeDenominators[order.tradeToken]).mul(tokenFeeNumerators[order.tradeToken]));
             } else {
               transferFundToUser(order.owner, order.tradeToken, tradeAmount);
             }

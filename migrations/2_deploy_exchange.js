@@ -7,5 +7,5 @@ module.exports = function(deployer) {
   deployer.deploy(BidHeap);
   deployer.link(AskHeap, Exchange);
   deployer.link(BidHeap, Exchange);
-  deployer.deploy(Exchange, {gas: 15000000});
+  deployer.deploy(Exchange, {gas: 20000000});
 };

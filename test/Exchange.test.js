@@ -841,11 +841,13 @@ contract("Exchange", () => {
       it("should collect fees for buy order", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
-        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = buyOrder.total * feePercentage
+        const buyerTradeTokenFeeAmount = buyOrder.amount * feePercentage
         const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
         const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
@@ -863,11 +865,13 @@ contract("Exchange", () => {
       it("should collect fees for buy orders that arent exact match in price or amount", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(90, 1);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        const sellerBaseTokenFeeAmount = sellOrder.total * 0.1
-        const buyerTradeTokenFeeAmount = sellOrder.amount * 0.1
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = sellOrder.total * feePercentage
+        const buyerTradeTokenFeeAmount = sellOrder.amount * feePercentage
         const expectedBuyerTradeTokenBalance = sellOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total + fromWei(buyOrder.price - sellOrder.price) * sellOrder.amount
         const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
@@ -885,11 +889,13 @@ contract("Exchange", () => {
       it("should collect fees for sell order", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
-        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = buyOrder.total * feePercentage
+        const buyerTradeTokenFeeAmount = buyOrder.amount * feePercentage
         const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
         const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
@@ -907,11 +913,13 @@ contract("Exchange", () => {
       it("should collect fees for sell orders that arent exact match in price or amount", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(90, 1);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        const sellerBaseTokenFeeAmount = fromWei(buyOrder.price) * sellOrder.amount * 0.1
-        const buyerTradeTokenFeeAmount = sellOrder.amount * 0.1
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = fromWei(buyOrder.price) * sellOrder.amount * feePercentage
+        const buyerTradeTokenFeeAmount = sellOrder.amount * feePercentage
         const expectedBuyerTradeTokenBalance = sellOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
         const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
@@ -929,10 +937,12 @@ contract("Exchange", () => {
       it("should only collect trade token fee for buy order", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
         const sellerBaseTokenFeeAmount = 0
-        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const buyerTradeTokenFeeAmount = buyOrder.amount * feePercentage
         const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
         const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
@@ -950,9 +960,11 @@ contract("Exchange", () => {
       it("should only collect base token fee for buy order", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = buyOrder.total * feePercentage
         const buyerTradeTokenFeeAmount = 0
         const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
@@ -971,10 +983,12 @@ contract("Exchange", () => {
       it("should only collect trade token fee for sell order", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
         const sellerBaseTokenFeeAmount = 0
-        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const buyerTradeTokenFeeAmount = buyOrder.amount * feePercentage
         const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
         const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
@@ -992,9 +1006,11 @@ contract("Exchange", () => {
       it("should only collect base token fee for sell order", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        const sellerBaseTokenFeeAmount = buyOrder.total * feePercentage
         const buyerTradeTokenFeeAmount = 0
         const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
@@ -1047,11 +1063,13 @@ contract("Exchange", () => {
       it("should not collect trade token fee for buy order for whitelisted addresses", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
         await exchange.setFeeWhitelist(buyOrder.from, { from: exchangeOwner }).should.be.fulfilled
-        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
+        const sellerBaseTokenFeeAmount = buyOrder.total * feePercentage
         const buyerTradeTokenFeeAmount = 0
         const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
@@ -1070,12 +1088,14 @@ contract("Exchange", () => {
       it("should not collect base token fee for buy order for whitelisted addresses", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
         await exchange.setFeeWhitelist(sellOrder.from, { from: exchangeOwner }).should.be.fulfilled
         const sellerBaseTokenFeeAmount = 0
-        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const buyerTradeTokenFeeAmount = buyOrder.amount * feePercentage
         const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
         const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
@@ -1093,11 +1113,13 @@ contract("Exchange", () => {
       it("should not collect trade token fee for sell order for whitelisted addresses", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
         await exchange.setFeeWhitelist(buyOrder.from, { from: exchangeOwner }).should.be.fulfilled
-        const sellerBaseTokenFeeAmount = buyOrder.total * 0.1
+        const sellerBaseTokenFeeAmount = buyOrder.total * feePercentage
         const buyerTradeTokenFeeAmount = 0
         const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
@@ -1116,12 +1138,14 @@ contract("Exchange", () => {
       it("should not collect base token fee for sell order for whitelisted addresses", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
         await exchange.setFeeWhitelist(sellOrder.from, { from: exchangeOwner }).should.be.fulfilled
         const sellerBaseTokenFeeAmount = 0
-        const buyerTradeTokenFeeAmount = buyOrder.amount * 0.1
+        const buyerTradeTokenFeeAmount = buyOrder.amount * feePercentage
         const expectedBuyerTradeTokenBalance = buyOrder.amount - buyerTradeTokenFeeAmount
         const expectedBuyerBaseTokenBalance = tokenDepositAmount - buyOrder.total
         const expectedSellerTradeTokenBalance = tokenDepositAmount - sellOrder.amount
@@ -1139,9 +1163,11 @@ contract("Exchange", () => {
       it("should not collect trade or base token fee for whitelisted seller and buyer on buy order", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
         await exchange.setFeeWhitelist(sellOrder.from, { from: exchangeOwner }).should.be.fulfilled
         await exchange.setFeeWhitelist(buyOrder.from, { from: exchangeOwner }).should.be.fulfilled
         const sellerBaseTokenFeeAmount = 0
@@ -1163,9 +1189,11 @@ contract("Exchange", () => {
       it("should not collect trade or base token fee for whitelisted seller and buyer on sell order", async () => {
         const buyOrder = buy(100, 2);
         const sellOrder = sell(100, 2);
-        const feePercentage = 10 // 10%
-        await exchange.setTokenFee(tradeToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
-        await exchange.setTokenFee(baseToken.address, feePercentage, { from: exchangeOwner }).should.be.fulfilled
+        const feeNumerator = 2
+        const feeDenominator = 1000
+        const feePercentage = 0.002 // 0.2%
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(baseToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
         await exchange.setFeeWhitelist(sellOrder.from, { from: exchangeOwner }).should.be.fulfilled
         await exchange.setFeeWhitelist(buyOrder.from, { from: exchangeOwner }).should.be.fulfilled
         const sellerBaseTokenFeeAmount = 0
@@ -1193,16 +1221,19 @@ contract("Exchange", () => {
       })
 
       it("should not allow non-admin to set token fees", async () => {
-        const newFee = 10000
+        const feeNumerator = 3
+        const feeDenominator = 100
 
-        await exchange.setTokenFee(tradeToken.address, newFee, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
-        await exchange.setTokenFee(tradeToken.address, newFee, { from: exchangeOwner }).should.be.fulfilled
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
+        await exchange.setTokenFee(tradeToken.address, feeNumerator, feeDenominator, { from: exchangeOwner }).should.be.fulfilled
 
-        const actualFee = await exchange.getTokenFee(tradeToken.address)
-        assert(actualFee.toString(), newFee.toString())
+        const actualFeeNumerator = await exchange.getTokenFeeNumerator(tradeToken.address)
+        assert(actualFeeNumerator.toString(), feeNumerator.toString())
+        const actualFeeDenominator = await exchange.getTokenFeeDenominator(tradeToken.address)
+        assert(actualFeeDenominator.toString(), feeNumerator.toString())
       })
 
-      it("should not allow non-admin to set exchange fees", async () => {
+      it("should not allow non-admin to set exchange destination", async () => {
         await exchange.setFeeDestination(feeDestination, { from: notExchangeOwner }).should.be.rejectedWith(EVMRevert)
         await exchange.setFeeDestination(feeDestination, { from: exchangeOwner }).should.be.fulfilled
 
@@ -1297,7 +1328,7 @@ contract("Exchange", () => {
             await placeOrder(sellOrder)
 
             // THEN
-            const newExchange = await Exchange.new({ gas: 15000000 })
+            const newExchange = await Exchange.new({ gas: 20000000 })
             await exchangeProxy.upgradeTo(newExchange.address, { from: proxyOwner })
 
             // EXPECT
@@ -1899,7 +1930,7 @@ contract("Exchange", () => {
     async function deployExchange() {
         baseToken = await Token.new()
         tradeToken = await Token.new()
-        let exchangeInstance = await Exchange.new({ gas: 15000000 })
+        let exchangeInstance = await Exchange.new({ gas: 20000000 })
         exchangeProxy = await ExchangeProxy.new(exchangeInstance.address, { from: proxyOwner })
         exchange = await Exchange.at(exchangeProxy.address)
         await exchange.initialize({ from: exchangeOwner })
