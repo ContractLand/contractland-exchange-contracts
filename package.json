@@ -6,7 +6,11 @@
   "directories": {
     "test": "test"
   },
+  "resolutions": {
+    "scrypt.js": "0.3.0"
+  },
   "scripts": {
+    "preinstall": "npx npm-force-resolutions",
     "build": "npm run clear-build && truffle compile",
     "deploy": "node deployment/deploy.js",
     "upgrade": "node deployment/src/upgrade.js",
@@ -15,7 +19,7 @@
     "clear-build": "rm -rf build",
     "flatten": "cd scripts && bash flatten.sh",
     "test": "truffle test --network development",
-    "ganache": "ganache-cli --allowUnlimitedContractSize --gasLimit 100000000"
+    "ganache": "ganache-cli --allowUnlimitedContractSize --gasLimit 1000000000 --port 8545 --mnemonic 'daring foster connect minor episode ankle bag have adjust advance day cloud'"
   },
   "author": "ContractLand Fundation",
   "license": "MIT",
